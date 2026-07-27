@@ -405,11 +405,35 @@ nav.chapters .chapters-eyebrow{font-family:var(--ff-mono);font-size:10.5px;font-
 /* ---- main / results head ---- */
 main{min-width:0;}
 .results-head{position:relative;margin-bottom:var(--space-9);padding:var(--space-2) 0 var(--space-7);overflow:visible;isolation:isolate;}
-.results-head::before{content:'';position:absolute;top:-40px;right:-60px;width:420px;height:320px;z-index:-1;pointer-events:none;
-  background:radial-gradient(closest-side, rgba(95,166,255,0.30), rgba(95,166,255,0.10) 55%, transparent 75%);
+.results-head::before{content:'';position:absolute;top:-30px;right:-40px;width:380px;height:300px;z-index:-2;pointer-events:none;
+  background:radial-gradient(closest-side, rgba(95,166,255,0.18), rgba(95,166,255,0.06) 55%, transparent 75%);
   filter:blur(4px);}
-[data-theme="dark"] .results-head::before{background:radial-gradient(closest-side, rgba(95,166,255,0.28), rgba(95,166,255,0.10) 55%, transparent 75%);}
-.results-kicker{display:inline-flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:11.5px;font-weight:600;letter-spacing:var(--tracking-wide);color:var(--ink-soft);margin:0 0 20px;padding:7px 16px 7px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-pill);box-shadow:var(--shadow-sm);}
+[data-theme="dark"] .results-head::before{background:radial-gradient(closest-side, rgba(95,166,255,0.20), rgba(95,166,255,0.07) 55%, transparent 75%);}
+
+/* ---- per-specialty decorative hero illustration ----
+   A glassy translucent organ silhouette with a fractal branching
+   vessel/nerve pattern clipped inside it (see the <symbol> sprite in
+   the static HTML above #view-literature). setResultsHead() swaps
+   #results-motif-use's href to the matching motif-<specialty id>. */
+.results-motif{position:absolute;top:-36px;right:-36px;width:380px;height:380px;z-index:-1;pointer-events:none;
+  filter:drop-shadow(0 18px 46px rgba(47,111,238,0.16));
+  transition:opacity var(--dur-slow) var(--ease-out);}
+[data-theme="dark"] .results-motif{filter:drop-shadow(0 18px 54px rgba(95,166,255,0.22));}
+.motif-silhouette{fill:url(#motif-fill-grad);stroke:url(#motif-edge-grad);stroke-width:1.6;}
+.motif-glow{fill:none;stroke:var(--evidence);stroke-width:6;opacity:0.10;filter:blur(6px);}
+.mb{fill:none;stroke:var(--evidence);stroke-linecap:round;stroke-linejoin:round;}
+.mfg-0{stop-color:#ffffff;stop-opacity:0.85;}
+.mfg-1{stop-color:var(--evidence-bg);stop-opacity:0.55;}
+.mfg-2{stop-color:var(--evidence);stop-opacity:0.16;}
+[data-theme="dark"] .mfg-0{stop-color:var(--surface-raised);stop-opacity:0.55;}
+[data-theme="dark"] .mfg-1{stop-color:var(--evidence-bg);stop-opacity:0.55;}
+[data-theme="dark"] .mfg-2{stop-color:var(--evidence);stop-opacity:0.28;}
+.meg-0{stop-color:var(--evidence-bright);stop-opacity:0.55;}
+.meg-1{stop-color:var(--evidence);stop-opacity:0.22;}
+[data-theme="dark"] .meg-0{stop-color:var(--evidence-bright);stop-opacity:0.65;}
+[data-theme="dark"] .meg-1{stop-color:var(--evidence);stop-opacity:0.30;}
+@media (max-width:900px){.results-motif{display:none;}}
+.results-kicker{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:11.5px;font-weight:600;letter-spacing:var(--tracking-wide);color:var(--ink-soft);margin:0 0 20px;padding:7px 16px 7px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-pill);box-shadow:var(--shadow-sm);}
 .results-title{font-family:var(--ff-display);font-size:var(--fs-display);font-weight:900;line-height:var(--lh-tight);letter-spacing:var(--tracking-tight);color:var(--ink);margin:0 0 18px;max-width:14ch;}
 .results-title em{color:inherit;font-weight:900;}
 .results-byline{font-family:var(--ff-sans);font-size:14.5px;line-height:1.6;color:var(--ink-soft);margin:0;max-width:46ch;}
@@ -1629,6 +1653,378 @@ body::before{background:
   </button>
 </nav>
 
+<!-- Per-specialty decorative background illustrations for the results hero.
+     Static, JS never generates this region; setResultsHead() only swaps the
+     #results-motif-use href to point at the matching motif-<id> symbol below. -->
+<svg width="0" height="0" style="position:absolute;overflow:hidden" aria-hidden="true" focusable="false" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+  <defs>
+    <radialGradient id="motif-fill-grad" cx="35%" cy="28%" r="85%">
+      <stop class="mfg-0" offset="0%"/>
+      <stop class="mfg-1" offset="55%"/>
+      <stop class="mfg-2" offset="100%"/>
+    </radialGradient>
+    <linearGradient id="motif-edge-grad" x1="0" y1="0" x2="1" y2="1">
+      <stop class="meg-0" offset="0%"/>
+      <stop class="meg-1" offset="100%"/>
+    </linearGradient>
+  <g id="mb-a" class="mb">
+    <path d="M150.0,208.0 Q124.6,189.5 113.9,159.9" stroke-width="5.6" opacity="0.3"/>
+    <path d="M113.9,159.9 Q94.0,161.3 77.3,150.5" stroke-width="3.81" opacity="0.41"/>
+    <path d="M77.3,150.5 Q65.4,153.9 56.3,162.2" stroke-width="2.59" opacity="0.52"/>
+    <path d="M56.3,162.2 Q50.4,168.5 45.1,175.4" stroke-width="1.76" opacity="0.63"/>
+    <path d="M45.1,175.4 Q45.6,181.5 45.4,187.6" stroke-width="1.2" opacity="0.74"/>
+    <path d="M45.1,175.4 Q39.9,177.7 35.7,181.4" stroke-width="1.2" opacity="0.74"/>
+    <path d="M56.3,162.2 Q47.3,164.7 38.0,163.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M38.0,163.9 Q31.5,162.6 25.0,163.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M77.3,150.5 Q68.9,139.8 68.0,126.2" stroke-width="2.59" opacity="0.52"/>
+    <path d="M68.0,126.2 Q59.1,121.9 51.4,115.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M51.4,115.9 Q44.1,115.2 36.8,114.3" stroke-width="1.2" opacity="0.74"/>
+    <path d="M51.4,115.9 Q50.1,109.4 47.3,103.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M68.0,126.2 Q70.1,117.8 73.4,109.8" stroke-width="1.76" opacity="0.63"/>
+    <path d="M73.4,109.8 Q74.9,103.6 73.5,97.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M73.4,109.8 Q75.8,104.4 81.1,101.7" stroke-width="1.2" opacity="0.74"/>
+    <path d="M113.9,159.9 Q116.7,136.9 119.0,113.8" stroke-width="3.81" opacity="0.41"/>
+    <path d="M119.0,113.8 Q117.2,99.0 109.9,86.0" stroke-width="2.59" opacity="0.52"/>
+    <path d="M109.9,86.0 Q99.8,83.4 92.7,76.0" stroke-width="1.76" opacity="0.63"/>
+    <path d="M92.7,76.0 Q86.5,78.2 80.0,78.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M92.7,76.0 Q88.3,71.4 84.8,66.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M109.9,86.0 Q112.3,75.8 119.3,68.0" stroke-width="1.76" opacity="0.63"/>
+    <path d="M119.3,68.0 Q116.1,61.1 116.0,53.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M119.3,68.0 Q126.0,64.5 133.1,62.4" stroke-width="1.2" opacity="0.74"/>
+    <path d="M119.0,113.8 Q134.4,106.7 146.2,94.6" stroke-width="2.59" opacity="0.52"/>
+    <path d="M146.2,94.6 Q149.6,83.4 157.4,74.7" stroke-width="1.76" opacity="0.63"/>
+    <path d="M157.4,74.7 Q154.0,68.2 153.1,61.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M157.4,74.7 Q162.0,68.6 168.7,64.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M146.2,94.6 Q158.7,98.0 171.6,96.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M171.6,96.9 Q179.7,91.5 183.2,82.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M171.6,96.9 Q177.9,103.6 185.5,108.7" stroke-width="1.2" opacity="0.74"/>
+    <path d="M150.0,208.0 Q161.3,174.7 151.6,140.9" stroke-width="5.6" opacity="0.3"/>
+    <path d="M151.6,140.9 Q133.3,123.0 122.4,99.8" stroke-width="3.81" opacity="0.41"/>
+    <path d="M122.4,99.8 Q104.5,97.1 87.1,92.4" stroke-width="2.59" opacity="0.52"/>
+    <path d="M87.1,92.4 Q75.0,94.1 63.2,97.2" stroke-width="1.76" opacity="0.63"/>
+    <path d="M63.2,97.2 Q59.0,103.8 54.9,110.4" stroke-width="1.2" opacity="0.74"/>
+    <path d="M63.2,97.2 Q56.3,93.5 48.7,91.7" stroke-width="1.2" opacity="0.74"/>
+    <path d="M87.1,92.4 Q80.1,81.6 69.7,74.1" stroke-width="1.76" opacity="0.63"/>
+    <path d="M69.7,74.1 Q64.3,67.1 59.4,59.7" stroke-width="1.2" opacity="0.74"/>
+    <path d="M122.4,99.8 Q119.9,80.7 118.9,61.5" stroke-width="2.59" opacity="0.52"/>
+    <path d="M118.9,61.5 Q110.7,51.5 103.6,40.7" stroke-width="1.76" opacity="0.63"/>
+    <path d="M103.6,40.7 Q101.9,32.5 98.4,24.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M118.9,61.5 Q124.0,47.6 125.7,32.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M125.7,32.9 Q125.0,23.0 126.9,13.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M151.6,140.9 Q169.3,123.3 172.2,98.5" stroke-width="3.81" opacity="0.41"/>
+    <path d="M172.2,98.5 Q163.5,85.3 164.4,69.6" stroke-width="2.59" opacity="0.52"/>
+    <path d="M164.4,69.6 Q157.3,62.6 147.4,60.6" stroke-width="1.76" opacity="0.63"/>
+    <path d="M147.4,60.6 Q140.8,62.2 134.0,62.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M147.4,60.6 Q144.5,53.8 138.6,49.3" stroke-width="1.2" opacity="0.74"/>
+    <path d="M164.4,69.6 Q166.7,57.7 175.5,49.4" stroke-width="1.76" opacity="0.63"/>
+    <path d="M175.5,49.4 Q181.4,44.8 186.3,39.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M172.2,98.5 Q185.2,89.7 194.7,77.1" stroke-width="2.59" opacity="0.52"/>
+    <path d="M194.7,77.1 Q194.8,65.8 200.8,56.3" stroke-width="1.76" opacity="0.63"/>
+    <path d="M200.8,56.3 Q198.4,48.4 198.3,40.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M200.8,56.3 Q205.4,50.0 212.7,47.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M194.7,77.1 Q205.5,73.8 216.3,70.4" stroke-width="1.76" opacity="0.63"/>
+    <path d="M216.3,70.4 Q218.7,63.7 223.2,58.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M216.3,70.4 Q225.0,71.3 233.4,73.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M150.0,208.0 Q166.2,176.6 167.3,141.3" stroke-width="5.6" opacity="0.3"/>
+    <path d="M167.3,141.3 Q161.9,118.3 152.3,96.7" stroke-width="3.81" opacity="0.41"/>
+    <path d="M152.3,96.7 Q142.3,81.2 125.6,73.2" stroke-width="2.59" opacity="0.52"/>
+    <path d="M125.6,73.2 Q112.5,71.6 99.4,69.8" stroke-width="1.76" opacity="0.63"/>
+    <path d="M99.4,69.8 Q90.8,70.6 84.0,75.8" stroke-width="1.2" opacity="0.74"/>
+    <path d="M99.4,69.8 Q95.4,60.7 90.2,52.3" stroke-width="1.2" opacity="0.74"/>
+    <path d="M125.6,73.2 Q117.1,63.3 116.6,50.3" stroke-width="1.76" opacity="0.63"/>
+    <path d="M116.6,50.3 Q112.7,42.0 108.4,34.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M152.3,96.7 Q153.4,79.2 150.7,61.9" stroke-width="2.59" opacity="0.52"/>
+    <path d="M150.7,61.9 Q145.2,52.2 142.8,41.3" stroke-width="1.76" opacity="0.63"/>
+    <path d="M142.8,41.3 Q140.1,34.6 135.4,29.3" stroke-width="1.2" opacity="0.74"/>
+    <path d="M150.7,61.9 Q157.2,52.4 160.6,41.4" stroke-width="1.76" opacity="0.63"/>
+    <path d="M160.6,41.4 Q159.2,34.1 160.9,26.8" stroke-width="1.2" opacity="0.74"/>
+    <path d="M160.6,41.4 Q166.8,36.2 174.6,34.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M167.3,141.3 Q181.9,121.1 202.1,106.3" stroke-width="3.81" opacity="0.41"/>
+    <path d="M202.1,106.3 Q208.2,90.1 216.6,75.0" stroke-width="2.59" opacity="0.52"/>
+    <path d="M216.6,75.0 Q218.8,62.5 216.8,49.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M216.8,49.9 Q210.7,42.4 202.4,37.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M216.8,49.9 Q223.3,44.2 229.0,37.7" stroke-width="1.2" opacity="0.74"/>
+    <path d="M216.6,75.0 Q228.6,69.6 234.8,58.0" stroke-width="1.76" opacity="0.63"/>
+    <path d="M234.8,58.0 Q239.7,50.7 240.2,42.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M234.8,58.0 Q243.4,59.5 252.0,59.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M202.1,106.3 Q218.3,104.2 233.7,98.6" stroke-width="2.59" opacity="0.52"/>
+    <path d="M233.7,98.6 Q239.2,88.1 249.2,81.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M249.2,81.9 Q254.3,75.6 260.8,70.8" stroke-width="1.2" opacity="0.74"/>
+    <path d="M233.7,98.6 Q244.7,101.4 253.6,108.4" stroke-width="1.76" opacity="0.63"/>
+    <path d="M253.6,108.4 Q261.3,110.1 268.3,113.6" stroke-width="1.2" opacity="0.74"/>
+    <path d="M150,208 C146,232 148,258 152,282 C153,292 149,300 150,300" stroke-width="4.4" opacity="0.5"/>
+    <path d="M150,208 C154,232 152,258 148,282" stroke-width="1.6" opacity="0.35"/>
+  </g>
+  <g id="mb-b" class="mb">
+    <path d="M150.0,208.0 Q126.3,179.3 122.2,142.3" stroke-width="5.6" opacity="0.3"/>
+    <path d="M122.2,142.3 Q96.6,140.0 74.4,127.1" stroke-width="3.81" opacity="0.41"/>
+    <path d="M74.4,127.1 Q63.1,141.3 45.9,147.0" stroke-width="2.59" opacity="0.52"/>
+    <path d="M45.9,147.0 Q42.8,158.9 37.5,170.0" stroke-width="1.76" opacity="0.63"/>
+    <path d="M37.5,170.0 Q36.0,177.9 37.2,185.8" stroke-width="1.2" opacity="0.74"/>
+    <path d="M45.9,147.0 Q34.1,143.8 21.8,143.6" stroke-width="1.76" opacity="0.63"/>
+    <path d="M21.8,143.6 Q13.3,147.6 3.9,146.6" stroke-width="1.2" opacity="0.74"/>
+    <path d="M74.4,127.1 Q68.1,112.4 61.0,98.0" stroke-width="2.59" opacity="0.52"/>
+    <path d="M61.0,98.0 Q50.8,95.2 40.3,94.1" stroke-width="1.76" opacity="0.63"/>
+    <path d="M40.3,94.1 Q33.8,90.5 26.9,87.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M61.0,98.0 Q70.1,90.3 75.1,79.4" stroke-width="1.76" opacity="0.63"/>
+    <path d="M75.1,79.4 Q81.9,75.4 89.4,72.6" stroke-width="1.2" opacity="0.74"/>
+    <path d="M122.2,142.3 Q124.4,118.6 124.6,94.8" stroke-width="3.81" opacity="0.41"/>
+    <path d="M124.6,94.8 Q110.0,85.1 102.7,69.2" stroke-width="2.59" opacity="0.52"/>
+    <path d="M102.7,69.2 Q90.5,66.3 78.8,61.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M78.8,61.9 Q71.2,56.7 62.7,53.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M102.7,69.2 Q96.4,59.9 97.1,48.7" stroke-width="1.76" opacity="0.63"/>
+    <path d="M97.1,48.7 Q95.4,41.6 98.0,34.8" stroke-width="1.2" opacity="0.74"/>
+    <path d="M124.6,94.8 Q136.7,85.9 144.3,72.9" stroke-width="2.59" opacity="0.52"/>
+    <path d="M144.3,72.9 Q146.2,63.1 152.1,55.3" stroke-width="1.76" opacity="0.63"/>
+    <path d="M152.1,55.3 Q150.8,48.8 148.5,42.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M152.1,55.3 Q159.5,54.2 165.9,50.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M144.3,72.9 Q153.8,69.7 163.5,67.7" stroke-width="1.76" opacity="0.63"/>
+    <path d="M163.5,67.7 Q168.1,62.3 173.5,57.8" stroke-width="1.2" opacity="0.74"/>
+    <path d="M163.5,67.7 Q171.2,66.4 178.2,69.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M150.0,208.0 Q139.4,177.9 144.4,146.4" stroke-width="5.6" opacity="0.3"/>
+    <path d="M144.4,146.4 Q126.8,131.6 106.0,121.8" stroke-width="3.81" opacity="0.41"/>
+    <path d="M106.0,121.8 Q88.6,126.5 71.0,122.8" stroke-width="2.59" opacity="0.52"/>
+    <path d="M71.0,122.8 Q63.6,131.5 57.6,141.2" stroke-width="1.76" opacity="0.63"/>
+    <path d="M57.6,141.2 Q53.9,148.2 46.7,151.7" stroke-width="1.2" opacity="0.74"/>
+    <path d="M71.0,122.8 Q59.1,117.0 47.8,109.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M47.8,109.9 Q38.3,109.5 29.0,111.3" stroke-width="1.2" opacity="0.74"/>
+    <path d="M47.8,109.9 Q43.1,100.7 40.0,90.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M106.0,121.8 Q94.8,110.8 92.1,95.3" stroke-width="2.59" opacity="0.52"/>
+    <path d="M92.1,95.3 Q82.2,90.1 73.0,83.6" stroke-width="1.76" opacity="0.63"/>
+    <path d="M73.0,83.6 Q64.7,82.1 56.8,79.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M92.1,95.3 Q94.8,84.0 98.5,73.0" stroke-width="1.76" opacity="0.63"/>
+    <path d="M98.5,73.0 Q100.1,65.5 102.4,58.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M144.4,146.4 Q153.3,126.1 159.6,104.8" stroke-width="3.81" opacity="0.41"/>
+    <path d="M159.6,104.8 Q152.8,92.3 146.5,79.7" stroke-width="2.59" opacity="0.52"/>
+    <path d="M146.5,79.7 Q140.2,72.4 131.7,67.7" stroke-width="1.76" opacity="0.63"/>
+    <path d="M131.7,67.7 Q124.5,65.7 118.3,61.7" stroke-width="1.2" opacity="0.74"/>
+    <path d="M146.5,79.7 Q147.8,69.4 148.2,59.1" stroke-width="1.76" opacity="0.63"/>
+    <path d="M148.2,59.1 Q153.3,54.4 154.4,47.6" stroke-width="1.2" opacity="0.74"/>
+    <path d="M159.6,104.8 Q170.6,92.8 186.6,89.9" stroke-width="2.59" opacity="0.52"/>
+    <path d="M186.6,89.9 Q189.5,79.0 198.6,72.3" stroke-width="1.76" opacity="0.63"/>
+    <path d="M198.6,72.3 Q204.1,66.6 206.3,59.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M186.6,89.9 Q197.8,92.3 209.2,93.5" stroke-width="1.76" opacity="0.63"/>
+    <path d="M209.2,93.5 Q216.8,94.8 224.5,96.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M150.0,208.0 Q166.4,181.6 168.7,150.6" stroke-width="5.6" opacity="0.3"/>
+    <path d="M168.7,150.6 Q158.1,129.6 160.0,106.1" stroke-width="3.81" opacity="0.41"/>
+    <path d="M160.0,106.1 Q148.3,96.9 134.7,90.9" stroke-width="2.59" opacity="0.52"/>
+    <path d="M134.7,90.9 Q124.7,97.2 112.9,96.6" stroke-width="1.76" opacity="0.63"/>
+    <path d="M112.9,96.6 Q104.5,98.5 96.1,100.6" stroke-width="1.2" opacity="0.74"/>
+    <path d="M134.7,90.9 Q132.1,81.8 130.4,72.4" stroke-width="1.76" opacity="0.63"/>
+    <path d="M130.4,72.4 Q131.1,66.1 127.7,60.8" stroke-width="1.2" opacity="0.74"/>
+    <path d="M160.0,106.1 Q170.6,93.7 172.4,77.4" stroke-width="2.59" opacity="0.52"/>
+    <path d="M172.4,77.4 Q171.9,66.4 173.8,55.7" stroke-width="1.76" opacity="0.63"/>
+    <path d="M173.8,55.7 Q175.3,48.9 178.0,42.4" stroke-width="1.2" opacity="0.74"/>
+    <path d="M172.4,77.4 Q181.7,69.6 193.7,67.8" stroke-width="1.76" opacity="0.63"/>
+    <path d="M193.7,67.8 Q194.5,58.8 197.8,50.4" stroke-width="1.2" opacity="0.74"/>
+    <path d="M193.7,67.8 Q200.0,72.8 206.8,76.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M168.7,150.6 Q187.8,137.4 202.0,119.0" stroke-width="3.81" opacity="0.41"/>
+    <path d="M202.0,119.0 Q199.9,101.7 205.7,85.2" stroke-width="2.59" opacity="0.52"/>
+    <path d="M205.7,85.2 Q204.2,71.8 195.9,61.2" stroke-width="1.76" opacity="0.63"/>
+    <path d="M195.9,61.2 Q193.6,52.7 195.0,44.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M205.7,85.2 Q213.1,75.0 222.8,66.8" stroke-width="1.76" opacity="0.63"/>
+    <path d="M222.8,66.8 Q229.4,61.1 233.2,53.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M202.0,119.0 Q216.9,115.7 227.6,104.8" stroke-width="2.59" opacity="0.52"/>
+    <path d="M227.6,104.8 Q236.5,97.2 239.8,86.1" stroke-width="1.76" opacity="0.63"/>
+    <path d="M239.8,86.1 Q245.0,79.7 250.1,73.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M227.6,104.8 Q236.6,107.2 246.0,106.6" stroke-width="1.76" opacity="0.63"/>
+    <path d="M246.0,106.6 Q251.5,104.5 256.3,100.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M246.0,106.6 Q250.8,111.5 255.8,116.3" stroke-width="1.2" opacity="0.74"/>
+    <path d="M150,208 C146,232 148,258 152,282 C153,292 149,300 150,300" stroke-width="4.4" opacity="0.5"/>
+    <path d="M150,208 C154,232 152,258 148,282" stroke-width="1.6" opacity="0.35"/>
+  </g>
+  <g id="mb-c" class="mb">
+    <path d="M150.0,208.0 Q125.3,189.1 112.1,161.0" stroke-width="5.6" opacity="0.3"/>
+    <path d="M112.1,161.0 Q91.2,151.6 68.2,152.7" stroke-width="3.81" opacity="0.41"/>
+    <path d="M68.2,152.7 Q52.3,152.7 39.5,162.4" stroke-width="2.59" opacity="0.52"/>
+    <path d="M39.5,162.4 Q30.0,169.6 27.1,181.2" stroke-width="1.76" opacity="0.63"/>
+    <path d="M27.1,181.2 Q24.9,188.8 26.2,196.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M27.1,181.2 Q19.2,182.2 13.0,187.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M39.5,162.4 Q28.6,162.1 19.8,155.6" stroke-width="1.76" opacity="0.63"/>
+    <path d="M19.8,155.6 Q12.9,156.7 5.9,156.3" stroke-width="1.2" opacity="0.74"/>
+    <path d="M19.8,155.6 Q18.0,147.4 11.8,141.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M68.2,152.7 Q55.3,141.7 41.1,132.2" stroke-width="2.59" opacity="0.52"/>
+    <path d="M41.1,132.2 Q29.0,131.2 18.4,137.1" stroke-width="1.76" opacity="0.63"/>
+    <path d="M18.4,137.1 Q9.9,140.4 0.8,140.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M41.1,132.2 Q37.1,119.5 29.8,108.4" stroke-width="1.76" opacity="0.63"/>
+    <path d="M29.8,108.4 Q22.7,103.5 14.9,100.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M29.8,108.4 Q33.4,98.2 30.2,87.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M112.1,161.0 Q113.3,138.4 123.7,118.4" stroke-width="3.81" opacity="0.41"/>
+    <path d="M123.7,118.4 Q114.8,105.8 113.6,90.5" stroke-width="2.59" opacity="0.52"/>
+    <path d="M113.6,90.5 Q103.2,85.9 92.5,82.3" stroke-width="1.76" opacity="0.63"/>
+    <path d="M92.5,82.3 Q87.3,77.0 80.1,74.7" stroke-width="1.2" opacity="0.74"/>
+    <path d="M113.6,90.5 Q113.6,79.3 119.7,69.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M119.7,69.9 Q118.7,63.0 117.1,56.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M119.7,69.9 Q126.2,65.3 131.1,59.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M123.7,118.4 Q140.2,111.7 148.7,96.1" stroke-width="2.59" opacity="0.52"/>
+    <path d="M148.7,96.1 Q151.1,85.3 157.0,75.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M157.0,75.9 Q160.9,69.3 163.9,62.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M148.7,96.1 Q159.7,101.1 171.8,100.0" stroke-width="1.76" opacity="0.63"/>
+    <path d="M171.8,100.0 Q178.8,102.3 186.2,103.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M150.0,208.0 Q142.6,175.0 155.3,143.5" stroke-width="5.6" opacity="0.3"/>
+    <path d="M155.3,143.5 Q140.9,126.8 127.2,109.5" stroke-width="3.81" opacity="0.41"/>
+    <path d="M127.2,109.5 Q113.6,105.6 99.5,105.1" stroke-width="2.59" opacity="0.52"/>
+    <path d="M99.5,105.1 Q90.0,108.8 81.9,114.7" stroke-width="1.76" opacity="0.63"/>
+    <path d="M81.9,114.7 Q75.5,117.9 72.3,124.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M99.5,105.1 Q94.1,96.3 85.1,91.2" stroke-width="1.76" opacity="0.63"/>
+    <path d="M85.1,91.2 Q80.2,86.5 76.0,81.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M127.2,109.5 Q129.9,94.3 129.2,78.9" stroke-width="2.59" opacity="0.52"/>
+    <path d="M129.2,78.9 Q122.9,71.4 116.0,64.5" stroke-width="1.76" opacity="0.63"/>
+    <path d="M116.0,64.5 Q109.4,63.4 103.1,61.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M116.0,64.5 Q114.4,57.7 110.5,52.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M129.2,78.9 Q135.4,70.9 144.9,67.1" stroke-width="1.76" opacity="0.63"/>
+    <path d="M144.9,67.1 Q149.5,61.3 151.0,54.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M144.9,67.1 Q151.6,65.3 158.4,63.8" stroke-width="1.2" opacity="0.74"/>
+    <path d="M155.3,143.5 Q167.5,121.2 187.7,105.8" stroke-width="3.81" opacity="0.41"/>
+    <path d="M187.7,105.8 Q188.4,87.0 187.9,68.2" stroke-width="2.59" opacity="0.52"/>
+    <path d="M187.9,68.2 Q183.5,57.0 174.8,48.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M174.8,48.9 Q171.5,40.9 169.5,32.5" stroke-width="1.2" opacity="0.74"/>
+    <path d="M187.9,68.2 Q194.1,55.0 206.8,47.8" stroke-width="1.76" opacity="0.63"/>
+    <path d="M206.8,47.8 Q203.1,38.1 205.6,28.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M206.8,47.8 Q217.1,47.5 225.2,41.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M187.7,105.8 Q202.7,100.6 218.4,98.0" stroke-width="2.59" opacity="0.52"/>
+    <path d="M218.4,98.0 Q227.4,91.0 230.6,80.0" stroke-width="1.76" opacity="0.63"/>
+    <path d="M230.6,80.0 Q231.3,73.0 235.4,67.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M218.4,98.0 Q227.9,104.8 235.0,114.2" stroke-width="1.76" opacity="0.63"/>
+    <path d="M235.0,114.2 Q243.3,116.8 252.0,115.9" stroke-width="1.2" opacity="0.74"/>
+    <path d="M235.0,114.2 Q238.3,121.9 240.7,130.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M150.0,208.0 Q165.7,180.2 170.2,148.6" stroke-width="5.6" opacity="0.3"/>
+    <path d="M170.2,148.6 Q168.2,126.7 156.3,108.3" stroke-width="3.81" opacity="0.41"/>
+    <path d="M156.3,108.3 Q146.9,94.7 131.9,88.0" stroke-width="2.59" opacity="0.52"/>
+    <path d="M131.9,88.0 Q120.6,83.9 109.0,87.2" stroke-width="1.76" opacity="0.63"/>
+    <path d="M109.0,87.2 Q102.2,91.8 94.5,94.8" stroke-width="1.2" opacity="0.74"/>
+    <path d="M109.0,87.2 Q103.5,80.1 94.8,78.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M131.9,88.0 Q127.7,77.4 126.2,66.1" stroke-width="1.76" opacity="0.63"/>
+    <path d="M126.2,66.1 Q124.0,59.3 124.2,52.1" stroke-width="1.2" opacity="0.74"/>
+    <path d="M156.3,108.3 Q167.2,96.5 170.4,80.8" stroke-width="2.59" opacity="0.52"/>
+    <path d="M170.4,80.8 Q167.2,69.3 159.0,60.7" stroke-width="1.76" opacity="0.63"/>
+    <path d="M159.0,60.7 Q152.2,56.9 144.5,56.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M159.0,60.7 Q159.7,53.4 160.9,46.2" stroke-width="1.2" opacity="0.74"/>
+    <path d="M170.4,80.8 Q180.1,76.1 190.3,72.5" stroke-width="1.76" opacity="0.63"/>
+    <path d="M190.3,72.5 Q197.9,69.3 206.2,70.3" stroke-width="1.2" opacity="0.74"/>
+    <path d="M170.2,148.6 Q189.9,136.8 212.0,130.3" stroke-width="3.81" opacity="0.41"/>
+    <path d="M212.0,130.3 Q217.5,116.4 228.7,106.6" stroke-width="2.59" opacity="0.52"/>
+    <path d="M228.7,106.6 Q228.9,97.5 225.9,88.9" stroke-width="1.76" opacity="0.63"/>
+    <path d="M225.9,88.9 Q226.1,83.1 225.4,77.4" stroke-width="1.2" opacity="0.74"/>
+    <path d="M228.7,106.6 Q238.1,101.5 248.1,97.6" stroke-width="1.76" opacity="0.63"/>
+    <path d="M248.1,97.6 Q251.0,90.9 255.2,85.0" stroke-width="1.2" opacity="0.74"/>
+    <path d="M248.1,97.6 Q255.7,96.4 263.2,97.7" stroke-width="1.2" opacity="0.74"/>
+    <path d="M212.0,130.3 Q228.1,139.6 246.7,138.2" stroke-width="2.59" opacity="0.52"/>
+    <path d="M246.7,138.2 Q258.5,131.9 270.6,126.2" stroke-width="1.76" opacity="0.63"/>
+    <path d="M270.6,126.2 Q279.5,124.7 287.5,120.8" stroke-width="1.2" opacity="0.74"/>
+    <path d="M246.7,138.2 Q258.6,144.2 267.5,154.2" stroke-width="1.76" opacity="0.63"/>
+    <path d="M267.5,154.2 Q272.5,161.9 281.0,165.3" stroke-width="1.2" opacity="0.74"/>
+    <path d="M150,208 C146,232 148,258 152,282 C153,292 149,300 150,300" stroke-width="4.4" opacity="0.5"/>
+    <path d="M150,208 C154,232 152,258 148,282" stroke-width="1.6" opacity="0.35"/>
+  </g>
+
+<clipPath id="clip-cardiology"><path d="M150,255 C95,210 55,175 55,125 C55,90 82,65 112,65 C132,65 148,78 150,98 C152,78 168,65 188,65 C218,65 245,90 245,125 C245,175 205,210 150,255 Z"/></clipPath>
+<clipPath id="clip-neurology"><path d="M60,150 C55,95 100,45 165,40 C225,36 270,70 278,120 C284,158 268,190 240,205 C232,222 218,215 208,228 C200,238 188,230 182,238 C176,246 164,246 158,238 C120,244 85,228 68,200 C56,180 58,165 60,150 Z M150,235 C146,250 148,268 156,282 L172,282 C178,266 176,250 172,236 Z"/></clipPath>
+<clipPath id="clip-pulmonology"><path d="M140,45 L140,75 C110,80 88,110 80,150 C72,195 82,235 112,255 C135,270 152,258 150,232 C148,205 138,180 138,150 C138,120 140,95 140,75 Z"/></clipPath>
+<clipPath id="clip-nephrology"><path d="M110,60 C70,60 45,100 45,150 C45,200 70,240 110,240 C135,240 150,220 152,195 C154,175 140,165 140,150 C140,135 154,125 152,105 C150,80 135,60 110,60 Z"/></clipPath>
+<clipPath id="clip-gastroenterology"><path d="M85,65 C60,70 55,100 68,120 C80,138 100,140 105,160 C110,182 82,195 78,220 C74,248 105,265 140,258 C180,250 205,215 202,175 C200,140 175,115 178,85 C180,62 155,52 132,58 C112,63 105,78 100,68 C97,60 90,63 85,65 Z"/></clipPath>
+<clipPath id="clip-orthopedics"><path d="M70,60 C55,60 45,72 45,88 C45,102 55,112 68,114 L120,150 L68,186 C55,188 45,198 45,212 C45,228 55,240 70,240 C85,240 95,230 97,216 L150,178 L203,216 C205,230 215,240 230,240 C245,240 255,228 255,212 C255,198 245,188 232,186 L180,150 L232,114 C245,112 255,102 255,88 C255,72 245,60 230,60 C215,60 205,72 203,86 L150,122 L97,86 C95,72 85,60 70,60 Z"/></clipPath>
+<clipPath id="clip-ophthalmology"><path d="M30,150 C70,90 130,65 150,65 C170,65 230,90 270,150 C230,210 170,235 150,235 C130,235 70,210 30,150 Z"/></clipPath>
+<clipPath id="clip-dermatology"><path d="M60,90 C60,70 75,55 95,55 L205,55 C225,55 240,70 240,90 L240,210 C240,230 225,245 205,245 L95,245 C75,245 60,230 60,210 Z"/></clipPath>
+<clipPath id="clip-oncology"><path d="M150,70 C200,70 235,105 235,145 C235,185 200,220 155,220 C150,220 148,224 152,228 C168,232 178,248 170,262 C162,275 142,275 135,260 C130,248 136,236 148,230 C105,224 70,188 70,145 C70,105 105,70 150,70 Z"/></clipPath>
+<clipPath id="clip-pediatrics"><path d="M150,60 C177,60 199,82 199,109 C199,136 177,158 150,158 C123,158 101,136 101,109 C101,82 123,60 150,60 Z M130,150 C120,170 118,200 122,225 C124,240 135,248 150,246 C165,248 176,240 178,225 C182,200 180,170 170,150 Z"/></clipPath>
+<clipPath id="clip-psychiatry"><path d="M150,52 C172,52 190,70 190,92 C190,114 172,132 150,132 C128,132 110,114 110,92 C110,70 128,52 150,52 Z M80,260 C80,205 108,170 150,170 C192,170 220,205 220,260 Z"/></clipPath>
+<clipPath id="clip-hematology"><path d="M150,50 C185,110 225,155 225,195 C225,235 191,265 150,265 C109,265 75,235 75,195 C75,155 115,110 150,50 Z"/></clipPath>
+<clipPath id="clip-generic"><path d="M90,70 C130,45 190,45 225,75 C260,105 265,150 245,185 C270,205 265,240 230,255 C195,270 160,255 140,265 C105,280 65,260 60,225 C40,210 40,175 60,150 C45,120 60,85 90,70 Z"/></clipPath>
+  </defs>
+  <symbol id="motif-cardiology" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M150,255 C95,210 55,175 55,125 C55,90 82,65 112,65 C132,65 148,78 150,98 C152,78 168,65 188,65 C218,65 245,90 245,125 C245,175 205,210 150,255 Z"/>
+    <path class="motif-silhouette" d="M150,255 C95,210 55,175 55,125 C55,90 82,65 112,65 C132,65 148,78 150,98 C152,78 168,65 188,65 C218,65 245,90 245,125 C245,175 205,210 150,255 Z"/>
+    <g clip-path="url(#clip-cardiology)" transform="translate(0,6) scale(0.92)">
+      <use href="#mb-a" xlink:href="#mb-a"/>
+    </g>
+  </symbol>
+<symbol id="motif-neurology" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M60,150 C55,95 100,45 165,40 C225,36 270,70 278,120 C284,158 268,190 240,205 C232,222 218,215 208,228 C200,238 188,230 182,238 C176,246 164,246 158,238 C120,244 85,228 68,200 C56,180 58,165 60,150 Z M150,235 C146,250 148,268 156,282 L172,282 C178,266 176,250 172,236 Z"/>
+    <path class="motif-silhouette" d="M60,150 C55,95 100,45 165,40 C225,36 270,70 278,120 C284,158 268,190 240,205 C232,222 218,215 208,228 C200,238 188,230 182,238 C176,246 164,246 158,238 C120,244 85,228 68,200 C56,180 58,165 60,150 Z M150,235 C146,250 148,268 156,282 L172,282 C178,266 176,250 172,236 Z"/>
+    <g clip-path="url(#clip-neurology)" transform="translate(4,-4) scale(1.02)">
+      <use href="#mb-b" xlink:href="#mb-b"/>
+    </g>
+  </symbol>
+<symbol id="motif-pulmonology" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M140,45 L140,75 C110,80 88,110 80,150 C72,195 82,235 112,255 C135,270 152,258 150,232 C148,205 138,180 138,150 C138,120 140,95 140,75 Z"/>
+    <path class="motif-silhouette" d="M140,45 L140,75 C110,80 88,110 80,150 C72,195 82,235 112,255 C135,270 152,258 150,232 C148,205 138,180 138,150 C138,120 140,95 140,75 Z"/>
+    <g clip-path="url(#clip-pulmonology)" transform="translate(-10,4) scale(0.96) rotate(4 150 150)">
+      <use href="#mb-c" xlink:href="#mb-c"/>
+    </g>
+  </symbol>
+<symbol id="motif-nephrology" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M110,60 C70,60 45,100 45,150 C45,200 70,240 110,240 C135,240 150,220 152,195 C154,175 140,165 140,150 C140,135 154,125 152,105 C150,80 135,60 110,60 Z"/>
+    <path class="motif-silhouette" d="M110,60 C70,60 45,100 45,150 C45,200 70,240 110,240 C135,240 150,220 152,195 C154,175 140,165 140,150 C140,135 154,125 152,105 C150,80 135,60 110,60 Z"/>
+    <g clip-path="url(#clip-nephrology)" transform="translate(0,0) scale(0.95)">
+      <use href="#mb-a" xlink:href="#mb-a"/>
+    </g>
+  </symbol>
+<symbol id="motif-gastroenterology" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M85,65 C60,70 55,100 68,120 C80,138 100,140 105,160 C110,182 82,195 78,220 C74,248 105,265 140,258 C180,250 205,215 202,175 C200,140 175,115 178,85 C180,62 155,52 132,58 C112,63 105,78 100,68 C97,60 90,63 85,65 Z"/>
+    <path class="motif-silhouette" d="M85,65 C60,70 55,100 68,120 C80,138 100,140 105,160 C110,182 82,195 78,220 C74,248 105,265 140,258 C180,250 205,215 202,175 C200,140 175,115 178,85 C180,62 155,52 132,58 C112,63 105,78 100,68 C97,60 90,63 85,65 Z"/>
+    <g clip-path="url(#clip-gastroenterology)" transform="translate(2,2) scale(0.98) rotate(-3 150 150)">
+      <use href="#mb-b" xlink:href="#mb-b"/>
+    </g>
+  </symbol>
+<symbol id="motif-orthopedics" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M70,60 C55,60 45,72 45,88 C45,102 55,112 68,114 L120,150 L68,186 C55,188 45,198 45,212 C45,228 55,240 70,240 C85,240 95,230 97,216 L150,178 L203,216 C205,230 215,240 230,240 C245,240 255,228 255,212 C255,198 245,188 232,186 L180,150 L232,114 C245,112 255,102 255,88 C255,72 245,60 230,60 C215,60 205,72 203,86 L150,122 L97,86 C95,72 85,60 70,60 Z"/>
+    <path class="motif-silhouette" d="M70,60 C55,60 45,72 45,88 C45,102 55,112 68,114 L120,150 L68,186 C55,188 45,198 45,212 C45,228 55,240 70,240 C85,240 95,230 97,216 L150,178 L203,216 C205,230 215,240 230,240 C245,240 255,228 255,212 C255,198 245,188 232,186 L180,150 L232,114 C245,112 255,102 255,88 C255,72 245,60 230,60 C215,60 205,72 203,86 L150,122 L97,86 C95,72 85,60 70,60 Z"/>
+    <g clip-path="url(#clip-orthopedics)" transform="translate(0,-6) scale(1.0)">
+      <use href="#mb-c" xlink:href="#mb-c"/>
+    </g>
+  </symbol>
+<symbol id="motif-ophthalmology" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M30,150 C70,90 130,65 150,65 C170,65 230,90 270,150 C230,210 170,235 150,235 C130,235 70,210 30,150 Z"/>
+    <path class="motif-silhouette" d="M30,150 C70,90 130,65 150,65 C170,65 230,90 270,150 C230,210 170,235 150,235 C130,235 70,210 30,150 Z"/>
+    <g clip-path="url(#clip-ophthalmology)" transform="translate(0,10) scale(0.85)">
+      <use href="#mb-a" xlink:href="#mb-a"/>
+    </g>
+  </symbol>
+<symbol id="motif-dermatology" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M60,90 C60,70 75,55 95,55 L205,55 C225,55 240,70 240,90 L240,210 C240,230 225,245 205,245 L95,245 C75,245 60,230 60,210 Z"/>
+    <path class="motif-silhouette" d="M60,90 C60,70 75,55 95,55 L205,55 C225,55 240,70 240,90 L240,210 C240,230 225,245 205,245 L95,245 C75,245 60,230 60,210 Z"/>
+    <g clip-path="url(#clip-dermatology)" transform="translate(0,0) scale(0.9)">
+      <use href="#mb-b" xlink:href="#mb-b"/>
+    </g>
+  </symbol>
+<symbol id="motif-oncology" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M150,70 C200,70 235,105 235,145 C235,185 200,220 155,220 C150,220 148,224 152,228 C168,232 178,248 170,262 C162,275 142,275 135,260 C130,248 136,236 148,230 C105,224 70,188 70,145 C70,105 105,70 150,70 Z"/>
+    <path class="motif-silhouette" d="M150,70 C200,70 235,105 235,145 C235,185 200,220 155,220 C150,220 148,224 152,228 C168,232 178,248 170,262 C162,275 142,275 135,260 C130,248 136,236 148,230 C105,224 70,188 70,145 C70,105 105,70 150,70 Z"/>
+    <g clip-path="url(#clip-oncology)" transform="translate(0,-4) scale(0.9)">
+      <use href="#mb-c" xlink:href="#mb-c"/>
+    </g>
+  </symbol>
+<symbol id="motif-pediatrics" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M150,60 C177,60 199,82 199,109 C199,136 177,158 150,158 C123,158 101,136 101,109 C101,82 123,60 150,60 Z M130,150 C120,170 118,200 122,225 C124,240 135,248 150,246 C165,248 176,240 178,225 C182,200 180,170 170,150 Z"/>
+    <path class="motif-silhouette" d="M150,60 C177,60 199,82 199,109 C199,136 177,158 150,158 C123,158 101,136 101,109 C101,82 123,60 150,60 Z M130,150 C120,170 118,200 122,225 C124,240 135,248 150,246 C165,248 176,240 178,225 C182,200 180,170 170,150 Z"/>
+    <g clip-path="url(#clip-pediatrics)" transform="translate(0,10) scale(0.88)">
+      <use href="#mb-a" xlink:href="#mb-a"/>
+    </g>
+  </symbol>
+<symbol id="motif-psychiatry" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M150,52 C172,52 190,70 190,92 C190,114 172,132 150,132 C128,132 110,114 110,92 C110,70 128,52 150,52 Z M80,260 C80,205 108,170 150,170 C192,170 220,205 220,260 Z"/>
+    <path class="motif-silhouette" d="M150,52 C172,52 190,70 190,92 C190,114 172,132 150,132 C128,132 110,114 110,92 C110,70 128,52 150,52 Z M80,260 C80,205 108,170 150,170 C192,170 220,205 220,260 Z"/>
+    <g clip-path="url(#clip-psychiatry)" transform="translate(0,4) scale(0.95)">
+      <use href="#mb-b" xlink:href="#mb-b"/>
+    </g>
+  </symbol>
+<symbol id="motif-hematology" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M150,50 C185,110 225,155 225,195 C225,235 191,265 150,265 C109,265 75,235 75,195 C75,155 115,110 150,50 Z"/>
+    <path class="motif-silhouette" d="M150,50 C185,110 225,155 225,195 C225,235 191,265 150,265 C109,265 75,235 75,195 C75,155 115,110 150,50 Z"/>
+    <g clip-path="url(#clip-hematology)" transform="translate(0,-8) scale(0.95)">
+      <use href="#mb-c" xlink:href="#mb-c"/>
+    </g>
+  </symbol>
+<symbol id="motif-generic" viewBox="0 0 300 300">
+    <path class="motif-glow" d="M90,70 C130,45 190,45 225,75 C260,105 265,150 245,185 C270,205 265,240 230,255 C195,270 160,255 140,265 C105,280 65,260 60,225 C40,210 40,175 60,150 C45,120 60,85 90,70 Z"/>
+    <path class="motif-silhouette" d="M90,70 C130,45 190,45 225,75 C260,105 265,150 245,185 C270,205 265,240 230,255 C195,270 160,255 140,265 C105,280 65,260 60,225 C40,210 40,175 60,150 C45,120 60,85 90,70 Z"/>
+    <g clip-path="url(#clip-generic)" transform="translate(0,0) scale(0.92)">
+      <use href="#mb-a" xlink:href="#mb-a"/>
+    </g>
+  </symbol>
+</svg>
+
 <div class="layout" id="view-literature" role="tabpanel" aria-labelledby="tab-literature">
   <nav class="chapters" aria-label="Specialties">
     <p class="chapters-eyebrow">DEPARTMENTS</p>
@@ -1637,6 +2033,9 @@ body::before{background:
   <main>
     <div id="guidelines-slot"></div>
     <header class="results-head" id="results-head">
+      <svg class="results-motif" id="results-motif" viewBox="0 0 300 300" aria-hidden="true" focusable="false">
+        <use id="results-motif-use" href="#motif-cardiology" xlink:href="#motif-cardiology"/>
+      </svg>
       <p class="results-kicker" id="results-kicker">20 RESULTS &middot; LAST 24 MONTHS</p>
       <h2 class="results-title serif" id="results-title">Cardiology,<br><em>this week.</em></h2>
       <p class="results-byline" id="results-byline"></p>
@@ -6078,10 +6477,30 @@ function renderGuidelines(){
    Render — results
    ============================================================ */
 
+// Specialties with a bespoke illustrated motif (see the <symbol> sprite
+// above #view-literature). Anything else — plus Saved/bookmarks and a
+// free-text custom search — falls back to the generic organ silhouette
+// so every state still gets the same illustration treatment.
+const SPECIALTY_MOTIFS = new Set(['cardiology','neurology','pulmonology','nephrology',
+  'gastroenterology','orthopedics','ophthalmology','dermatology','oncology','pediatrics',
+  'psychiatry','hematology']);
+
+function resultsMotifId(){
+  if(state.viewingBookmarks || state.customTerm) return 'motif-generic';
+  const id = state.specialty && state.specialty.id;
+  return (id && SPECIALTY_MOTIFS.has(id)) ? `motif-${id}` : 'motif-generic';
+}
+
 function setResultsHead(titleName, titleEm, kicker, byline){
   document.getElementById('results-title').innerHTML = `${escapeHtml(titleName)}<br><em>${escapeHtml(titleEm)}</em>`;
   document.getElementById('results-kicker').textContent = kicker;
   document.getElementById('results-byline').textContent = byline;
+  const motifUse = document.getElementById('results-motif-use');
+  if(motifUse){
+    const href = `#${resultsMotifId()}`;
+    motifUse.setAttribute('href', href);
+    motifUse.setAttribute('xlink:href', href);
+  }
 }
 
 function render(){
