@@ -409,20 +409,6 @@ main{min-width:0;}
   background:radial-gradient(closest-side, rgba(95,166,255,0.18), rgba(95,166,255,0.06) 55%, transparent 75%);
   filter:blur(4px);}
 [data-theme="dark"] .results-head::before{background:radial-gradient(closest-side, rgba(95,166,255,0.20), rgba(95,166,255,0.07) 55%, transparent 75%);}
-
-/* ---- per-specialty background image slot ----
-   A real photo/illustration supplied per specialty (assets/specialty-bg/
-   <id>.<ext>), wired up by setResultsHead(). Constrained to this column
-   (never the sidebar or tab bar): sized relative to #results-head's own
-   box, no negative offsets bleeding outside it. object-fit:contain so
-   any source aspect ratio stays undistorted. Hidden entirely (via the
-   [hidden] attribute, toggled in JS) when there's no image to show —
-   no broken-image icon, no placeholder art. */
-.results-motif{position:absolute;top:8px;left:32%;width:62%;max-width:640px;min-width:300px;height:620px;z-index:-1;pointer-events:none;opacity:0.92;transition:opacity var(--dur-slow) var(--ease-out);}
-.results-motif[hidden]{display:none;}
-.results-motif-img{display:block;width:100%;height:100%;object-fit:contain;object-position:center top;}
-@media (max-width:1180px){.results-motif{width:54%;left:38%;height:480px;}}
-@media (max-width:900px){.results-motif{display:none;}}
 .results-kicker{position:relative;z-index:1;display:inline-flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:11.5px;font-weight:600;letter-spacing:var(--tracking-wide);color:var(--ink-soft);margin:0 0 20px;padding:7px 16px 7px 12px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-pill);box-shadow:var(--shadow-sm);}
 .results-title{font-family:var(--ff-display);font-size:var(--fs-display);font-weight:900;line-height:var(--lh-tight);letter-spacing:var(--tracking-tight);color:var(--ink);margin:0 0 18px;max-width:14ch;}
 .results-title em{color:inherit;font-weight:900;}
@@ -1651,17 +1637,6 @@ body::before{background:
   <main>
     <div id="guidelines-slot"></div>
     <header class="results-head" id="results-head">
-      <!-- Per-specialty background image slot. Static, JS never generates
-           this region; setResultsHead() only points #results-motif-img at
-           assets/specialty-bg/<specialty id>.<ext> (trying a few common
-           extensions) and hides #results-motif when no file exists, so
-           dropping in an image for a given specialty "just works" with no
-           further wiring. Contained to this column only (never the sidebar
-           or tab bar) and uses object-fit:contain so any source aspect
-           ratio stays undistorted. -->
-      <div class="results-motif" id="results-motif" aria-hidden="true" hidden>
-        <img class="results-motif-img" id="results-motif-img" alt="" loading="lazy">
-      </div>
       <p class="results-kicker" id="results-kicker">20 RESULTS &middot; LAST 24 MONTHS</p>
       <h2 class="results-title serif" id="results-title">Cardiology,<br><em>this week.</em></h2>
       <p class="results-byline" id="results-byline"></p>
@@ -6103,45 +6078,10 @@ function renderGuidelines(){
    Render — results
    ============================================================ */
 
-// Per-specialty background image for the results hero. Drop a file at
-// assets/specialty-bg/<specialty id>.<ext> (jpg/png/webp/svg, tried in
-// that order) and it "just works" — no other wiring needed. When none
-// of those exist (or for Saved/bookmarks and a free-text custom search,
-// which have no single specialty id to look up), the slot is simply
-// hidden: no broken-image icon, no placeholder art invented in its place.
-const SPECIALTY_BG_EXTS = ['jpg', 'png', 'webp', 'svg'];
-
-function setResultsMotifImage(specialtyId){
-  const wrap = document.getElementById('results-motif');
-  const img = document.getElementById('results-motif-img');
-  if(!wrap || !img) return;
-  if(!specialtyId){
-    wrap.hidden = true;
-    img.onerror = null;
-    img.removeAttribute('src');
-    return;
-  }
-  let extIdx = 0;
-  img.onerror = () => {
-    extIdx++;
-    if(extIdx < SPECIALTY_BG_EXTS.length){
-      img.src = `assets/specialty-bg/${specialtyId}.${SPECIALTY_BG_EXTS[extIdx]}`;
-    } else {
-      wrap.hidden = true;
-      img.onerror = null;
-      img.removeAttribute('src');
-    }
-  };
-  wrap.hidden = false;
-  img.src = `assets/specialty-bg/${specialtyId}.${SPECIALTY_BG_EXTS[0]}`;
-}
-
 function setResultsHead(titleName, titleEm, kicker, byline){
   document.getElementById('results-title').innerHTML = `${escapeHtml(titleName)}<br><em>${escapeHtml(titleEm)}</em>`;
   document.getElementById('results-kicker').textContent = kicker;
   document.getElementById('results-byline').textContent = byline;
-  const specialtyId = (!state.viewingBookmarks && !state.customTerm && state.specialty) ? state.specialty.id : null;
-  setResultsMotifImage(specialtyId);
 }
 
 function render(){
