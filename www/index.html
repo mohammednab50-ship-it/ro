@@ -12745,6 +12745,47 @@ if(landingPage){
     highlightRoster();
     toast('Patient saved.');
   }
+  // Silent autosave of the core patient fields — fires the moment someone
+  // navigates away from the Maternity tab (see the MutationObserver in
+  // setupAutosave()) so typing a patient's details and then switching to
+  // another tab *before* clicking "Save patient" doesn't just discard the
+  // entry: without this, the roster shows nothing was ever saved and
+  // there's no way back to what you just typed. Deliberately does NOT
+  // call logCtg()/logNote() (unlike saveCurrent()) — those commit a staged
+  // CTG image or a note draft into their permanent timelines, which should
+  // stay an explicit action, not something that happens silently mid-typing.
+  // No-ops if the name field is still empty (nothing worth saving yet).
+  function autosaveIfNeeded(){
+    if(!els.name.value.trim()) return;
+    const data = readForm();
+    const now = new Date().toISOString();
+    if(currentId){
+      const idx = patients.findIndex(p => p.id === currentId);
+      if(idx >= 0) patients[idx] = Object.assign({}, patients[idx], data, { updatedAt: now });
+    } else {
+      const rec = Object.assign({ id: uid(), createdAt: now }, data, { updatedAt: now });
+      patients.unshift(rec);
+      currentId = rec.id;
+    }
+    persist();
+    renderRoster();
+    highlightRoster();
+  }
+  // Watches #view-maternity's own [hidden] attribute (toggled by the app's
+  // shared switchView() whenever the user picks a different tab) and
+  // autosaves the instant this tab becomes hidden — i.e. exactly the
+  // "switched tabs mid-entry" moment.
+  function setupAutosave(){
+    if(!window.MutationObserver) return;
+    const matView = document.getElementById('view-maternity');
+    if(!matView) return;
+    let wasHidden = matView.hidden;
+    new MutationObserver(() => {
+      const isHidden = matView.hidden;
+      if(isHidden && !wasHidden) autosaveIfNeeded();
+      wasHidden = isHidden;
+    }).observe(matView, { attributes: true, attributeFilter: ['hidden'] });
+  }
   function deleteCurrent(){
     if(!currentId) return;
     const r = patients.find(p => p.id === currentId);
@@ -13185,6 +13226,7 @@ if(landingPage){
   function init(){
     wire();
     renderRoster();
+    setupAutosave();
   }
   window.initMaternity = init;
 })();
