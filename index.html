@@ -10648,6 +10648,65 @@ function setupInAppLinks(){
   }, true);
 }
 
+/* ---- Hardware/gesture back button (packaged Android app only) ----
+   Without this, Capacitor's default behavior is: if the WebView has no
+   navigation history (true here — this is a single-page app with no
+   pushState-based routing), the back button exits the app immediately.
+   That means dismissing any open dialog/lightbox, or just backing out of
+   a non-default tab, would instead kill the whole app mid-shift. This
+   adds three tiers, checked in order:
+     1. close the topmost open dialog/overlay, if any
+     2. if not on the default (Literature) tab, go there instead of exiting
+     3. otherwise, require two back-presses within 2s to actually exit
+        (a toast warns on the first press) — a standard Android pattern
+        that prevents one stray back-press from closing the app outright. */
+function closeAnyOpenOverlay(){
+  // The app's own modals (onboarding, rename, settings) all use this exact
+  // role="dialog" + aria-modal="true" + [hidden]-toggling pattern.
+  const dialog = document.querySelector('[role="dialog"][aria-modal="true"]:not([hidden])');
+  if(dialog){
+    const closeBtn = dialog.querySelector('[id*="close" i], [class*="close" i]');
+    if(closeBtn){ closeBtn.click(); } else { dialog.hidden = true; }
+    return true;
+  }
+  // Generic fallback for any other lightbox/viewer (present or future —
+  // e.g. an image lightbox in another tab) that's actually visible right
+  // now, regardless of which class/id-toggling scheme it uses internally.
+  const lit = Array.from(document.querySelectorAll('[class*="lightbox" i], [id*="lightbox" i]'))
+    .find(el => { const cs = getComputedStyle(el); return cs.display !== 'none' && cs.visibility !== 'hidden'; });
+  if(lit){
+    const closeBtn = lit.querySelector('[id*="close" i], [class*="close" i]');
+    if(closeBtn){ closeBtn.click(); } else { lit.style.display = 'none'; }
+    return true;
+  }
+  return false;
+}
+function setupBackButton(){
+  const isNative = !!(window.Capacitor && typeof window.Capacitor.isNativePlatform === 'function' && window.Capacitor.isNativePlatform());
+  if(!isNative) return;
+  const AppPlugin = window.Capacitor.Plugins && window.Capacitor.Plugins.App;
+  if(!AppPlugin || typeof AppPlugin.addListener !== 'function') return;
+
+  let lastBackPress = 0;
+  AppPlugin.addListener('backButton', () => {
+    if(closeAnyOpenOverlay()) return;
+
+    const activeTab = document.querySelector('#tabbar .tab[aria-selected="true"]');
+    if(activeTab && activeTab.dataset.view !== 'literature' && typeof switchView === 'function'){
+      switchView('literature');
+      return;
+    }
+
+    const now = Date.now();
+    if(now - lastBackPress < 2000){
+      AppPlugin.exitApp();
+    } else {
+      lastBackPress = now;
+      if(typeof showToast === 'function') showToast('Press back again to exit');
+    }
+  });
+}
+
 function boot(){
   try{ window.__roundsBootTime = new Date().getTime(); }catch(e){}
   // Apply the saved/preferred theme immediately regardless of login
@@ -10657,6 +10716,7 @@ function boot(){
   // first thing shown). Safe to call again inside init() later.
   applyTheme(getInitialTheme());
   setupInAppLinks();
+  setupBackButton();
   setupLogin();
 }
 
