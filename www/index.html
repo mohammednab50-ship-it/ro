@@ -1444,6 +1444,97 @@ footer.home-footer{max-width:1180px;margin:0 auto;padding:0 24px 48px;display:fl
   flex-wrap:wrap;gap:10px;color:var(--ink-faint);font-size:12.5px;}
 footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 
+
+/* =====================================================================
+   Vitals — serial vitals flowsheet (personal charting aid, localStorage
+   only). Patient sidebar deliberately reuses the existing
+   .chapters/.chapter-list/.chapter-li/.chapter-btn visual pattern from
+   the specialty sidebar (same look, separate container id + own event
+   delegation, so there's no overlap with the specialty list's own
+   #chapter-list-scoped click handler). Everything else below is
+   namespaced under a fresh "vitals-" prefix and reuses the shared
+   --paper/--ink/--evidence/--cta-bg/--r-*/--shadow-* tokens already
+   defined at the top of this stylesheet.
+   ===================================================================== */
+.vitals-add-patient-btn{width:100%;margin-top:14px;border:1px dashed var(--line);background:none;color:var(--ink-soft);
+  font-family:var(--ff-sans);font-size:13px;font-weight:600;padding:10px 12px;border-radius:var(--r-md);cursor:pointer;
+  transition:border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
+.vitals-add-patient-btn:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
+.vitals-add-form{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px;}
+.vitals-add-form .vitals-field label span{font-weight:400;color:var(--ink-faint);}
+.vitals-add-actions{display:flex;gap:8px;}
+
+.vitals-empty{padding:var(--space-9) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:14.5px;line-height:1.6;}
+
+.vitals-patient-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:var(--space-4);}
+.vitals-kicker{font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--evidence-dark);margin:0 0 6px;}
+.vitals-patient-name{font-family:var(--ff-display);font-size:clamp(26px,3.2vw,36px);font-weight:800;letter-spacing:-0.02em;color:var(--ink);margin:0;}
+.vitals-patient-sub{font-family:var(--ff-sans);font-size:13px;color:var(--ink-faint);margin:4px 0 0;}
+.vitals-patient-actions{display:flex;gap:8px;flex-wrap:wrap;}
+
+.vitals-btn-primary{border:none;background:var(--cta-bg);color:var(--cta-ink);border-radius:var(--r-pill);padding:12px 22px;
+  font-family:var(--ff-sans);font-size:13.5px;font-weight:700;letter-spacing:0.01em;cursor:pointer;
+  transition:background var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);}
+.vitals-btn-primary:hover{background:var(--cta-bg-hover);transform:translateY(-1px);}
+.vitals-btn-primary:active{transform:scale(0.98);}
+.vitals-btn-outline{border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:var(--r-pill);
+  padding:9px 16px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;cursor:pointer;
+  transition:border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
+.vitals-btn-outline:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
+.vitals-btn-outline.vitals-btn-danger:hover{border-color:var(--caution);color:var(--caution);background:var(--caution-bg);}
+.vitals-btn-ghost{border:none;background:none;color:var(--ink-faint);font-family:var(--ff-sans);font-size:13px;font-weight:600;padding:12px 14px;cursor:pointer;}
+.vitals-btn-ghost:hover{color:var(--ink);}
+
+.vitals-disclaimer{font-family:var(--ff-sans);font-size:12px;color:var(--caution);line-height:1.6;margin:0 0 var(--space-6);
+  padding:12px 16px;border-left:2px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-sm);}
+
+.vitals-trend-row{display:flex;gap:var(--space-6);flex-wrap:wrap;margin-bottom:var(--space-6);}
+.vitals-trend{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:10px 14px;box-shadow:var(--shadow-sm);}
+.vitals-trend-label{font-family:var(--ff-sans);font-size:11.5px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--ink-faint);white-space:nowrap;}
+.vitals-spark{width:110px;height:30px;flex-shrink:0;overflow:visible;}
+.vitals-spark polyline.spark-line{fill:none;stroke:var(--evidence);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.vitals-spark polyline.spark-line-secondary{fill:none;stroke:var(--fresh);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;opacity:0.85;}
+.vitals-spark circle.spark-dot{fill:var(--evidence);}
+
+.vitals-panel{border:1px solid transparent;border-radius:var(--r-lg);padding:var(--space-6) var(--space-7);background:var(--surface-raised);box-shadow:var(--shadow-md);margin-bottom:var(--space-6);}
+.vitals-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:var(--space-4);margin-bottom:var(--space-4);}
+.vitals-field{display:flex;flex-direction:column;gap:6px;}
+.vitals-field label{font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--ink-soft);}
+.vitals-field label span{font-weight:400;color:var(--ink-faint);text-transform:none;}
+.vitals-field input,.vitals-field textarea{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 13px;
+  font-family:var(--ff-sans);font-size:15.5px;background:var(--paper);color:var(--ink);width:100%;min-height:46px;
+  transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);}
+.vitals-field textarea{min-height:64px;resize:vertical;font-size:14.5px;}
+.vitals-field input:focus,.vitals-field textarea:focus{outline:none;border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
+.vitals-notes-field{margin-bottom:var(--space-5);}
+.vitals-submit-btn{width:100%;min-height:48px;}
+@media (min-width:560px){.vitals-submit-btn{width:auto;min-width:200px;}}
+
+.vitals-table-wrap{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow-sm);overflow-x:auto;}
+table.vitals-table{width:100%;border-collapse:collapse;font-family:var(--ff-sans);font-size:13.5px;min-width:760px;}
+table.vitals-table th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink-faint);
+  padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--surface);}
+table.vitals-table td{padding:12px 14px;border-bottom:1px solid var(--line-soft);color:var(--ink);white-space:nowrap;vertical-align:top;}
+table.vitals-table td.vitals-td-notes{white-space:normal;min-width:160px;color:var(--ink-soft);}
+table.vitals-table tr:last-child td{border-bottom:none;}
+table.vitals-table td.vitals-td-flag{color:var(--caution);font-weight:700;}
+.vitals-row-delete{border:none;background:none;color:var(--ink-faint);cursor:pointer;padding:8px;border-radius:50%;
+  display:inline-flex;align-items:center;justify-content:center;transition:color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
+.vitals-row-delete:hover{color:var(--caution);background:var(--caution-bg);}
+.vitals-row-delete svg{width:16px;height:16px;}
+.vitals-table-empty{padding:var(--space-7) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:13.5px;}
+
+/* Touch-friendly bump on the packaged tablet/phone shell: bigger tap
+   targets, single-column entry grid so nothing gets cramped. */
+html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
+@media (max-width:680px){
+  .vitals-grid{grid-template-columns:repeat(2,1fr);}
+  .vitals-panel{padding:var(--space-5);}
+  .vitals-patient-name{font-size:24px;}
+  .vitals-trend-row{gap:var(--space-3);}
+  .vitals-spark{width:88px;}
+}
+
 </style>
 </head>
 <body>
@@ -1863,6 +1954,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <span class="tab-num">06</span>
     <span class="tab-label">Trials</span>
   </button>
+  <button class="tab" data-view="vitals" role="tab" aria-selected="false" aria-controls="view-vitals">
+    <svg class="tab-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12.5h4l2-5 3 9 2.5-11 2 7h5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="tab-num">07</span>
+    <span class="tab-label">Vitals</span>
+  </button>
 </nav>
 
 <div class="layout" id="view-literature" role="tabpanel" aria-labelledby="tab-literature">
@@ -2195,6 +2291,125 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
     <div class="syndrome-toggle" id="trial-filter" role="group" aria-label="Filter trials by recruitment status" style="flex-wrap:wrap;"></div>
     <div id="trial-results" aria-live="polite"></div>
+  </main>
+</div>
+
+<div class="layout" id="view-vitals" style="display:none;" role="tabpanel" aria-labelledby="tab-vitals" hidden>
+  <nav class="chapters" aria-label="Patients">
+    <p class="chapters-eyebrow">PATIENTS</p>
+    <ol class="chapter-list" id="patient-list"></ol>
+    <button type="button" class="vitals-add-patient-btn" id="vitals-add-patient-btn">+ Add patient</button>
+    <div class="vitals-add-form" id="vitals-add-form" hidden>
+      <div class="vitals-field">
+        <label for="vitals-new-name">Name / initials</label>
+        <input id="vitals-new-name" type="text" maxlength="40" placeholder="e.g. J. Doe" autocomplete="off">
+      </div>
+      <div class="vitals-field">
+        <label for="vitals-new-bed">Bed / room</label>
+        <input id="vitals-new-bed" type="text" maxlength="16" placeholder="e.g. ICU-4" autocomplete="off">
+      </div>
+      <div class="vitals-field">
+        <label for="vitals-new-mrn">MRN <span>(optional)</span></label>
+        <input id="vitals-new-mrn" type="text" maxlength="24" placeholder="optional" autocomplete="off">
+      </div>
+      <div class="vitals-add-actions">
+        <button type="button" class="vitals-btn-primary" id="vitals-save-patient-btn">Add patient</button>
+        <button type="button" class="vitals-btn-ghost" id="vitals-cancel-patient-btn">Cancel</button>
+      </div>
+    </div>
+  </nav>
+  <main>
+    <p class="drug-kicker" style="margin-bottom:8px;">SECTION 07 <span class="dot">&middot;</span> SERIAL VITALS FLOWSHEET</p>
+    <h2 class="drug-title" style="font-size:38px;margin-bottom:16px;">Vitals</h2>
+
+    <div id="vitals-empty" class="vitals-empty">
+      <p>Add a patient on the left to start charting serial vitals through your shift. Everything you enter here stays only on this device.</p>
+    </div>
+
+    <div id="vitals-patient-view" hidden>
+      <header class="vitals-patient-head">
+        <div>
+          <p class="vitals-kicker" id="vitals-patient-kicker">BED —</p>
+          <h3 class="vitals-patient-name" id="vitals-patient-name">—</h3>
+          <p class="vitals-patient-sub" id="vitals-patient-sub"></p>
+        </div>
+        <div class="vitals-patient-actions">
+          <button type="button" class="vitals-btn-outline" id="vitals-export-btn">Export CSV</button>
+          <button type="button" class="vitals-btn-outline vitals-btn-danger" id="vitals-remove-patient-btn">Remove patient</button>
+        </div>
+      </header>
+
+      <p class="vitals-disclaimer">Personal charting aid only, for your own reference during a shift — stored locally on this device and never uploaded anywhere. Not a substitute for your institution&rsquo;s official EHR or nursing flowsheet; always chart definitively there.</p>
+
+      <div class="vitals-trend-row" id="vitals-trend-row" hidden>
+        <div class="vitals-trend">
+          <span class="vitals-trend-label">HR trend</span>
+          <svg class="vitals-spark" id="vitals-spark-hr" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+        <div class="vitals-trend">
+          <span class="vitals-trend-label">BP trend</span>
+          <svg class="vitals-spark" id="vitals-spark-bp" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"></svg>
+        </div>
+      </div>
+
+      <form class="vitals-panel" id="vitals-entry-form" autocomplete="off">
+        <div class="vitals-grid">
+          <div class="vitals-field">
+            <label for="v-ts">Time</label>
+            <input id="v-ts" type="datetime-local" required>
+          </div>
+          <div class="vitals-field">
+            <label for="v-hr">HR <span>bpm</span></label>
+            <input id="v-hr" type="number" inputmode="numeric" min="0" max="300">
+          </div>
+          <div class="vitals-field">
+            <label for="v-sbp">BP systolic</label>
+            <input id="v-sbp" type="number" inputmode="numeric" min="0" max="300">
+          </div>
+          <div class="vitals-field">
+            <label for="v-dbp">BP diastolic</label>
+            <input id="v-dbp" type="number" inputmode="numeric" min="0" max="250">
+          </div>
+          <div class="vitals-field">
+            <label for="v-rr">RR <span>/min</span></label>
+            <input id="v-rr" type="number" inputmode="numeric" min="0" max="80">
+          </div>
+          <div class="vitals-field">
+            <label for="v-spo2">SpO&#8322; <span>%</span></label>
+            <input id="v-spo2" type="number" inputmode="numeric" min="0" max="100">
+          </div>
+          <div class="vitals-field">
+            <label for="v-temp">Temp <span>&deg;C</span></label>
+            <input id="v-temp" type="number" inputmode="decimal" step="0.1" min="25" max="43">
+          </div>
+          <div class="vitals-field">
+            <label for="v-gcs">GCS</label>
+            <input id="v-gcs" type="number" inputmode="numeric" min="3" max="15">
+          </div>
+          <div class="vitals-field">
+            <label for="v-uop">Urine output <span>mL</span></label>
+            <input id="v-uop" type="number" inputmode="numeric" min="0">
+          </div>
+        </div>
+        <div class="vitals-field vitals-notes-field">
+          <label for="v-notes">Notes</label>
+          <textarea id="v-notes" rows="2" maxlength="280" placeholder="Optional — e.g. position change, agitation, intervention given"></textarea>
+        </div>
+        <button type="submit" class="vitals-btn-primary vitals-submit-btn">+ Add reading</button>
+      </form>
+
+      <div class="vitals-table-wrap">
+        <table class="vitals-table" id="vitals-table">
+          <thead>
+            <tr>
+              <th>Time</th><th>HR</th><th>BP</th><th>RR</th><th>SpO&#8322;</th><th>Temp</th><th>GCS</th><th>UOP</th><th>Notes</th><th></th>
+            </tr>
+          </thead>
+          <tbody id="vitals-table-body"></tbody>
+        </table>
+        <p class="vitals-table-empty" id="vitals-table-empty">No readings logged yet for this patient.</p>
+      </div>
+    </div>
   </main>
 </div>
 
@@ -6027,6 +6242,7 @@ let guidelinesState = { init: false };
 let advancesState = { init: false, field: 'all', query: '', data: {}, loading: false, fetched: false, error: null, done: 0 };
 let trialsState = { init: false, status: 'all', query: '', results: [], loading: false, error: null, lastQuery: '' };
 let syndromesState = { init: false, mode: 'alpha', query: '', geneticInit: false, congenitalInit: false, geneticMode: 'alpha', congenitalMode: 'alpha', geneticQuery: '', congenitalQuery: '' };
+let vitalsState = { init: false, patients: [], logs: {}, activePatientId: null };
 
 /* ============================================================
    Bookmark helpers
@@ -8165,7 +8381,7 @@ function switchView(targetView, opts){
   document.querySelectorAll('#bottom-nav .bnav-btn').forEach(b =>
     b.setAttribute('aria-selected', b.dataset.view === targetView ? 'true' : 'false'));
 
-  ['literature','guidelines','drug','syndromes','advances','trials'].forEach(v => {
+  ['literature','guidelines','drug','syndromes','advances','trials','vitals'].forEach(v => {
     const el = document.getElementById('view-' + v);
     if(!el) return;
     const show = v === targetView;
@@ -8176,6 +8392,7 @@ function switchView(targetView, opts){
   if(targetView === 'syndromes' && !syndromesState.init){ initSyndromes(); }
   if(targetView === 'advances' && !advancesState.init){ initAdvances(); }
   if(targetView === 'trials' && !trialsState.init){ initTrials(); }
+  if(targetView === 'vitals' && !vitalsState.init){ initVitals(); }
   if(typeof syncScrollTop === 'function') syncScrollTop();
   if(opts.scrollTop) window.scrollTo({top:0});
 }
@@ -8236,6 +8453,398 @@ function setupDrugSubnav(){
     };
   });
 }
+
+/* ============================================================
+   Vitals — serial vitals flowsheet
+   ------------------------------------------------------------
+   A personal charting aid for logging a patient's vitals
+   repeatedly through a shift. 100% localStorage — no network
+   call, no auth, nothing ever leaves the device. See
+   VITALS_KEY below; storage is namespaced per generated
+   patient id so multiple patients' logs never collide.
+   ============================================================ */
+
+const VITALS_KEY = 'rounds_vitals_v1';
+
+function loadVitalsData(){
+  try{
+    const raw = localStorage.getItem(VITALS_KEY);
+    if(!raw) return;
+    const parsed = JSON.parse(raw);
+    if(Array.isArray(parsed.patients)) vitalsState.patients = parsed.patients;
+    if(parsed.logs && typeof parsed.logs === 'object') vitalsState.logs = parsed.logs;
+  }catch(e){}
+}
+
+function saveVitalsData(){
+  try{
+    localStorage.setItem(VITALS_KEY, JSON.stringify({ patients: vitalsState.patients, logs: vitalsState.logs }));
+  }catch(e){}
+}
+
+function genVitalsId(prefix){
+  return prefix + '_' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+// Local "YYYY-MM-DDTHH:MM" string for a Date, suitable for a
+// datetime-local input's value (unlike toISOString(), this stays in
+// the browser's local timezone instead of jumping to UTC).
+function localDateTimeInputValue(d){
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function fmtVitalsTime(iso){
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return iso;
+  const today = new Date();
+  const sameDay = d.toDateString() === today.toDateString();
+  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  if(sameDay) return time;
+  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
+}
+
+function activePatient(){
+  return vitalsState.patients.find(p => p.id === vitalsState.activePatientId) || null;
+}
+
+function activeLog(){
+  const p = activePatient();
+  if(!p) return [];
+  return vitalsState.logs[p.id] || [];
+}
+
+function initVitals(){
+  vitalsState.init = true;
+  loadVitalsData();
+  if(!vitalsState.activePatientId && vitalsState.patients.length){
+    vitalsState.activePatientId = vitalsState.patients[0].id;
+  }
+  setupPatientList();
+  setupAddPatientForm();
+  setupVitalsEntryForm();
+  renderPatientList();
+  renderVitalsMain();
+}
+
+/* ---- patient list (sidebar) ---- */
+
+function renderPatientList(){
+  const list = document.getElementById('patient-list');
+  if(!list) return;
+  list.innerHTML = '';
+  vitalsState.patients.forEach(p => {
+    const li = document.createElement('li');
+    li.className = 'chapter-li' + (p.id === vitalsState.activePatientId ? ' active' : '');
+    if(p.id === vitalsState.activePatientId) li.setAttribute('aria-current', 'page');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chapter-btn';
+    btn.dataset.patientId = p.id;
+    const readingCount = (vitalsState.logs[p.id] || []).length;
+    const badge = readingCount ? `<span class="chapter-new" aria-label="${readingCount} readings">${readingCount}</span>` : '';
+    btn.innerHTML = `<span class="chapter-num">${escapeHtml(p.bed || '—')}</span><span class="chapter-name">${escapeHtml(p.name || 'Unnamed')}</span>${badge}`;
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+}
+
+function setupPatientList(){
+  const list = document.getElementById('patient-list');
+  if(!list || list.dataset.wired) return;
+  list.dataset.wired = '1';
+  list.addEventListener('click', (e) => {
+    try{
+      const btn = e.target.closest('.chapter-btn');
+      if(!btn || !list.contains(btn)) return;
+      const id = btn.dataset.patientId;
+      if(!id || id === vitalsState.activePatientId) return;
+      vitalsState.activePatientId = id;
+      renderPatientList();
+      renderVitalsMain();
+    }catch(err){
+      console.error('patient-list click handler failed:', err);
+    }
+  });
+}
+
+/* ---- add / remove patient ---- */
+
+function setupAddPatientForm(){
+  const openBtn = document.getElementById('vitals-add-patient-btn');
+  const form = document.getElementById('vitals-add-form');
+  const saveBtn = document.getElementById('vitals-save-patient-btn');
+  const cancelBtn = document.getElementById('vitals-cancel-patient-btn');
+  const nameInput = document.getElementById('vitals-new-name');
+  const bedInput = document.getElementById('vitals-new-bed');
+  const mrnInput = document.getElementById('vitals-new-mrn');
+  if(!openBtn || !form || openBtn.dataset.wired) return;
+  openBtn.dataset.wired = '1';
+
+  const close = () => {
+    form.hidden = true;
+    nameInput.value = ''; bedInput.value = ''; mrnInput.value = '';
+  };
+  openBtn.addEventListener('click', () => {
+    form.hidden = !form.hidden;
+    if(!form.hidden) setTimeout(() => nameInput.focus(), 30);
+  });
+  cancelBtn.addEventListener('click', close);
+
+  const save = () => {
+    const name = nameInput.value.trim();
+    const bed = bedInput.value.trim();
+    const mrn = mrnInput.value.trim();
+    if(!name && !bed){ nameInput.focus(); return; }
+    const patient = { id: genVitalsId('pt'), name: name || 'Unnamed', bed: bed || '—', mrn: mrn || '', createdAt: new Date().toISOString() };
+    vitalsState.patients.push(patient);
+    vitalsState.logs[patient.id] = [];
+    vitalsState.activePatientId = patient.id;
+    saveVitalsData();
+    renderPatientList();
+    renderVitalsMain();
+    close();
+    haptic('Light');
+  };
+  saveBtn.addEventListener('click', save);
+  [nameInput, bedInput, mrnInput].forEach(inp => {
+    inp.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); save(); } });
+  });
+
+  const removeBtn = document.getElementById('vitals-remove-patient-btn');
+  if(removeBtn){
+    removeBtn.addEventListener('click', () => {
+      const p = activePatient();
+      if(!p) return;
+      if(!window.confirm(`Remove ${p.name} and delete all logged readings for this patient? This can't be undone.`)) return;
+      vitalsState.patients = vitalsState.patients.filter(x => x.id !== p.id);
+      delete vitalsState.logs[p.id];
+      vitalsState.activePatientId = vitalsState.patients.length ? vitalsState.patients[0].id : null;
+      saveVitalsData();
+      renderPatientList();
+      renderVitalsMain();
+    });
+  }
+
+  const exportBtn = document.getElementById('vitals-export-btn');
+  if(exportBtn) exportBtn.addEventListener('click', exportActivePatientCsv);
+}
+
+/* ---- entry form ---- */
+
+function setupVitalsEntryForm(){
+  const form = document.getElementById('vitals-entry-form');
+  if(!form || form.dataset.wired) return;
+  form.dataset.wired = '1';
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const p = activePatient();
+    if(!p) return;
+    const val = id => {
+      const el = document.getElementById(id);
+      return el ? el.value.trim() : '';
+    };
+    const tsRaw = val('v-ts');
+    const ts = tsRaw ? new Date(tsRaw) : new Date();
+    const entry = {
+      id: genVitalsId('vr'),
+      ts: isNaN(ts.getTime()) ? new Date().toISOString() : ts.toISOString(),
+      hr: val('v-hr'), sbp: val('v-sbp'), dbp: val('v-dbp'), rr: val('v-rr'),
+      spo2: val('v-spo2'), temp: val('v-temp'), gcs: val('v-gcs'), uop: val('v-uop'),
+      notes: val('v-notes')
+    };
+    const hasAnyVital = ['hr','sbp','dbp','rr','spo2','temp','gcs','uop'].some(k => entry[k] !== '');
+    if(!hasAnyVital && !entry.notes){
+      document.getElementById('v-hr').focus();
+      return;
+    }
+    if(!vitalsState.logs[p.id]) vitalsState.logs[p.id] = [];
+    vitalsState.logs[p.id].push(entry);
+    saveVitalsData();
+    haptic('Light');
+    ['v-hr','v-sbp','v-dbp','v-rr','v-spo2','v-temp','v-gcs','v-uop','v-notes'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.value = '';
+    });
+    prefillVitalsTimestamp();
+    renderPatientList();
+    renderVitalsMain();
+  });
+}
+
+function prefillVitalsTimestamp(){
+  const tsInput = document.getElementById('v-ts');
+  if(tsInput) tsInput.value = localDateTimeInputValue(new Date());
+}
+
+/* ---- main panel render ---- */
+
+function renderVitalsMain(){
+  const empty = document.getElementById('vitals-empty');
+  const view = document.getElementById('vitals-patient-view');
+  const p = activePatient();
+  if(!p){
+    if(empty) empty.hidden = false;
+    if(view) view.hidden = true;
+    return;
+  }
+  if(empty) empty.hidden = true;
+  if(view) view.hidden = false;
+
+  const kicker = document.getElementById('vitals-patient-kicker');
+  const nameEl = document.getElementById('vitals-patient-name');
+  const subEl = document.getElementById('vitals-patient-sub');
+  if(kicker) kicker.textContent = 'BED ' + (p.bed || '—').toUpperCase();
+  if(nameEl) nameEl.textContent = p.name;
+  if(subEl) subEl.textContent = p.mrn ? `MRN ${p.mrn}` : '';
+
+  prefillVitalsTimestamp();
+  renderVitalsTable();
+  renderVitalsSparklines();
+}
+
+function deleteVitalsRow(patientId, entryId){
+  const log = vitalsState.logs[patientId];
+  if(!log) return;
+  vitalsState.logs[patientId] = log.filter(e => e.id !== entryId);
+  saveVitalsData();
+  renderPatientList();
+  renderVitalsMain();
+}
+
+function vitalsRowFlag(entry){
+  // A light, non-diagnostic visual nudge only — flags values a shift
+  // nurse/intern would typically double-check, nothing more.
+  const n = v => v === '' ? null : parseFloat(v);
+  const hr = n(entry.hr), sbp = n(entry.sbp), spo2 = n(entry.spo2), temp = n(entry.temp);
+  if(spo2 !== null && spo2 < 90) return true;
+  if(sbp !== null && (sbp < 90 || sbp > 180)) return true;
+  if(hr !== null && (hr < 50 || hr > 130)) return true;
+  if(temp !== null && (temp < 35 || temp >= 38.5)) return true;
+  return false;
+}
+
+function renderVitalsTable(){
+  const body = document.getElementById('vitals-table-body');
+  const emptyMsg = document.getElementById('vitals-table-empty');
+  const wrap = document.querySelector('.vitals-table-wrap table');
+  if(!body) return;
+  const p = activePatient();
+  const log = activeLog().slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  body.innerHTML = '';
+  if(!log.length){
+    if(emptyMsg) emptyMsg.hidden = false;
+    if(wrap) wrap.hidden = true;
+    return;
+  }
+  if(emptyMsg) emptyMsg.hidden = true;
+  if(wrap) wrap.hidden = false;
+
+  log.forEach(entry => {
+    const tr = document.createElement('tr');
+    const bp = (entry.sbp || entry.dbp) ? `${escapeHtml(entry.sbp || '—')}/${escapeHtml(entry.dbp || '—')}` : '—';
+    const flagClass = vitalsRowFlag(entry) ? ' vitals-td-flag' : '';
+    tr.innerHTML = `
+      <td>${escapeHtml(fmtVitalsTime(entry.ts))}</td>
+      <td class="${flagClass.trim()}">${escapeHtml(entry.hr || '—')}</td>
+      <td class="${flagClass.trim()}">${bp}</td>
+      <td>${escapeHtml(entry.rr || '—')}</td>
+      <td class="${flagClass.trim()}">${escapeHtml(entry.spo2 || '—')}</td>
+      <td class="${flagClass.trim()}">${escapeHtml(entry.temp || '—')}</td>
+      <td>${escapeHtml(entry.gcs || '—')}</td>
+      <td>${escapeHtml(entry.uop || '—')}</td>
+      <td class="vitals-td-notes">${escapeHtml(entry.notes || '')}</td>
+      <td><button type="button" class="vitals-row-delete" aria-label="Delete this reading" data-entry-id="${entry.id}">
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </button></td>`;
+    body.appendChild(tr);
+  });
+
+  if(!body.dataset.wired){
+    body.dataset.wired = '1';
+    body.addEventListener('click', (e) => {
+      const btn = e.target.closest('.vitals-row-delete');
+      if(!btn) return;
+      const pt = activePatient();
+      if(!pt) return;
+      deleteVitalsRow(pt.id, btn.dataset.entryId);
+    });
+  }
+}
+
+/* ---- tiny CSS/SVG sparklines for HR + BP, oldest-to-newest ---- */
+
+function buildSparklinePoints(values, w, h){
+  const nums = values.map(v => v === null || v === '' || v === undefined ? null : parseFloat(v));
+  const present = nums.filter(v => v !== null && !isNaN(v));
+  if(present.length < 2) return null;
+  const min = Math.min(...present), max = Math.max(...present);
+  const span = (max - min) || 1;
+  const stepX = w / Math.max(1, nums.length - 1);
+  const pts = [];
+  nums.forEach((v, i) => {
+    if(v === null || isNaN(v)) return;
+    const x = i * stepX;
+    const y = h - ((v - min) / span) * (h - 6) - 3;
+    pts.push([x, y]);
+  });
+  return pts;
+}
+
+function renderVitalsSparklines(){
+  const row = document.getElementById('vitals-trend-row');
+  const svgHr = document.getElementById('vitals-spark-hr');
+  const svgBp = document.getElementById('vitals-spark-bp');
+  if(!row || !svgHr || !svgBp) return;
+  const log = activeLog().slice().sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const w = 120, h = 32;
+
+  const hrPts = buildSparklinePoints(log.map(e => e.hr), w, h);
+  const sbpPts = buildSparklinePoints(log.map(e => e.sbp), w, h);
+  const dbpPts = buildSparklinePoints(log.map(e => e.dbp), w, h);
+
+  if(!hrPts && !sbpPts){
+    row.hidden = true;
+    return;
+  }
+  row.hidden = false;
+
+  const toPolyline = pts => pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  const lastDot = pts => pts.length ? `<circle class="spark-dot" cx="${pts[pts.length-1][0].toFixed(1)}" cy="${pts[pts.length-1][1].toFixed(1)}" r="2.4"/>` : '';
+
+  svgHr.innerHTML = hrPts
+    ? `<polyline class="spark-line" points="${toPolyline(hrPts)}"/>${lastDot(hrPts)}`
+    : '';
+  svgBp.innerHTML = (sbpPts ? `<polyline class="spark-line" points="${toPolyline(sbpPts)}"/>${lastDot(sbpPts)}` : '')
+    + (dbpPts ? `<polyline class="spark-line-secondary" points="${toPolyline(dbpPts)}"/>` : '');
+}
+
+/* ---- CSV export (local download only, nothing sent anywhere) ---- */
+
+function csvCell(v){
+  const s = String(v == null ? '' : v);
+  return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+}
+
+function exportActivePatientCsv(){
+  const p = activePatient();
+  if(!p) return;
+  const log = activeLog().slice().sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const header = ['Timestamp','HR (bpm)','BP systolic','BP diastolic','RR (/min)','SpO2 (%)','Temp (C)','GCS','Urine output (mL)','Notes'];
+  const rows = log.map(e => [e.ts, e.hr, e.sbp, e.dbp, e.rr, e.spo2, e.temp, e.gcs, e.uop, e.notes]);
+  const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const safeName = (p.name || 'patient').replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '') || 'patient';
+  a.href = url;
+  a.download = `rounds-vitals-${safeName}-${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 
 /* ============================================================
    Dosage calculators — pure client-side, live computation
@@ -10088,6 +10697,10 @@ if(document.readyState === 'loading'){
   <button class="bnav-btn" data-view="trials" type="button" aria-label="Trials">
     <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M9 3h6M10 3v4.5L5.5 17a2 2 0 0 0 1.8 3h9.4a2 2 0 0 0 1.8-3L14 7.5V3" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M7.5 13.5h9" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>
     <span class="bnav-label">Trials</span>
+  </button>
+  <button class="bnav-btn" data-view="vitals" type="button" aria-label="Vitals">
+    <svg class="bnav-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M2.5 12.5h4l2-5 3 9 2.5-11 2 7h5.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span class="bnav-label">Vitals</span>
   </button>
 </nav>
 <script>
