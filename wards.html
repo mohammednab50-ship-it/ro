@@ -2118,6 +2118,20 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-brand-tagline{font-family:var(--ff-sans); font-size:11.5px; color:var(--ink-faint);}
 .wards-header-actions{display:flex; align-items:center; gap:10px;}
 
+/* ---- connectivity indicator ----
+   Always visible; Wards itself is fully offline-capable (localStorage/
+   IndexedDB only), but useful at a glance, especially once network-
+   dependent features (Firestore sync) land. */
+.connectivity-indicator{
+  display:flex; align-items:center; gap:6px; font-family:var(--ff-sans); font-size:11.5px; font-weight:600;
+  color:var(--ink-faint); padding:6px 12px; border:1px solid var(--header-line); border-radius:var(--r-pill);
+}
+.connectivity-indicator .dot{width:8px; height:8px; border-radius:50%; background:var(--ink-faint); flex-shrink:0;}
+.connectivity-indicator[data-state="online"] .dot{background:#2E9E5B;}
+.connectivity-indicator[data-state="offline"] .dot{background:var(--caution);}
+.connectivity-indicator[data-state="offline"]{color:var(--caution);border-color:var(--caution-line);}
+@media (max-width:640px){ .connectivity-indicator .label{display:none;} }
+
 .wards-tabbar{
   display:flex; gap:6px; padding:10px 28px; max-width:1280px; margin:0 auto;
   border-bottom:1px solid var(--line);
@@ -2147,6 +2161,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     </div>
   </a>
   <div class="wards-header-actions">
+    <span class="connectivity-indicator" id="connectivity-indicator" role="status" aria-live="polite" data-state="online" title="Online — Wards itself works fully offline; this reflects general network status">
+      <span class="dot" aria-hidden="true"></span><span class="label">Online</span>
+    </span>
     <button id="wards-export-all" class="theme-toggle" type="button" aria-label="Export all Wards data" title="Export all Wards data (Vitals + Maternity backup)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
@@ -2856,6 +2873,28 @@ function toggleA11yMode(){
   try{ localStorage.setItem(A11Y_KEY, next ? 'hc' : 'off'); }catch(e){}
 }
 
+
+/* ============================================================
+   Connectivity indicator — Wards is fully offline-capable (localStorage/
+   IndexedDB only), but useful to see network status at a glance,
+   especially once network-dependent features (Firestore sync) exist.
+   ============================================================ */
+function renderConnectivity(){
+  const el = document.getElementById('connectivity-indicator');
+  if(!el) return;
+  const online = navigator.onLine !== false; // treat unknown as online
+  el.setAttribute('data-state', online ? 'online' : 'offline');
+  const label = el.querySelector('.label');
+  if(label) label.textContent = online ? 'Online' : 'Offline';
+  el.setAttribute('title', online
+    ? 'Online — Wards itself works fully offline; this reflects general network status'
+    : 'Offline — Wards keeps working fully offline (localStorage/IndexedDB only)');
+}
+function setupConnectivityIndicator(){
+  renderConnectivity();
+  window.addEventListener('online', renderConnectivity);
+  window.addEventListener('offline', renderConnectivity);
+}
 
 /* ---- Haptic feedback ----
    Uses Capacitor Haptics in the packaged app (real native impact styles),
@@ -3614,6 +3653,7 @@ function boot(){
   applyA11yMode(getInitialA11yMode());
   const a11yToggle = document.getElementById('a11y-toggle');
   if(a11yToggle) a11yToggle.onclick = toggleA11yMode;
+  setupConnectivityIndicator();
   const exportBtn = document.getElementById('wards-export-all');
   if(exportBtn) exportBtn.onclick = () => { haptic('Light'); exportAllWardsData(); };
   setupWardsTabs();
