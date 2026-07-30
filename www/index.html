@@ -417,6 +417,9 @@ main{min-width:0;}
 .results-title{font-family:var(--ff-display);font-size:var(--fs-display);font-weight:900;line-height:var(--lh-tight);letter-spacing:var(--tracking-tight);color:var(--ink);margin:0 0 18px;max-width:14ch;}
 .results-title em{color:inherit;font-weight:900;}
 .results-byline{font-family:var(--ff-sans);font-size:14.5px;line-height:1.6;color:var(--ink-soft);margin:0;max-width:46ch;}
+.results-export{display:flex;gap:8px;margin-top:14px;}
+.results-export-btn{border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:var(--r-pill);padding:8px 16px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;cursor:pointer;transition:border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
+.results-export-btn:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
 
 /* ---- article cards (editorial "stories" on paper) ---- */
 .cards{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:var(--space-5);}
@@ -1900,6 +1903,10 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <p class="results-kicker" id="results-kicker">20 RESULTS &middot; LAST 24 MONTHS</p>
       <h2 class="results-title serif" id="results-title">Cardiology,<br><em>this week.</em></h2>
       <p class="results-byline" id="results-byline"></p>
+      <div class="results-export" id="results-export" hidden>
+        <button type="button" class="results-export-btn" id="export-bib-btn">Export .bib</button>
+        <button type="button" class="results-export-btn" id="export-ris-btn">Export .ris</button>
+      </div>
     </header>
     <ul class="cards" id="cards" aria-live="polite"></ul>
   </main>
@@ -5939,11 +5946,14 @@ function haptic(style){
    ============================================================ */
 function exportAllRoundsData(){
   let bookmarks = {};
+  let bookmarkNotes = {};
   try{ bookmarks = getBookmarks(); }catch(e){}
+  try{ bookmarkNotes = getBookmarkNotes(); }catch(e){}
   const payload = {
     exportedAt: new Date().toISOString(),
     app: 'Rounds',
-    bookmarks: bookmarks
+    bookmarks: bookmarks,
+    bookmarkNotes: bookmarkNotes
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -6407,6 +6417,8 @@ function setResultsHead(titleName, titleEm, kicker, byline){
   document.getElementById('results-title').innerHTML = `${escapeHtml(titleName)}<br><em>${escapeHtml(titleEm)}</em>`;
   document.getElementById('results-kicker').textContent = kicker;
   document.getElementById('results-byline').textContent = byline;
+  const exportWrap = document.getElementById('results-export');
+  if(exportWrap) exportWrap.hidden = true;
 }
 
 function render(){
@@ -6458,7 +6470,93 @@ function renderBookmarksView(){
     return;
   }
   setResultsHead('Saved', `${bm.length} article${bm.length === 1 ? '' : 's'}.`, `${bm.length} SAVED`, '');
+  const exportWrap = document.getElementById('results-export');
+  if(exportWrap){
+    exportWrap.hidden = false;
+    const bibBtn = document.getElementById('export-bib-btn');
+    const risBtn = document.getElementById('export-ris-btn');
+    if(bibBtn) bibBtn.onclick = () => exportBookmarkCitations('bib');
+    if(risBtn) risBtn.onclick = () => exportBookmarkCitations('ris');
+  }
   bm.forEach((a, idx) => cardsEl.appendChild(articleCard(a, idx + 1)));
+}
+
+/* ============================================================
+   Citation export (BibTeX / RIS) for saved articles
+   ============================================================ */
+
+/* A stable, ASCII-only key for the BibTeX entry — first author's
+   surname (if we have one) plus the PMID, so entries never collide. */
+function bibtexKey(a){
+  let surname = '';
+  if(a.authors){
+    const first = a.authors.split(/[,;]/)[0].trim();
+    surname = first.split(/\s+/)[0].replace(/[^A-Za-z]/g, '');
+  }
+  return (surname || 'ref') + (a.pmid || '');
+}
+function bibtexEscape(s){
+  return String(s || '').replace(/[{}]/g, '');
+}
+function yearOf(a){
+  const m = (a.date || '').match(/^(\d{4})/);
+  return m ? m[1] : '';
+}
+function articleToBibtex(a){
+  const lines = [];
+  lines.push(`@article{${bibtexKey(a)},`);
+  if(a.title) lines.push(`  title = {${bibtexEscape(a.title)}},`);
+  if(a.authors) lines.push(`  author = {${bibtexEscape(a.authors)}},`);
+  if(a.journal) lines.push(`  journal = {${bibtexEscape(a.journal)}},`);
+  const yr = yearOf(a);
+  if(yr) lines.push(`  year = {${yr}},`);
+  if(a.pmid){
+    lines.push(`  pmid = {${a.pmid}},`);
+    lines.push(`  url = {https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/},`);
+  }
+  lines.push('}');
+  return lines.join('\n');
+}
+function articleToRis(a){
+  const lines = [];
+  lines.push('TY  - JOUR');
+  if(a.authors){
+    a.authors.split(/[,;]/).map(s => s.trim()).filter(Boolean).forEach(name => lines.push(`AU  - ${name}`));
+  }
+  if(a.title) lines.push(`TI  - ${a.title}`);
+  if(a.journal) lines.push(`JO  - ${a.journal}`);
+  const yr = yearOf(a);
+  if(yr) lines.push(`PY  - ${yr}`);
+  if(a.pmid){
+    lines.push(`AN  - ${a.pmid}`);
+    lines.push(`UR  - https://pubmed.ncbi.nlm.nih.gov/${a.pmid}/`);
+  }
+  lines.push('ER  - ');
+  return lines.join('\n');
+}
+function downloadTextFile(filename, text, mime){
+  const blob = new Blob([text], {type: mime || 'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function exportBookmarkCitations(format){
+  const bm = Object.values(getBookmarks());
+  if(bm.length === 0){ showToast('Nothing saved to export', 'err'); return; }
+  haptic('Light');
+  if(format === 'ris'){
+    const text = bm.map(articleToRis).join('\n\n');
+    downloadTextFile('rounds-saved-citations.ris', text, 'application/x-research-info-systems');
+  } else {
+    const text = bm.map(articleToBibtex).join('\n\n');
+    downloadTextFile('rounds-saved-citations.bib', text, 'application/x-bibtex');
+  }
+  showToast(`Exported ${bm.length} citation${bm.length===1?'':'s'}`, 'ok');
 }
 
 /* ============================================================
