@@ -188,6 +188,27 @@ body::before{content:'';position:fixed;inset:0;z-index:-2;pointer-events:none;ba
 [data-theme="dark"] body::before{background:
   radial-gradient(900px 520px at 90% -10%, rgba(91,156,255,0.16), transparent 60%),
   radial-gradient(700px 460px at -8% 20%, rgba(91,156,255,0.08), transparent 60%);}
+
+/* ---- high-contrast / large-text accessibility mode ----
+   Independent of the light/dark theme toggle (keys off html.wards-hc
+   instead of html[data-theme]) — for glare-heavy ward lighting or
+   general readability. Bumps the base font size and pushes ink/paper
+   further apart than either theme normally does. */
+html.wards-hc{font-size:112.5%;}
+html.wards-hc, html.wards-hc[data-theme="light"]{
+  --paper:#FFFFFF; --paper-deep:#F0F0F0; --surface:#FFFFFF; --surface-raised:#FFFFFF;
+  --ink:#000000; --ink-soft:#000000; --ink-faint:#222222;
+  --line:#000000; --line-soft:#333333;
+}
+html.wards-hc[data-theme="dark"]{
+  --paper:#000000; --paper-deep:#0A0A0A; --surface:#000000; --surface-raised:#0A0A0A;
+  --ink:#FFFFFF; --ink-soft:#FFFFFF; --ink-faint:#DDDDDD;
+  --line:#FFFFFF; --line-soft:#AAAAAA;
+}
+html.wards-hc body{font-weight:500;}
+html.wards-hc .card,html.wards-hc .vitals-panel,html.wards-hc .mat-card{border-width:2px !important;box-shadow:none !important;}
+html.wards-hc button,html.wards-hc input,html.wards-hc textarea,html.wards-hc select{border-width:2px !important;}
+
 a{color:inherit;text-decoration:none;}
 button{font:inherit;color:inherit;}
 img,svg{display:block;max-width:100%;}
@@ -224,6 +245,7 @@ body > header{background:transparent;position:sticky;top:0;z-index:50;padding:14
 
 .theme-toggle{width:34px;height:34px;border:1px solid var(--header-line);border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--header-ink-soft);transition:border-color var(--dur-base) var(--ease-out),color var(--dur-base) var(--ease-out),background var(--dur-base) var(--ease-out);}
 .theme-toggle:hover{color:var(--header-ink);border-color:var(--evidence);background:var(--evidence-bg);}
+#a11y-toggle[aria-pressed="true"]{color:var(--evidence-dark);border-color:var(--evidence);background:var(--evidence-bg);}
 .theme-toggle svg{width:18px;height:18px;}
 .theme-toggle .icon-moon{display:block;}
 .theme-toggle .icon-sun{display:none;}
@@ -2132,6 +2154,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
     </button>
+    <button id="a11y-toggle" class="theme-toggle" type="button" aria-label="Turn on high-contrast, large-text mode" title="High-contrast / large-text mode — for glare-heavy ward lighting" aria-pressed="false">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/></svg>
+    </button>
   </div>
 </header>
 
@@ -2804,6 +2829,31 @@ if(window.matchMedia){
   };
   if(mq.addEventListener) mq.addEventListener('change', onChange);
   else if(mq.addListener) mq.addListener(onChange);
+}
+
+/* ============================================================
+   High-contrast / large-text accessibility mode — independent of the
+   light/dark theme toggle above. A single CSS class on <html> that the
+   stylesheet responds to (html.wards-hc), persisted the same way the
+   theme choice is.
+   ============================================================ */
+const A11Y_KEY = 'wards_a11y_v1';
+function getInitialA11yMode(){
+  try{ return localStorage.getItem(A11Y_KEY) === 'hc'; }catch(e){ return false; }
+}
+function applyA11yMode(on){
+  document.documentElement.classList.toggle('wards-hc', !!on);
+  const b = document.getElementById('a11y-toggle');
+  if(b){
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.setAttribute('aria-label', on ? 'Turn off high-contrast, large-text mode' : 'Turn on high-contrast, large-text mode');
+    b.setAttribute('title', on ? 'Turn off high-contrast, large-text mode' : 'High-contrast / large-text mode — for glare-heavy ward lighting');
+  }
+}
+function toggleA11yMode(){
+  const next = !document.documentElement.classList.contains('wards-hc');
+  applyA11yMode(next);
+  try{ localStorage.setItem(A11Y_KEY, next ? 'hc' : 'off'); }catch(e){}
 }
 
 
@@ -3561,6 +3611,9 @@ function boot(){
   applyTheme(getInitialTheme());
   const toggle = document.getElementById('theme-toggle');
   if(toggle) toggle.onclick = toggleTheme;
+  applyA11yMode(getInitialA11yMode());
+  const a11yToggle = document.getElementById('a11y-toggle');
+  if(a11yToggle) a11yToggle.onclick = toggleA11yMode;
   const exportBtn = document.getElementById('wards-export-all');
   if(exportBtn) exportBtn.onclick = () => { haptic('Light'); exportAllWardsData(); };
   setupWardsTabs();
