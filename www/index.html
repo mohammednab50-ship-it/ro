@@ -442,6 +442,14 @@ main{min-width:0;}
 .badge.recency.fresh-hot{background:var(--fresh);color:#fff;border-color:transparent;}
 .abstract{font-family:var(--ff-serif);font-size:16px;line-height:var(--lh-loose);color:var(--ink-soft);margin:0 0 var(--space-6);max-width:62ch;}
 .abstract .dropcap{font-weight:700;color:var(--ink);}
+.bookmark-note{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:12px 14px;margin:0 0 var(--space-5);max-width:62ch;}
+.bookmark-note-label{display:block;font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:6px;}
+.bookmark-note-input{width:100%;min-height:52px;resize:vertical;border:1px solid var(--line);border-radius:var(--r-sm);padding:9px 10px;font-family:var(--ff-sans);font-size:13.5px;color:var(--ink);background:var(--paper);}
+.bookmark-note-input:focus{outline:none;border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
+.bookmark-note-actions{display:flex;align-items:center;gap:10px;margin-top:8px;}
+.bookmark-note-save{border:1px solid var(--line);background:none;border-radius:var(--r-pill);padding:6px 14px;font-family:var(--ff-sans);font-size:12px;font-weight:600;cursor:pointer;color:var(--ink-soft);}
+.bookmark-note-save:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
+.bookmark-note-saved{font-family:var(--ff-sans);font-size:11.5px;color:var(--fresh);font-weight:600;}
 .card-foot{display:flex;justify-content:space-between;align-items:center;padding-top:var(--space-4);border-top:1px solid var(--line-soft);gap:var(--space-3);flex-wrap:wrap;}
 .pmid-link{font-family:var(--ff-sans);font-size:13px;color:var(--evidence-dark);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:color var(--dur-fast) var(--ease-out);}
 .pmid-link:hover{color:var(--evidence);}
@@ -6099,7 +6107,7 @@ function isBookmarked(pmid){ return !!getBookmarks()[pmid]; }
 function toggleBookmark(article){
   const bm = getBookmarks();
   let added;
-  if(bm[article.pmid]){ delete bm[article.pmid]; added = false; }
+  if(bm[article.pmid]){ delete bm[article.pmid]; added = false; removeBookmarkNote(article.pmid); }
   else { bm[article.pmid] = article; added = true; }
   haptic('Medium');
   setBookmarks(bm);
@@ -6107,6 +6115,28 @@ function toggleBookmark(article){
   if(state.viewingBookmarks) renderBookmarksView();
   else render();
   renderChapters();
+}
+
+/* ---- Personal notes on saved articles (keyed by PMID, independent of
+   the bookmark record itself so re-saving an article after removing it
+   doesn't silently resurrect a stale note). ---- */
+const BOOKMARK_NOTES_KEY = 'rounds_bookmark_notes_v1';
+function getBookmarkNotes(){
+  try { return JSON.parse(localStorage.getItem(BOOKMARK_NOTES_KEY) || '{}'); } catch(e){ return {}; }
+}
+function getBookmarkNote(pmid){ return getBookmarkNotes()[pmid] || ''; }
+function setBookmarkNote(pmid, text){
+  const notes = getBookmarkNotes();
+  const trimmed = (text || '').trim();
+  if(trimmed) notes[pmid] = trimmed;
+  else delete notes[pmid];
+  try{ localStorage.setItem(BOOKMARK_NOTES_KEY, JSON.stringify(notes)); }catch(e){}
+}
+function removeBookmarkNote(pmid){
+  const notes = getBookmarkNotes();
+  if(!(pmid in notes)) return;
+  delete notes[pmid];
+  try{ localStorage.setItem(BOOKMARK_NOTES_KEY, JSON.stringify(notes)); }catch(e){}
 }
 
 /* ============================================================
@@ -6455,6 +6485,19 @@ function articleCard(a, idx){
   const dropcapHtml = truncated
     ? `<span class="dropcap">${escapeHtml(truncated.slice(0,1))}</span>${escapeHtml(truncated.slice(1))}`
     : 'No abstract available.';
+  // Personal note UI only makes sense in the Saved list — an unsaved
+  // article has nowhere to persist a note against yet.
+  const showNote = state.viewingBookmarks && saved;
+  const noteVal = showNote ? (getBookmarkNote(a.pmid) || '') : '';
+  const noteHtml = showNote ? `
+      <div class="bookmark-note">
+        <label class="bookmark-note-label" for="note-${escapeHtml(a.pmid)}">Your note</label>
+        <textarea id="note-${escapeHtml(a.pmid)}" class="bookmark-note-input" placeholder="e.g. relevant for morning report…" maxlength="500">${escapeHtml(noteVal)}</textarea>
+        <div class="bookmark-note-actions">
+          <button type="button" class="bookmark-note-save">Save note</button>
+          <span class="bookmark-note-saved" hidden>Saved</span>
+        </div>
+      </div>` : '';
 
   const li = document.createElement('li');
   li.className = 'card ' + freshClass;
@@ -6472,6 +6515,7 @@ function articleCard(a, idx){
         <span class="journal">${escapeHtml(a.journal || 'Journal unavailable')}</span>${a.authors ? `<span class="sep">·</span><span>${escapeHtml(a.authors)}</span>` : ''}
       </p>
       <p class="abstract">${dropcapHtml}</p>
+      ${noteHtml}
       <div class="card-foot">
         <a class="pmid-link" href="https://pubmed.ncbi.nlm.nih.gov/${encodeURIComponent(a.pmid)}/" target="_blank" rel="noopener">View on PubMed →</a>
         <span class="card-pmid">PMID ${escapeHtml(a.pmid)}</span>
@@ -6487,6 +6531,22 @@ function articleCard(a, idx){
   if(cite) cite.onclick = () => copyCitation(a);
   const share = li.querySelector('.share-btn');
   if(share) share.onclick = () => shareArticle(a);
+  if(showNote){
+    const saveBtn = li.querySelector('.bookmark-note-save');
+    const noteInput = li.querySelector('.bookmark-note-input');
+    const savedFlag = li.querySelector('.bookmark-note-saved');
+    if(saveBtn && noteInput){
+      saveBtn.onclick = () => {
+        setBookmarkNote(a.pmid, noteInput.value);
+        haptic('Light');
+        if(savedFlag){
+          savedFlag.hidden = false;
+          clearTimeout(savedFlag._t);
+          savedFlag._t = setTimeout(() => { savedFlag.hidden = true; }, 1600);
+        }
+      };
+    }
+  }
   return li;
 }
 
