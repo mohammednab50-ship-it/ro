@@ -1504,6 +1504,9 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-field{display:flex;flex-direction:column;gap:6px;}
 .vitals-field label{font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--ink-soft);}
 .vitals-field label span{font-weight:400;color:var(--ink-faint);text-transform:none;}
+.vitals-field label span.vitals-delta{font-weight:600;color:var(--ink-faint);}
+.vitals-field label span.vitals-delta.vitals-delta-up{color:var(--caution);}
+.vitals-field label span.vitals-delta.vitals-delta-down{color:var(--evidence-dark);}
 .vitals-field input,.vitals-field textarea{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 13px;
   font-family:var(--ff-sans);font-size:15.5px;background:var(--paper);color:var(--ink);width:100%;min-height:46px;
   transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);}
@@ -2206,27 +2209,27 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <input id="v-ts" type="datetime-local" required>
           </div>
           <div class="vitals-field">
-            <label for="v-hr">HR <span>bpm</span></label>
+            <label for="v-hr">HR <span>bpm</span> <span class="vitals-delta" id="v-hr-delta"></span></label>
             <input id="v-hr" type="number" inputmode="numeric" min="0" max="300">
           </div>
           <div class="vitals-field">
-            <label for="v-sbp">BP systolic</label>
+            <label for="v-sbp">BP systolic <span class="vitals-delta" id="v-sbp-delta"></span></label>
             <input id="v-sbp" type="number" inputmode="numeric" min="0" max="300">
           </div>
           <div class="vitals-field">
-            <label for="v-dbp">BP diastolic</label>
+            <label for="v-dbp">BP diastolic <span class="vitals-delta" id="v-dbp-delta"></span></label>
             <input id="v-dbp" type="number" inputmode="numeric" min="0" max="250">
           </div>
           <div class="vitals-field">
-            <label for="v-rr">RR <span>/min</span></label>
+            <label for="v-rr">RR <span>/min</span> <span class="vitals-delta" id="v-rr-delta"></span></label>
             <input id="v-rr" type="number" inputmode="numeric" min="0" max="80">
           </div>
           <div class="vitals-field">
-            <label for="v-spo2">SpO&#8322; <span>%</span></label>
+            <label for="v-spo2">SpO&#8322; <span>%</span> <span class="vitals-delta" id="v-spo2-delta"></span></label>
             <input id="v-spo2" type="number" inputmode="numeric" min="0" max="100">
           </div>
           <div class="vitals-field">
-            <label for="v-temp">Temp <span>&deg;C</span></label>
+            <label for="v-temp">Temp <span>&deg;C</span> <span class="vitals-delta" id="v-temp-delta"></span></label>
             <input id="v-temp" type="number" inputmode="decimal" step="0.1" min="25" max="43">
           </div>
           <div class="vitals-field">
@@ -2947,6 +2950,7 @@ function initVitals(){
   setupVitalsAutosave();
   setupVitalsPrintButton();
   setupVitalsNormalFillButton();
+  setupVitalsDeltaIndicators();
   renderPatientList();
   renderVitalsMain();
 }
@@ -3118,6 +3122,60 @@ function setupVitalsEntryForm(){
 // those don't have a single "typical" constant worth prefilling.
 const NORMAL_VITALS_PRESET = { 'v-hr': '75', 'v-sbp': '120', 'v-dbp': '80', 'v-rr': '16', 'v-spo2': '98', 'v-temp': '37.0' };
 
+/* ---- delta-from-last-reading, shown live while typing ----
+   Compares whatever's currently typed in each vital field against that
+   patient's most recently *logged* reading for the same field (not
+   whatever else is mid-typed elsewhere on the form) — a faster trend
+   signal than waiting to see it show up in the sparkline after logging. */
+const DELTA_FIELDS = ['hr', 'sbp', 'dbp', 'rr', 'spo2', 'temp'];
+
+function lastLoggedVitalValue(field){
+  const log = activeLog();
+  for(let i = log.length - 1; i >= 0; i--){
+    const v = log[i][field];
+    if(v !== '' && v !== undefined && v !== null){
+      const n = parseFloat(v);
+      if(!isNaN(n)) return n;
+    }
+  }
+  return null;
+}
+
+function updateVitalsDelta(field){
+  const input = document.getElementById('v-' + field);
+  const out = document.getElementById('v-' + field + '-delta');
+  if(!input || !out) return;
+  const cur = parseFloat(input.value);
+  const last = lastLoggedVitalValue(field);
+  if(input.value === '' || isNaN(cur) || last === null){
+    out.textContent = '';
+    out.className = 'vitals-delta';
+    return;
+  }
+  const diff = Math.round((cur - last) * 10) / 10;
+  if(diff === 0){
+    out.textContent = '(same as last)';
+    out.className = 'vitals-delta';
+    return;
+  }
+  const sign = diff > 0 ? '+' : '';
+  out.textContent = `(${sign}${diff} from last)`;
+  out.className = 'vitals-delta ' + (diff > 0 ? 'vitals-delta-up' : 'vitals-delta-down');
+}
+
+function setupVitalsDeltaIndicators(){
+  DELTA_FIELDS.forEach(field => {
+    const input = document.getElementById('v-' + field);
+    if(!input || input.dataset.deltaWired) return;
+    input.dataset.deltaWired = '1';
+    input.addEventListener('input', () => updateVitalsDelta(field));
+  });
+}
+
+function refreshAllVitalsDeltas(){
+  DELTA_FIELDS.forEach(updateVitalsDelta);
+}
+
 function setupVitalsNormalFillButton(){
   const btn = document.getElementById('vitals-fill-normal-btn');
   if(!btn || btn.dataset.wired) return;
@@ -3229,6 +3287,7 @@ function renderVitalsMain(){
   prefillVitalsTimestamp();
   renderVitalsTable();
   renderVitalsSparklines();
+  refreshAllVitalsDeltas();
 }
 
 function deleteVitalsRow(patientId, entryId){
