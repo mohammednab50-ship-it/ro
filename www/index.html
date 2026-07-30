@@ -1786,6 +1786,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Default tab</strong><span class="settings-sub">Which section opens on launch</span></div>
+      <select id="settings-default-tab" class="settings-select"></select>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Backup</strong><span class="settings-sub">Saved articles in one file</span></div>
       <button type="button" class="settings-btn" id="settings-export-all">Export all Rounds data</button>
     </div>
@@ -5918,6 +5923,17 @@ const BOOKMARK_KEY = 'rounds_bookmarks_v1';
 const THEME_KEY = 'rounds_theme_v1';
 const DISCLAIMER_KEY = 'rounds_disclaimer_dismissed';
 const LAST_TAB_KEY = 'rounds_last_tab_v1';
+const DEFAULT_TAB_KEY = 'rounds_default_tab_v1';
+// Only the tabs actually reachable right now (Guidelines stays out while
+// it's disabled in the tabbar — see the comment there).
+const TAB_OPTIONS = [
+  {id:'last', name:'Last visited (default)'},
+  {id:'literature', name:'Literature'},
+  {id:'drug', name:'Drugs'},
+  {id:'syndromes', name:'Conditions'},
+  {id:'advances', name:'Advances'},
+  {id:'trials', name:'Trials'}
+];
 const LAST_SPECIALTY_KEY = 'rounds_last_specialty_v1';
 const FEED_CACHE_KEY = 'rounds_feed_cache_v1';
 const SEEN_PMIDS_KEY = 'rounds_seen_pmids_v1';
@@ -9704,6 +9720,11 @@ function restoreLastSpecialty(){
 
 function restoreLastTab(){
   try{
+    const def = localStorage.getItem(DEFAULT_TAB_KEY);
+    if(def && def !== 'last'){
+      if(def !== 'literature') switchView(def, {haptic:false});
+      return;
+    }
     const v = localStorage.getItem(LAST_TAB_KEY);
     if(!v || v === 'literature') return;
     switchView(v, {haptic:false});
@@ -9929,6 +9950,17 @@ function openSettings(){
       try{ localStorage.setItem(LAST_SPECIALTY_KEY, sel.value); }catch(e){}
       const sp = SPECIALTIES.find(s => s.id === sel.value);
       if(sp){ state.specialty = sp; state.customTerm = null; state.viewingBookmarks = false; renderChapters(); fetchArticles(); }
+      haptic('Light');
+    };
+  }
+
+  const tabSel = document.getElementById('settings-default-tab');
+  if(tabSel){
+    let curTab = 'last';
+    try{ curTab = localStorage.getItem(DEFAULT_TAB_KEY) || 'last'; }catch(e){}
+    tabSel.innerHTML = TAB_OPTIONS.map(t => `<option value="${escapeHtml(t.id)}"${t.id===curTab?' selected':''}>${escapeHtml(t.name)}</option>`).join('');
+    tabSel.onchange = () => {
+      try{ localStorage.setItem(DEFAULT_TAB_KEY, tabSel.value); }catch(e){}
       haptic('Light');
     };
   }
