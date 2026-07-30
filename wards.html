@@ -308,6 +308,8 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .app-toast.toast-err::before{background:var(--caution,#E0794F);}
 .app-toast-undo{flex-shrink:0;border:1px solid var(--shell-line,rgba(244,241,234,0.28));background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;padding:3px 10px;border-radius:var(--r-pill);margin-left:2px;}
 .app-toast-undo:hover{background:rgba(244,241,234,0.14);}
+/* quiet hours: skip the slide/fade animation flourish — text still shows instantly */
+html.wards-quiet-active .app-toast,html.wards-quiet-active .mat-toast{transition:none !important;}
 
 /* ---- app footer / version ---- */
 .app-footer{max-width:1280px;margin:0 auto;padding:28px 40px 40px;display:flex;flex-wrap:wrap;gap:6px 16px;
@@ -2132,6 +2134,20 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .connectivity-indicator[data-state="offline"]{color:var(--caution);border-color:var(--caution-line);}
 @media (max-width:640px){ .connectivity-indicator .label{display:none;} }
 
+/* ---- quiet hours settings popover ---- */
+.quiet-hours-wrap{position:relative;}
+#quiet-hours-toggle[aria-pressed="true"]{color:var(--evidence-dark);border-color:var(--evidence);background:var(--evidence-bg);}
+.quiet-hours-panel{
+  position:absolute; top:calc(100% + 8px); right:0; z-index:50; width:240px;
+  background:var(--surface-raised); border:1px solid var(--line); border-radius:var(--r-md);
+  box-shadow:var(--shadow-lift); padding:14px 16px; font-family:var(--ff-sans);
+}
+.quiet-hours-panel .qh-row{display:flex; align-items:center; gap:8px; font-size:13px; font-weight:600; color:var(--ink); margin-bottom:10px;}
+.quiet-hours-panel .qh-times{display:flex; gap:10px; margin-bottom:8px;}
+.quiet-hours-panel .qh-times label{display:flex; flex-direction:column; gap:4px; font-size:11.5px; color:var(--ink-faint); flex:1;}
+.quiet-hours-panel .qh-times input{border:1px solid var(--line); border-radius:var(--r-sm); padding:6px 8px; font-family:var(--ff-sans); font-size:13px; background:var(--paper); color:var(--ink);}
+.quiet-hours-panel .qh-note{font-size:11px; color:var(--ink-faint); line-height:1.4; margin:0;}
+
 .wards-tabbar{
   display:flex; gap:6px; padding:10px 28px; max-width:1280px; margin:0 auto;
   border-bottom:1px solid var(--line);
@@ -2174,6 +2190,19 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <button id="a11y-toggle" class="theme-toggle" type="button" aria-label="Turn on high-contrast, large-text mode" title="High-contrast / large-text mode — for glare-heavy ward lighting" aria-pressed="false">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18Z" fill="currentColor" stroke="none"/></svg>
     </button>
+    <div class="quiet-hours-wrap">
+      <button id="quiet-hours-toggle" class="theme-toggle" type="button" aria-label="Quiet hours settings" title="Quiet hours — suppress non-essential toast/haptic flourish overnight" aria-expanded="false" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/><path d="M12 8v4l2.5 2.5" stroke-width="1.4"/></svg>
+      </button>
+      <div class="quiet-hours-panel" id="quiet-hours-panel" hidden>
+        <label class="qh-row"><input type="checkbox" id="quiet-hours-enabled"> Enable quiet hours</label>
+        <div class="qh-times">
+          <label>Start <input type="time" id="quiet-hours-start" value="22:00"></label>
+          <label>End <input type="time" id="quiet-hours-end" value="06:00"></label>
+        </div>
+        <p class="qh-note">Suppresses haptic buzz and toast animation flourish during this window (toast text still shows). Default 22:00&ndash;06:00.</p>
+      </div>
+    </div>
   </div>
 </header>
 
@@ -2896,11 +2925,94 @@ function setupConnectivityIndicator(){
   window.addEventListener('offline', renderConnectivity);
 }
 
+/* ============================================================
+   Quiet hours — suppresses non-essential toast animation/haptic
+   flourish during a configurable night-shift window (default
+   22:00-06:00). Gated at the source (haptic() below, and a body class
+   the toast CSS responds to) so every existing call site is covered
+   automatically without touching what those calls are attached to —
+   toast *text* always still shows, only the buzz/animation is skipped.
+   ============================================================ */
+const QUIET_HOURS_KEY = 'wards_quiet_hours_v1';
+function getQuietHoursSettings(){
+  try{
+    const raw = localStorage.getItem(QUIET_HOURS_KEY);
+    if(raw){
+      const parsed = JSON.parse(raw);
+      if(parsed && typeof parsed === 'object'){
+        return {
+          enabled: !!parsed.enabled,
+          start: typeof parsed.start === 'string' ? parsed.start : '22:00',
+          end: typeof parsed.end === 'string' ? parsed.end : '06:00'
+        };
+      }
+    }
+  }catch(e){}
+  return { enabled: false, start: '22:00', end: '06:00' };
+}
+function saveQuietHoursSettings(s){
+  try{ localStorage.setItem(QUIET_HOURS_KEY, JSON.stringify(s)); }catch(e){}
+}
+function isQuietHoursNow(){
+  const s = getQuietHoursSettings();
+  if(!s.enabled) return false;
+  const toMinutes = t => { const m = /^(\d{1,2}):(\d{2})$/.exec(t || ''); return m ? (parseInt(m[1],10)*60 + parseInt(m[2],10)) : null; }
+  const start = toMinutes(s.start), end = toMinutes(s.end);
+  if(start === null || end === null) return false;
+  const now = new Date();
+  const cur = now.getHours()*60 + now.getMinutes();
+  if(start === end) return false;
+  if(start < end) return cur >= start && cur < end; // same-day window
+  return cur >= start || cur < end; // overnight window, e.g. 22:00-06:00
+}
+function updateQuietHoursBodyClass(){
+  document.documentElement.classList.toggle('wards-quiet-active', isQuietHoursNow());
+}
+function setupQuietHoursUI(){
+  const btn = document.getElementById('quiet-hours-toggle');
+  const panel = document.getElementById('quiet-hours-panel');
+  const enabledInput = document.getElementById('quiet-hours-enabled');
+  const startInput = document.getElementById('quiet-hours-start');
+  const endInput = document.getElementById('quiet-hours-end');
+  if(!btn || !panel || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  const s = getQuietHoursSettings();
+  enabledInput.checked = s.enabled;
+  startInput.value = s.start;
+  endInput.value = s.end;
+  btn.setAttribute('aria-pressed', s.enabled ? 'true' : 'false');
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isHidden = panel.hidden;
+    panel.hidden = !isHidden;
+    btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+  });
+  document.addEventListener('click', (e) => {
+    if(!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true;
+  });
+  const persist = () => {
+    const next = { enabled: enabledInput.checked, start: startInput.value || '22:00', end: endInput.value || '06:00' };
+    saveQuietHoursSettings(next);
+    btn.setAttribute('aria-pressed', next.enabled ? 'true' : 'false');
+    updateQuietHoursBodyClass();
+  };
+  enabledInput.addEventListener('change', persist);
+  startInput.addEventListener('change', persist);
+  endInput.addEventListener('change', persist);
+
+  updateQuietHoursBodyClass();
+  setInterval(updateQuietHoursBodyClass, 60000);
+}
+
 /* ---- Haptic feedback ----
    Uses Capacitor Haptics in the packaged app (real native impact styles),
    falls back to the Web Vibration API in the browser/WebView. No-op where
-   neither is available (e.g. desktop, iOS Safari). style: 'Light'|'Medium'|'Heavy'. */
+   neither is available (e.g. desktop, iOS Safari). style: 'Light'|'Medium'|'Heavy'.
+   Also a no-op during quiet hours (see above) — a skipped buzz, never a
+   skipped action; nothing that calls haptic() depends on it firing. */
 function haptic(style){
+  if(isQuietHoursNow()) return;
   try{
     const cap = window.Capacitor;
     const H = cap && cap.Plugins && cap.Plugins.Haptics;
@@ -3654,6 +3766,7 @@ function boot(){
   const a11yToggle = document.getElementById('a11y-toggle');
   if(a11yToggle) a11yToggle.onclick = toggleA11yMode;
   setupConnectivityIndicator();
+  setupQuietHoursUI();
   const exportBtn = document.getElementById('wards-export-all');
   if(exportBtn) exportBtn.onclick = () => { haptic('Light'); exportAllWardsData(); };
   setupWardsTabs();
