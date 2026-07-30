@@ -1802,6 +1802,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Recently viewed</strong><span class="settings-sub" id="settings-recent-info">Nothing viewed yet</span></div>
+      <button type="button" class="settings-btn" id="settings-view-recent">View</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Backup</strong><span class="settings-sub">Saved articles in one file</span></div>
       <button type="button" class="settings-btn" id="settings-export-all">Export all Rounds data</button>
     </div>
@@ -1860,6 +1865,17 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div class="crashlog-actions">
       <button type="button" class="settings-btn" id="feedback-download">Download report</button>
     </div>
+  </div>
+</div>
+
+<!-- ===== Recently viewed (Settings > Recently viewed) ===== -->
+<div class="rename-overlay" id="recent-modal" role="dialog" aria-modal="true" aria-labelledby="recent-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="recent-close" aria-label="Close recently viewed">&times;</button>
+    <p class="onb-eyebrow">HISTORY</p>
+    <h2 class="onb-title serif" id="recent-title">Recently viewed</h2>
+    <p class="settings-sub" style="display:block;margin:-4px 0 14px;">Your last drug lookups, condition research, advances, and trials — across all four tabs.</p>
+    <div class="crashlog-list" id="recent-list"></div>
   </div>
 </div>
 
@@ -6037,6 +6053,27 @@ function togglePinSpecialty(id){
 const FEED_CACHE_KEY = 'rounds_feed_cache_v1';
 const SEEN_PMIDS_KEY = 'rounds_seen_pmids_v1';
 const FONTSIZE_KEY = 'rounds_fontsize_v1';
+
+/* ============================================================
+   Recently viewed — last N "detail" views across Drugs/Conditions/
+   Advances/Trials, so backtracking doesn't require re-searching.
+   ============================================================ */
+const RECENTLY_VIEWED_KEY = 'rounds_recently_viewed_v1';
+const RECENTLY_VIEWED_MAX = 10;
+const RECENTLY_VIEWED_LABELS = {drug:'Drug', condition:'Condition', advance:'Advance', trial:'Trial'};
+function getRecentlyViewed(){
+  try{ const v = JSON.parse(localStorage.getItem(RECENTLY_VIEWED_KEY) || '[]'); return Array.isArray(v) ? v : []; }
+  catch(e){ return []; }
+}
+function recordRecentlyViewed(category, label, url){
+  if(!label) return;
+  try{
+    let list = getRecentlyViewed().filter(x => !(x.category === category && x.label === label));
+    list.unshift({ category, label, url: url || '', t: new Date().toISOString() });
+    if(list.length > RECENTLY_VIEWED_MAX) list = list.slice(0, RECENTLY_VIEWED_MAX);
+    localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(list));
+  }catch(e){}
+}
 const CBER_LAST_REVIEWED = '2026-07-19';
 
 /* ---- Haptic feedback ----
@@ -6918,6 +6955,7 @@ async function lookupDrug(){
     }
     resultsEl.innerHTML = '';
     results.forEach(r => resultsEl.appendChild(drugCard(r)));
+    recordRecentlyViewed('drug', qRaw);
   } catch(e){
     resultsEl.innerHTML = stateError('COULD NOT REACH FDA LABELS', 'Try again.', 'lookupDrug');
   }
@@ -7565,6 +7603,7 @@ function setupConditionEvidence(){
       row.appendChild(panel);
     }
     fetchConditionEvidence(name, panel);
+    recordRecentlyViewed('condition', name);
   });
 }
 
@@ -8168,6 +8207,7 @@ function initAdvances(){
   if(advancesState.init) return;
   advancesState.init = true;
   advancesState.data = {};
+  setupAdvanceViewTracking();
   const filter = document.getElementById('advance-filter');
   if(filter){
     const fields = [{id:'all', name:'All fields'}].concat(ADVANCE_FIELDS);
@@ -8324,7 +8364,7 @@ function renderAdvances(){
           ${a.year ? `<span class="advance-item-year">${escapeHtml(a.dateDisplay)}</span>` : ''}
           <span class="advance-tag ${a.cls}">${escapeHtml(a.label)}</span>
         </div>
-        <h4 class="advance-item-title"><a href="${pubHref}" target="_blank" rel="noopener">${escapeHtml(a.title)}</a></h4>
+        <h4 class="advance-item-title"><a href="${pubHref}" target="_blank" rel="noopener" class="advance-view-link" data-title="${escapeHtml(a.title)}" data-url="${pubHref}">${escapeHtml(a.title)}</a></h4>
         ${meta ? `<p class="advance-item-desc">${meta}</p>` : ''}
         <div class="advance-item-foot">${foot}</div>
       </li>`;
@@ -8335,6 +8375,19 @@ function renderAdvances(){
       </div>
       <ul class="advance-list">${rows}</ul>`;
     container.appendChild(section);
+  });
+}
+
+/* Delegated once — records a recently-viewed entry whenever a title link
+   to PubMed is clicked, without touching the link's normal navigation. */
+function setupAdvanceViewTracking(){
+  const container = document.getElementById('advance-groups');
+  if(!container || container.dataset.viewTrackWired) return;
+  container.dataset.viewTrackWired = '1';
+  container.addEventListener('click', e => {
+    const link = e.target.closest('.advance-view-link');
+    if(!link) return;
+    recordRecentlyViewed('advance', link.dataset.title, link.dataset.url);
   });
 }
 
@@ -8370,6 +8423,7 @@ function trialPhaseLabel(phases){
 function initTrials(){
   if(trialsState.init) return;
   trialsState.init = true;
+  setupTrialViewTracking();
   const filter = document.getElementById('trial-filter');
   if(filter){
     filter.innerHTML = TRIAL_STATUS_FILTERS.map(f =>
@@ -8502,7 +8556,7 @@ function renderTrials(){
         <span class="trial-tag ${t.status.cls}">${escapeHtml(t.status.label)}</span>
         ${t.phase ? `<span class="trial-tag trial-phase">${escapeHtml(t.phase)}</span>` : ''}
       </div>
-      <h3 class="trial-item-title"><a href="${href}" target="_blank" rel="noopener">${escapeHtml(t.title)}</a></h3>
+      <h3 class="trial-item-title"><a href="${href}" target="_blank" rel="noopener" class="trial-view-link" data-title="${escapeHtml(t.title)}" data-url="${href}">${escapeHtml(t.title)}</a></h3>
       ${t.conditions ? `<p class="trial-item-cond">${escapeHtml(t.conditions)}</p>` : ''}
       ${meta ? `<div class="trial-item-meta">${meta}</div>` : ''}
       <div class="trial-item-foot">${foot}</div>
@@ -8513,6 +8567,19 @@ function renderTrials(){
     `<p class="trial-status-line"><span class="dot-live"></span>Live from ClinicalTrials.gov · ${escapeHtml(statusName)} · sorted by most recently updated</p>` +
     `<p class="trial-count">${escapeHtml(totalLabel)}${total > shown ? ' — showing the 25 most recently updated' : ''}</p>` +
     rows;
+}
+
+/* Delegated once — records a recently-viewed entry whenever a trial title
+   link to ClinicalTrials.gov is clicked. */
+function setupTrialViewTracking(){
+  const container = document.getElementById('trial-results');
+  if(!container || container.dataset.viewTrackWired) return;
+  container.dataset.viewTrackWired = '1';
+  container.addEventListener('click', e => {
+    const link = e.target.closest('.trial-view-link');
+    if(!link) return;
+    recordRecentlyViewed('trial', link.dataset.title, link.dataset.url);
+  });
 }
 
 // Switch the active section. Called by both the desktop top tabs and the
@@ -10155,6 +10222,14 @@ function openSettings(){
   const feedbackBtn = document.getElementById('settings-feedback');
   if(feedbackBtn) feedbackBtn.onclick = () => { haptic('Light'); openFeedback(); };
 
+  const recentInfo = document.getElementById('settings-recent-info');
+  if(recentInfo){
+    const n = getRecentlyViewed().length;
+    recentInfo.textContent = n ? `${n} item${n===1?'':'s'} recently viewed` : 'Nothing viewed yet';
+  }
+  const recentViewBtn = document.getElementById('settings-view-recent');
+  if(recentViewBtn) recentViewBtn.onclick = () => { haptic('Light'); openRecentlyViewed(); };
+
   function close(){
     modal.hidden = true;
     document.removeEventListener('keydown', onKey);
@@ -10282,6 +10357,72 @@ function openFeedback(){
       close();
     };
   }
+
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+
+/* ============================================================
+   Recently viewed
+   ============================================================ */
+function timeAgoShort(iso){
+  const d = new Date(iso);
+  if(isNaN(d)) return '';
+  const mins = Math.round((Date.now() - d.getTime()) / 60000);
+  if(mins < 1) return 'just now';
+  if(mins < 60) return `${mins}m ago`;
+  const hrs = Math.round(mins / 60);
+  if(hrs < 24) return `${hrs}h ago`;
+  return `${Math.round(hrs / 24)}d ago`;
+}
+function jumpToRecentlyViewed(item){
+  if(item.category === 'drug'){
+    switchView('drug');
+    const inp = document.getElementById('drug-input');
+    if(inp){ inp.value = item.label; }
+    lookupDrug();
+  } else if(item.category === 'condition'){
+    switchView('syndromes');
+    const search = document.getElementById('syndrome-search');
+    if(search){
+      search.value = item.label;
+      syndromesState.query = item.label.toLowerCase();
+      renderSyndromeGroups();
+    }
+  } else if(item.url){
+    window.open(item.url, '_blank', 'noopener');
+  }
+}
+function openRecentlyViewed(){
+  const modal = document.getElementById('recent-modal');
+  if(!modal) return;
+  const listEl = document.getElementById('recent-list');
+  const items = getRecentlyViewed();
+  if(items.length === 0){
+    listEl.innerHTML = '<div class="crashlog-empty">Nothing viewed yet — drug lookups, condition research, advances, and trials will show up here.</div>';
+  } else {
+    listEl.innerHTML = items.map((it, i) => `
+      <div class="crashlog-entry recent-entry" data-idx="${i}">
+        <span class="crashlog-time">${escapeHtml(RECENTLY_VIEWED_LABELS[it.category] || it.category)} · ${escapeHtml(timeAgoShort(it.t))}</span>
+        <p class="crashlog-msg recent-label">${escapeHtml(it.label)}</p>
+      </div>`).join('');
+    listEl.querySelectorAll('.recent-entry').forEach(el => {
+      el.style.cursor = 'pointer';
+      el.onclick = () => {
+        const item = items[Number(el.dataset.idx)];
+        close();
+        if(item) jumpToRecentlyViewed(item);
+      };
+    });
+  }
+
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('recent-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
 
   modal.hidden = false;
   document.addEventListener('keydown', onKey);
