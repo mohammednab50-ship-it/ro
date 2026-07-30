@@ -1470,6 +1470,29 @@ footer.home-footer{max-width:1180px;margin:0 auto;padding:0 24px 48px;display:fl
   flex-wrap:wrap;gap:10px;color:var(--ink-faint);font-size:12.5px;}
 footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 
+/* ---- print ----
+   The app has no separate print-only summary sheet (unlike Wards' Vitals/
+   Maternity print views) — this just makes printing whatever's on screen
+   safe from dark theme. Without this, printing in dark mode would print
+   light text on a dark/black background: unreadable and a waste of ink.
+   Forces light, high-contrast colors and hides chrome that's meaningless
+   on paper (nav, search, floating buttons, modals). */
+@media print{
+  html, html[data-theme="dark"]{
+    --paper:#FFFFFF; --paper-deep:#FFFFFF; --surface:#FFFFFF; --surface-raised:#FFFFFF;
+    --ink:#000000; --ink-soft:#222222; --ink-faint:#555555;
+    --line:#CCCCCC; --line-soft:#DDDDDD;
+    --shell:#FFFFFF; --shell-raised:#FFFFFF; --shell-ink:#000000; --shell-ink-soft:#333333; --shell-line:#CCCCCC;
+  }
+  body::before{display:none !important;}
+  header, .tabbar, .bottom-nav, .chapters, .disclaimer, .pulse-line-wrap,
+  #global-scroll-top, .cache-banner, .card-foot, .bookmark-note-actions,
+  .rename-overlay, .login-overlay, .onb-overlay{display:none !important;}
+  .layout{grid-template-columns:1fr !important;}
+  .card, .drug-live, .approval-card, .advance-item, .trial-item{box-shadow:none !important;border:1px solid #ccc !important;break-inside:avoid;}
+  a{color:#000 !important;text-decoration:underline;}
+}
+
 </style>
 </head>
 <body>
