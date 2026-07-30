@@ -2362,6 +2362,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Backup</strong><span class="settings-sub">Vitals, Maternity &amp; saved articles in one file</span></div>
+      <button type="button" class="settings-btn" id="settings-export-all">Export all Rounds data</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Offline cache</strong><span class="settings-sub" id="settings-cache-info">Saved feeds for offline reading</span></div>
       <button type="button" class="settings-btn settings-btn-danger" id="settings-clear-cache">Clear</button>
     </div>
@@ -7105,6 +7110,36 @@ function haptic(style){
 }
 
 /* ============================================================
+   Combined backup — "Export all Rounds data"
+   Additive convenience on top of Vitals'/Maternity's own separate export
+   buttons: bundles every piece of this app's local data (Vitals, Maternity,
+   saved-article bookmarks) into one downloadable JSON file, nested under
+   clearly-named top-level keys so it's still obvious which app section
+   each part came from.
+   ============================================================ */
+function exportAllRoundsData(){
+  let vitals = null, maternity = [], bookmarks = {};
+  try{ const raw = localStorage.getItem('rounds_vitals_v1'); vitals = raw ? JSON.parse(raw) : null; }catch(e){}
+  try{ const raw = localStorage.getItem('mat_portal_patients_v1'); maternity = raw ? JSON.parse(raw) : []; }catch(e){}
+  try{ bookmarks = getBookmarks(); }catch(e){}
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    app: 'Rounds',
+    vitals: vitals,
+    maternity: maternity,
+    bookmarks: bookmarks
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0, 10);
+  a.href = url; a.download = 'rounds-full-backup-' + stamp + '.json';
+  document.body.appendChild(a); a.click(); a.remove();
+  URL.revokeObjectURL(url);
+  showToast('Full backup downloaded', 'ok');
+}
+
+/* ============================================================
    Toast — lightweight action confirmations
    ============================================================ */
 let toastTimer = null;
@@ -11466,6 +11501,9 @@ function openSettings(){
     haptic('Medium');
     showToast('Offline cache cleared', 'ok');
   };
+
+  const exportAllBtn = document.getElementById('settings-export-all');
+  if(exportAllBtn) exportAllBtn.onclick = () => { haptic('Light'); exportAllRoundsData(); };
 
   function close(){
     modal.hidden = true;
