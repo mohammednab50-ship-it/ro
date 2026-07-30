@@ -1527,6 +1527,24 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-spark polyline.spark-line-secondary{fill:none;stroke:var(--fresh);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round;opacity:0.85;}
 .vitals-spark circle.spark-dot{fill:var(--evidence);}
 
+/* ---- combined multi-vital trend chart: HR + BP systolic + SpO2 overlaid
+   over the same time axis, each series independently normalized to the
+   chart height (they're on different scales) — same pure SVG/CSS
+   sparkline approach as the single-metric ones above, just three
+   polylines sharing one x-axis instead of one polyline per chart. ---- */
+.vitals-combined-trend{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;box-shadow:var(--shadow-sm);margin-bottom:var(--space-6);}
+.vitals-combined-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:10px;}
+.vitals-combined-legend{display:flex;gap:12px;flex-wrap:wrap;}
+.vitals-combined-legend .ck{font-family:var(--ff-sans);font-size:11px;font-weight:700;padding-left:14px;position:relative;color:var(--ink-soft);}
+.vitals-combined-legend .ck::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:10px;height:3px;border-radius:2px;}
+.vitals-combined-legend .ck-hr::before{background:var(--evidence);}
+.vitals-combined-legend .ck-sbp::before{background:var(--fresh);}
+.vitals-combined-legend .ck-spo2::before{background:#7A4FE0;}
+.vitals-combined-spark{width:100%;height:80px;overflow:visible;}
+.vitals-combined-spark polyline.ct-hr{fill:none;stroke:var(--evidence);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.vitals-combined-spark polyline.ct-sbp{fill:none;stroke:var(--fresh);stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+.vitals-combined-spark polyline.ct-spo2{fill:none;stroke:#7A4FE0;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;}
+
 .vitals-panel{border:1px solid transparent;border-radius:var(--r-lg);padding:var(--space-6) var(--space-7);background:var(--surface-raised);box-shadow:var(--shadow-md);margin-bottom:var(--space-6);}
 .vitals-form-toprow{display:flex;justify-content:flex-end;margin-bottom:var(--space-3);}
 .vitals-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:var(--space-4);margin-bottom:var(--space-4);}
@@ -2312,6 +2330,16 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <span class="vitals-trend-label">BP trend</span>
           <svg class="vitals-spark" id="vitals-spark-bp" viewBox="0 0 120 32" preserveAspectRatio="none" aria-hidden="true"></svg>
         </div>
+      </div>
+
+      <div class="vitals-combined-trend" id="vitals-combined-trend" hidden>
+        <div class="vitals-combined-head">
+          <span class="vitals-trend-label">Combined trend &mdash; HR, BP systolic &amp; SpO&#8322; over the same time axis</span>
+          <span class="vitals-combined-legend">
+            <span class="ck ck-hr">HR</span><span class="ck ck-sbp">BP sys</span><span class="ck ck-spo2">SpO&#8322;</span>
+          </span>
+        </div>
+        <svg class="vitals-combined-spark" id="vitals-combined-spark" viewBox="0 0 320 70" preserveAspectRatio="none" aria-hidden="true"></svg>
       </div>
 
       <form class="vitals-panel" id="vitals-entry-form" autocomplete="off">
@@ -3536,6 +3564,7 @@ function renderVitalsMain(){
   prefillVitalsTimestamp();
   renderVitalsTable();
   renderVitalsSparklines();
+  renderVitalsCombinedTrend();
   refreshAllVitalsDeltas();
 }
 
@@ -3664,6 +3693,35 @@ function renderVitalsSparklines(){
     : '';
   svgBp.innerHTML = (sbpPts ? `<polyline class="spark-line" points="${toPolyline(sbpPts)}"/>${lastDot(sbpPts)}` : '')
     + (dbpPts ? `<polyline class="spark-line-secondary" points="${toPolyline(dbpPts)}"/>` : '');
+}
+
+/* ---- combined multi-vital trend: HR + BP systolic + SpO2 overlaid on
+   the same time axis. Each series is independently normalized to the
+   chart height (buildSparklinePoints already does this per-series) so
+   three very differently-scaled vitals can share one x-axis and still
+   be visually comparable for shape/co-movement, not absolute value. ---- */
+function renderVitalsCombinedTrend(){
+  const wrap = document.getElementById('vitals-combined-trend');
+  const svg = document.getElementById('vitals-combined-spark');
+  if(!wrap || !svg) return;
+  const log = activeLog().slice().sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const w = 320, h = 70;
+
+  const hrPts = buildSparklinePoints(log.map(e => e.hr), w, h);
+  const sbpPts = buildSparklinePoints(log.map(e => e.sbp), w, h);
+  const spo2Pts = buildSparklinePoints(log.map(e => e.spo2), w, h);
+
+  if(!hrPts && !sbpPts && !spo2Pts){
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+
+  const toPolyline = pts => pts.map(p => p[0].toFixed(1) + ',' + p[1].toFixed(1)).join(' ');
+  svg.innerHTML =
+    (hrPts ? `<polyline class="ct-hr" points="${toPolyline(hrPts)}"/>` : '') +
+    (sbpPts ? `<polyline class="ct-sbp" points="${toPolyline(sbpPts)}"/>` : '') +
+    (spo2Pts ? `<polyline class="ct-spo2" points="${toPolyline(spo2Pts)}"/>` : '');
 }
 
 /* ---- CSV export (local download only, nothing sent anywhere) ---- */
