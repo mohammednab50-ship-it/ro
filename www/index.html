@@ -223,6 +223,9 @@ body > header{background:transparent;position:sticky;top:0;z-index:50;padding:14
 .btn-search{border:none;background:var(--cta-bg);color:var(--cta-ink);border-radius:var(--r-pill);padding:10px 20px;font-size:12.5px;font-weight:700;letter-spacing:var(--tracking-wide);cursor:pointer;transition:background var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);}
 .btn-search:hover{background:var(--cta-bg-hover);transform:translateY(-1px);}
 .btn-search:active{transform:scale(0.97);}
+.btn-search-everywhere{border:1px solid var(--header-line);background:none;color:var(--header-ink-soft);border-radius:var(--r-pill);padding:9px 14px;font-size:11.5px;font-weight:600;letter-spacing:var(--tracking-wide);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
+.btn-search-everywhere:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
+@media (max-width:520px){.btn-search-everywhere{padding:9px 10px;font-size:10.5px;}}
 
 .theme-toggle{width:34px;height:34px;border:1px solid var(--header-line);border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--header-ink-soft);transition:border-color var(--dur-base) var(--ease-out),color var(--dur-base) var(--ease-out),background var(--dur-base) var(--ease-out);}
 .theme-toggle:hover{color:var(--header-ink);border-color:var(--evidence);background:var(--evidence-bg);}
@@ -1139,6 +1142,16 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .whatsnew-version h3{font-family:var(--ff-sans);font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--shell-ink-soft);margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--shell-line);}
 .whatsnew-version ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;}
 .whatsnew-version li{font-family:var(--ff-sans);font-size:13.5px;line-height:1.5;color:var(--shell-ink-soft);}
+.global-search-card{max-width:520px;}
+.global-search-box{margin-bottom:4px;}
+.global-search-box input{width:100%;border:1px solid var(--shell-line);background:rgba(255,255,255,0.05);color:var(--shell-ink);border-radius:var(--r-pill);padding:11px 16px;font-family:var(--ff-sans);font-size:14px;}
+.global-search-box input:focus{outline:none;border-color:var(--evidence);}
+.global-search-group{margin:16px 0 0;}
+.global-search-group h3{font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--shell-ink-soft);margin:0 0 8px;}
+.global-search-item{display:block;width:100%;text-align:left;border:none;background:none;color:var(--shell-ink);font-family:var(--ff-sans);font-size:13.5px;padding:9px 10px;border-radius:var(--r-sm);cursor:pointer;line-height:1.4;}
+.global-search-item:hover{background:rgba(255,255,255,0.06);}
+.global-search-item .gs-sub{display:block;font-size:11.5px;color:var(--shell-ink-soft);margin-top:2px;}
+.global-search-empty{padding:16px 4px;color:var(--shell-ink-soft);font-family:var(--ff-sans);font-size:13px;text-align:center;}
 
 /* =====================================================================
    Responsive — tablet & phone tuning (additive overrides)
@@ -1949,6 +1962,21 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== Search everywhere — combined search over Literature/Drugs/
+     Conditions/Advances/Trials' already-loaded/cached data ===== -->
+<div class="rename-overlay" id="global-search-modal" role="dialog" aria-modal="true" aria-labelledby="global-search-title" hidden>
+  <div class="rename-card settings-card global-search-card" role="document">
+    <button type="button" class="onb-close" id="global-search-close" aria-label="Close search everywhere">&times;</button>
+    <p class="onb-eyebrow">SEARCH EVERYWHERE</p>
+    <h2 class="onb-title serif" id="global-search-title">Search across all tabs</h2>
+    <div class="global-search-box">
+      <input id="global-search-input" type="search" placeholder="Search Literature, Drugs, Conditions, Advances, Trials…" autocomplete="off" spellcheck="false">
+    </div>
+    <p class="settings-sub" style="display:block;margin:8px 0 14px;">Searches whatever's already loaded or cached in each tab — not a fresh lookup. Visit a tab first (or search there) to widen what's searchable here.</p>
+    <div id="global-search-results"></div>
+  </div>
+</div>
+
 <header>
   <div class="header-inner">
     <a class="brand" href="#" aria-label="Rounds — home">
@@ -1966,6 +1994,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <label for="search-input" class="sr-only" style="position:absolute;left:-9999px;">Search PubMed</label>
       <input id="search-input" type="search" placeholder='Search topics, drugs, or trials…' autocomplete="off" spellcheck="false">
       <button id="search-btn" class="btn-search" type="button">Search</button>
+      <button id="search-everywhere-btn" class="btn-search-everywhere" type="button" title="Search everywhere — Literature, Drugs, Conditions, Advances, Trials at once">Everywhere</button>
     </form>
     <div class="header-actions">
     <span id="welcome-greeting" class="welcome-greeting" hidden></span>
@@ -6342,6 +6371,11 @@ function setFontSize(size){
    ============================================================ */
 
 let state = { specialty: SPECIALTIES[0], customTerm: null, loading: false, articles: [], error: null, viewingBookmarks: false, fromCache: false, newCount: 0 };
+// Rolling in-memory cache of drug lookups this session, so "Search
+// everywhere" (global search) can find drugs already looked up without an
+// extra network round-trip. Not persisted — cleared on reload, same as the
+// rest of the Drugs tab's transient state.
+let lastDrugResults = [];
 let approvalsState = { init: false };
 let guidelinesState = { init: false };
 let advancesState = { init: false, field: 'all', query: '', data: {}, loading: false, fetched: false, error: null, done: 0 };
@@ -7047,6 +7081,19 @@ async function lookupDrug(){
     resultsEl.innerHTML = '';
     results.forEach(r => resultsEl.appendChild(drugCard(r)));
     recordRecentlyViewed('drug', qRaw);
+    // Remember these lookups (brand/generic only) so "Search everywhere" can
+    // find them later without re-hitting openFDA.
+    results.forEach(r => {
+      const of = r.openfda || {};
+      const brand = (of.brand_name && of.brand_name[0]) || '';
+      const generic = (of.generic_name && of.generic_name[0]) || '';
+      if(!brand && !generic) return;
+      const key = (brand + '|' + generic).toLowerCase();
+      if(!lastDrugResults.some(d => d.key === key)){
+        lastDrugResults.unshift({ key, brand, generic });
+        if(lastDrugResults.length > 40) lastDrugResults.length = 40;
+      }
+    });
   } catch(e){
     resultsEl.innerHTML = stateError('COULD NOT REACH FDA LABELS', 'Try again.', 'lookupDrug');
   }
@@ -9995,6 +10042,7 @@ function init(){
   fetchArticles();
   restoreLastTab();
   setupKeyboardShortcuts();
+  setupGlobalSearch();
 }
 
 function restoreLastSpecialty(){
@@ -10593,6 +10641,157 @@ function maybeShowWhatsNew(){
   }
   openWhatsNew();
 }
+
+/* ============================================================
+   Search everywhere — a lightweight combined search over whatever's
+   already loaded/cached in Literature, Drugs, Conditions, Advances,
+   and Trials. Deliberately NOT a live re-fetch or a shared index: each
+   tab keeps its own independent search untouched, this just filters
+   in-memory/cached state client-side, capped per group.
+   ============================================================ */
+const GLOBAL_SEARCH_CAP = 8;
+function collectGlobalSearchResults(qRaw){
+  const q = qRaw.trim().toLowerCase();
+  const groups = { literature: [], drug: [], condition: [], advance: [], trial: [] };
+  if(!q) return groups;
+  const contains = (s) => !!s && String(s).toLowerCase().includes(q);
+
+  // Literature — the currently loaded specialty/search results plus every
+  // specialty feed cached from a prior visit, deduped by PMID.
+  const seenPmids = new Set();
+  const litSource = [].concat(state.articles || []);
+  Object.values(getFeedCache()).forEach(entry => { if(entry && entry.articles) litSource.push(...entry.articles); });
+  for(const a of litSource){
+    if(groups.literature.length >= GLOBAL_SEARCH_CAP) break;
+    if(!a || !a.pmid || seenPmids.has(a.pmid)) continue;
+    if(contains(a.title) || contains(a.journal) || contains(a.authors)){
+      seenPmids.add(a.pmid);
+      groups.literature.push(a);
+    }
+  }
+
+  // Drugs — lookups already performed this session.
+  for(const d of lastDrugResults){
+    if(groups.drug.length >= GLOBAL_SEARCH_CAP) break;
+    if(contains(d.brand) || contains(d.generic)) groups.drug.push(d);
+  }
+
+  // Conditions — the full local syndrome/genetic/congenital lists are always
+  // in memory regardless of whether that tab's been visited yet.
+  const condSource = [].concat(SYNDROMES, GENETIC_CONDITIONS, CONGENITAL_DISORDERS);
+  for(const c of condSource){
+    if(groups.condition.length >= GLOBAL_SEARCH_CAP) break;
+    if(contains(c.name) || contains(c.desc)) groups.condition.push(c);
+  }
+
+  // Advances — only what's been fetched after a visit to that tab.
+  if(advancesState.fetched){
+    outer: for(const list of Object.values(advancesState.data)){
+      for(const a of (list || [])){
+        if(groups.advance.length >= GLOBAL_SEARCH_CAP) break outer;
+        if(contains(a.title) || contains(a.journal) || contains(a.authors)) groups.advance.push(a);
+      }
+    }
+  }
+
+  // Trials — only the last query's results, if any.
+  for(const t of (trialsState.results || [])){
+    if(groups.trial.length >= GLOBAL_SEARCH_CAP) break;
+    if(contains(t.title) || contains(t.conditions)) groups.trial.push(t);
+  }
+
+  return groups;
+}
+
+function renderGlobalSearchResults(qRaw){
+  const wrap = document.getElementById('global-search-results');
+  if(!wrap) return;
+  const q = qRaw.trim();
+  if(!q){ wrap.innerHTML = ''; return; }
+  const groups = collectGlobalSearchResults(q);
+  const groupDefs = [
+    { key: 'literature', name: 'Literature', render: a => ({ label: a.title, sub: [a.journal, a.date].filter(Boolean).join(' · ') }) },
+    { key: 'drug', name: 'Drugs', render: d => ({ label: d.brand || d.generic, sub: (d.brand && d.generic && d.generic !== d.brand) ? d.generic : '' }) },
+    { key: 'condition', name: 'Conditions', render: c => ({ label: c.name, sub: c.desc ? c.desc.slice(0, 90) : '' }) },
+    { key: 'advance', name: 'Advances', render: a => ({ label: a.title, sub: a.journal || '' }) },
+    { key: 'trial', name: 'Trials', render: t => ({ label: t.title, sub: t.conditions || '' }) }
+  ];
+  const total = groupDefs.reduce((n, g) => n + groups[g.key].length, 0);
+  if(total === 0){
+    wrap.innerHTML = '<div class="global-search-empty">No matches in what\'s already loaded. Try searching that tab directly first, then search everywhere again.</div>';
+    return;
+  }
+  wrap.innerHTML = groupDefs.filter(g => groups[g.key].length).map(g => `
+    <div class="global-search-group">
+      <h3>${escapeHtml(g.name)} (${groups[g.key].length})</h3>
+      ${groups[g.key].map((item, i) => {
+        const { label, sub } = g.render(item);
+        return `<button type="button" class="global-search-item" data-group="${g.key}" data-idx="${i}">${escapeHtml(label || '(untitled)')}${sub ? `<span class="gs-sub">${escapeHtml(sub)}</span>` : ''}</button>`;
+      }).join('')}
+    </div>`).join('');
+  wrap.querySelectorAll('.global-search-item').forEach(btn => {
+    btn.onclick = () => {
+      const g = btn.dataset.group;
+      const item = groups[g][Number(btn.dataset.idx)];
+      jumpToGlobalSearchResult(g, item);
+    };
+  });
+}
+
+function jumpToGlobalSearchResult(group, item){
+  document.getElementById('global-search-modal').hidden = true;
+  if(group === 'literature'){
+    switchView('literature');
+    state.viewingBookmarks = false;
+    state.customTerm = `("${item.title.replace(/"/g,'')}") AND english[la]`;
+    renderChapters();
+    fetchArticles();
+  } else if(group === 'drug'){
+    switchView('drug');
+    const inp = document.getElementById('drug-input');
+    if(inp){ inp.value = item.brand || item.generic; }
+    lookupDrug();
+  } else if(group === 'condition'){
+    switchView('syndromes');
+    const search = document.getElementById('syndrome-search');
+    if(search){ search.value = item.name; syndromesState.query = item.name.toLowerCase(); renderSyndromeGroups(); }
+  } else if(group === 'advance'){
+    switchView('advances');
+  } else if(group === 'trial'){
+    switchView('trials');
+  }
+}
+
+function openGlobalSearch(prefill){
+  const modal = document.getElementById('global-search-modal');
+  if(!modal) return;
+  const input = document.getElementById('global-search-input');
+  if(input){
+    input.value = prefill || '';
+    renderGlobalSearchResults(input.value);
+    input.oninput = () => renderGlobalSearchResults(input.value);
+  }
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('global-search-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+  if(input) setTimeout(() => input.focus(), 30);
+}
+function setupGlobalSearch(){
+  const btn = document.getElementById('search-everywhere-btn');
+  if(!btn) return;
+  btn.onclick = () => {
+    haptic('Light');
+    const inp = document.getElementById('search-input');
+    openGlobalSearch(inp ? inp.value : '');
+  };
+}
+
 function setupKeyboardShortcuts(){
   document.addEventListener('keydown', (e) => {
     if(e.metaKey || e.ctrlKey || e.altKey) return;
