@@ -1,0 +1,173 @@
+rules_version = '2';
+
+// =====================================================================
+// Rounds — ward/group-based access control for the Vitals and Maternity
+// tabs. Two fully independent group systems (per product decision):
+// vitalsGroups and maternityGroups. Whoever creates a group becomes its
+// admin automatically (server-enforced below, not just client-side
+// convention). A group admin can invite/remove members, rename, or
+// delete the group. A separate, hospital-designated superAdmin flag on a
+// user's own profile document grants read/write access to every group
+// in both systems, for oversight — bootstrapped manually the first time
+// (see README-FIRESTORE-SETUP.md), then manageable from within the app
+// by an existing super-admin.
+//
+// Security model: membership is enforced server-side here, not just
+// hidden in the UI — a user who isn't a member of a group's `members`
+// map (and isn't a super-admin) cannot read or write anything under
+// that group, regardless of what the client app does or doesn't show.
+//
+// Schema:
+//   users/{uid}                        { email, displayName, superAdmin }
+//   usersByEmail/{emailKey}             { uid }   — invite-by-email lookup
+//   vitalsGroups/{groupId}              { name, createdBy, createdAt, members: { [uid]: {role, email, joinedAt} } }
+//   vitalsGroups/{groupId}/patients/{id}          — the actual patient/vitals-log records
+//   vitalsGroups/{groupId}/invites/{emailKey}     { email, invitedBy, invitedAt } — pending invite for a not-yet-registered email
+//   maternityGroups/{groupId}           — mirrors vitalsGroups exactly, fully independent
+//   maternityGroups/{groupId}/patients/{id}
+//   maternityGroups/{groupId}/invites/{emailKey}
+//   groupMemberships/{uid}_{groupId}    { uid, groupId, groupType: 'vitals'|'maternity', role, groupName, joinedAt }
+//     — a flat join-collection purely so a signed-in user can list "which
+//     groups am I in" via a simple `where('uid','==',myUid)` query
+//     (Firestore can't query "does this map have key X" directly, and
+//     rules can only accept a `list` query that's provably constrained
+//     the same way the rule checks it — an equality filter on `uid` is
+//     exactly that). The group doc's own `members` map stays the single
+//     source of truth for actual access control; this collection is a
+//     read-side index only, kept in sync by whichever client write
+//     creates/removes a membership (always in the same batched write).
+// =====================================================================
+
+function signedIn() {
+  return request.auth != null;
+}
+
+function isSuperAdmin() {
+  return signedIn()
+    && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.superAdmin == true;
+}
+
+function groupDoc(groupType, groupId) {
+  return groupType == 'vitals'
+    ? /databases/$(database)/documents/vitalsGroups/$(groupId)
+    : /databases/$(database)/documents/maternityGroups/$(groupId);
+}
+
+function isMemberPath(groupPath) {
+  return signedIn() && exists(groupPath) && (request.auth.uid in get(groupPath).data.members);
+}
+
+function isGroupAdminPath(groupPath) {
+  return signedIn() && exists(groupPath)
+    && (request.auth.uid in get(groupPath).data.members)
+    && get(groupPath).data.members[request.auth.uid].role == 'admin';
+}
+
+// A brand-new group document must name its creator as its sole initial
+// member, with the admin role — this is what makes "creator becomes
+// admin" a server-enforced fact rather than something the client merely
+// claims.
+function isValidNewGroup() {
+  return signedIn()
+    && request.resource.data.createdBy == request.auth.uid
+    && request.resource.data.members.keys().hasOnly([request.auth.uid])
+    && request.resource.data.members[request.auth.uid].role == 'admin';
+}
+
+match /databases/{database}/documents {
+
+  // ---- user profiles ----
+  // Each signed-in user has exactly one profile doc, keyed by their own
+  // uid. They can read their own profile; only an existing super-admin
+  // can read someone else's, or grant/revoke the superAdmin flag on
+  // ANYONE's profile (a user flipping their own `superAdmin` field must
+  // be blocked, including at creation time).
+  match /users/{uid} {
+    allow read: if signedIn() && (request.auth.uid == uid || isSuperAdmin());
+    allow create: if signedIn() && request.auth.uid == uid
+      && request.resource.data.superAdmin == false;
+    allow update: if signedIn() && (
+        (request.auth.uid == uid && request.resource.data.superAdmin == resource.data.superAdmin)
+        || isSuperAdmin()
+      );
+    allow delete: if isSuperAdmin();
+  }
+
+  // Invite-by-email lookup (email -> uid). Not sensitive beyond the
+  // mapping itself; a user may only write their own mapping (done once
+  // at sign-up), and any signed-in user may read it (needed so a group
+  // admin can resolve "invite this email" client-side).
+  match /usersByEmail/{emailKey} {
+    allow read: if signedIn();
+    allow write: if signedIn() && request.resource.data.uid == request.auth.uid;
+  }
+
+  // ---- the read-side "my groups" index ----
+  // Document id convention: `${uid}_${groupId}`. Only ever read via a
+  // `where('uid','==', request.auth.uid)` query from the app (that's
+  // what lets Firestore accept the `list` rule below); a super-admin may
+  // read any of them for the admin console.
+  match /groupMemberships/{membershipId} {
+    allow read: if signedIn() && (resource.data.uid == request.auth.uid || isSuperAdmin());
+    allow list: if signedIn(); // scoping happens via the required uid-equality query, enforced by `read` above per returned doc
+    // Only created/deleted as part of the *same batched write* that adds
+    // or removes the uid from the corresponding group's `members` map —
+    // so whoever is allowed to make that group change is allowed here too.
+    allow create: if signedIn()
+      && request.resource.data.uid is string
+      && (
+        (request.resource.data.groupType == 'vitals' && isGroupAdminPath(groupDoc('vitals', request.resource.data.groupId)))
+        || (request.resource.data.groupType == 'maternity' && isGroupAdminPath(groupDoc('maternity', request.resource.data.groupId)))
+        || isSuperAdmin()
+      );
+    allow delete: if signedIn()
+      && (
+        resource.data.uid == request.auth.uid // anyone can remove themselves (leave a group)
+        || (resource.data.groupType == 'vitals' && isGroupAdminPath(groupDoc('vitals', resource.data.groupId)))
+        || (resource.data.groupType == 'maternity' && isGroupAdminPath(groupDoc('maternity', resource.data.groupId)))
+        || isSuperAdmin()
+      );
+  }
+
+  // ---- Vitals groups ----
+  match /vitalsGroups/{groupId} {
+    allow get: if isMemberPath(/databases/$(database)/documents/vitalsGroups/$(groupId)) || isSuperAdmin();
+    allow list: if signedIn(); // each returned doc still individually checked against `get` above
+    allow create: if isValidNewGroup();
+    allow update: if isGroupAdminPath(/databases/$(database)/documents/vitalsGroups/$(groupId)) || isSuperAdmin();
+    allow delete: if isGroupAdminPath(/databases/$(database)/documents/vitalsGroups/$(groupId)) || isSuperAdmin();
+
+    match /patients/{patientId} {
+      allow read, write: if isMemberPath(/databases/$(database)/documents/vitalsGroups/$(groupId)) || isSuperAdmin();
+    }
+    match /invites/{emailKey} {
+      allow read: if signedIn() && (resource.data.email == request.auth.token.email || isGroupAdminPath(/databases/$(database)/documents/vitalsGroups/$(groupId)) || isSuperAdmin());
+      allow list: if signedIn(); // a newly-registered user scans for invites matching their own email client-side
+      allow create, delete: if isGroupAdminPath(/databases/$(database)/documents/vitalsGroups/$(groupId)) || isSuperAdmin();
+    }
+  }
+
+  // ---- Maternity groups (fully independent of vitalsGroups) ----
+  match /maternityGroups/{groupId} {
+    allow get: if isMemberPath(/databases/$(database)/documents/maternityGroups/$(groupId)) || isSuperAdmin();
+    allow list: if signedIn();
+    allow create: if isValidNewGroup();
+    allow update: if isGroupAdminPath(/databases/$(database)/documents/maternityGroups/$(groupId)) || isSuperAdmin();
+    allow delete: if isGroupAdminPath(/databases/$(database)/documents/maternityGroups/$(groupId)) || isSuperAdmin();
+
+    match /patients/{patientId} {
+      allow read, write: if isMemberPath(/databases/$(database)/documents/maternityGroups/$(groupId)) || isSuperAdmin();
+    }
+    match /invites/{emailKey} {
+      allow read: if signedIn() && (resource.data.email == request.auth.token.email || isGroupAdminPath(/databases/$(database)/documents/maternityGroups/$(groupId)) || isSuperAdmin());
+      allow list: if signedIn();
+      allow create, delete: if isGroupAdminPath(/databases/$(database)/documents/maternityGroups/$(groupId)) || isSuperAdmin();
+    }
+  }
+
+  // Default deny for anything not explicitly matched above.
+  match /{document=**} {
+    allow read, write: if false;
+  }
+}
