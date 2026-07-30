@@ -1127,8 +1127,13 @@ body.locked{overflow:hidden;}
 .crashlog-entry{padding:10px 14px;border-bottom:1px solid var(--shell-line);}
 .crashlog-entry:last-child{border-bottom:none;}
 .crashlog-time{display:block;font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-faint);margin-bottom:3px;}
-.crashlog-msg{font-family:var(--ff-mono);font-size:12px;color:var(--ink);word-break:break-word;white-space:pre-wrap;margin:0;}
+.crashlog-msg{font-family:var(--ff-mono);font-size:12px;color:var(--shell-ink);word-break:break-word;white-space:pre-wrap;margin:0;}
 .crashlog-actions{display:flex;gap:8px;}
+.shortcuts-table{width:100%;border-collapse:collapse;font-family:var(--ff-sans);font-size:13.5px;}
+.shortcuts-table td{padding:8px 4px;border-bottom:1px solid var(--shell-line);color:var(--shell-ink-soft);}
+.shortcuts-table tr:last-child td{border-bottom:none;}
+.shortcuts-table td:first-child{width:1%;white-space:nowrap;}
+kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-mono);font-size:12px;font-weight:600;color:var(--shell-ink);background:rgba(255,255,255,0.08);border:1px solid var(--shell-line);border-bottom-width:2px;border-radius:5px;padding:2px 6px;}
 
 /* =====================================================================
    Responsive — tablet & phone tuning (additive overrides)
@@ -1899,6 +1904,28 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <h2 class="onb-title serif" id="recent-title">Recently viewed</h2>
     <p class="settings-sub" style="display:block;margin:-4px 0 14px;">Your last drug lookups, condition research, advances, and trials — across all four tabs.</p>
     <div class="crashlog-list" id="recent-list"></div>
+  </div>
+</div>
+
+<!-- ===== Keyboard shortcuts overlay ('?' key) ===== -->
+<div class="rename-overlay" id="shortcuts-modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="shortcuts-close" aria-label="Close keyboard shortcuts">&times;</button>
+    <p class="onb-eyebrow">SHORTCUTS</p>
+    <h2 class="onb-title serif" id="shortcuts-title">Keyboard shortcuts</h2>
+    <table class="shortcuts-table">
+      <tbody>
+        <tr><td><kbd>1</kbd></td><td>Literature</td></tr>
+        <tr><td><kbd>2</kbd></td><td>Drugs</td></tr>
+        <tr><td><kbd>3</kbd></td><td>Conditions</td></tr>
+        <tr><td><kbd>4</kbd></td><td>Advances</td></tr>
+        <tr><td><kbd>5</kbd></td><td>Trials</td></tr>
+        <tr><td><kbd>/</kbd></td><td>Focus the search bar</td></tr>
+        <tr><td><kbd>Esc</kbd></td><td>Close the open dialog</td></tr>
+        <tr><td><kbd>?</kbd></td><td>Show this list</td></tr>
+      </tbody>
+    </table>
+    <p class="settings-sub" style="display:block;margin-top:12px;">Number keys and <kbd>/</kbd> only act when you're not typing in a text field.</p>
   </div>
 </div>
 
@@ -9926,6 +9953,7 @@ function init(){
   renderChapters();
   fetchArticles();
   restoreLastTab();
+  setupKeyboardShortcuts();
 }
 
 function restoreLastSpecialty(){
@@ -10449,6 +10477,53 @@ function openRecentlyViewed(){
 
   modal.hidden = false;
   document.addEventListener('keydown', onKey);
+}
+
+/* ============================================================
+   Keyboard shortcuts
+   ============================================================ */
+const SHORTCUT_TAB_KEYS = {'1':'literature', '2':'drug', '3':'syndromes', '4':'advances', '5':'trials'};
+function isTypingTarget(el){
+  if(!el) return false;
+  const tag = (el.tagName || '').toLowerCase();
+  return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
+}
+function anyOverlayOpen(){
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','rename-modal','onboarding','login-overlay']
+    .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
+}
+function openShortcuts(){
+  const modal = document.getElementById('shortcuts-modal');
+  if(!modal) return;
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape' || e.key === '?') close(); }
+  document.getElementById('shortcuts-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+function setupKeyboardShortcuts(){
+  document.addEventListener('keydown', (e) => {
+    if(e.metaKey || e.ctrlKey || e.altKey) return;
+    if(isTypingTarget(e.target)) return;
+    if(e.key === '?'){
+      if(anyOverlayOpen()) return;
+      e.preventDefault();
+      openShortcuts();
+      return;
+    }
+    if(anyOverlayOpen()) return;
+    if(e.key === '/'){
+      const inp = document.getElementById('search-input');
+      if(inp){ e.preventDefault(); inp.focus(); }
+      return;
+    }
+    const view = SHORTCUT_TAB_KEYS[e.key];
+    if(view) switchView(view);
+  });
 }
 
 /* ---- First-run onboarding ---- */
