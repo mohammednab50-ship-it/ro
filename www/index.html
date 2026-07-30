@@ -9505,6 +9505,7 @@ function initVitals(){
   setupPatientList();
   setupAddPatientForm();
   setupVitalsEntryForm();
+  setupVitalsAutosave();
   renderPatientList();
   renderVitalsMain();
 }
@@ -9657,6 +9658,58 @@ function setupVitalsEntryForm(){
 function prefillVitalsTimestamp(){
   const tsInput = document.getElementById('v-ts');
   if(tsInput) tsInput.value = localDateTimeInputValue(new Date());
+}
+
+// Same class of bug as the Maternity tab: typing values into the vitals
+// entry fields does nothing until "Log reading" is explicitly submitted —
+// switch tabs before that and the typed reading is gone (nothing referenced
+// it, no localStorage write happened). This silently logs whatever's in the
+// fields the moment the Vitals tab is hidden (switched away from), reusing
+// the exact same entry-construction logic as the real submit handler, then
+// clears the fields the same way a normal submit would — so returning and
+// clicking "Log reading" again on unrelated blank fields can't create a
+// duplicate of the same reading.
+function autosaveVitalsReadingIfNeeded(){
+  const p = activePatient();
+  if(!p) return;
+  const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
+  const tsRaw = val('v-ts');
+  const ts = tsRaw ? new Date(tsRaw) : new Date();
+  const entry = {
+    id: genVitalsId('vr'),
+    ts: isNaN(ts.getTime()) ? new Date().toISOString() : ts.toISOString(),
+    hr: val('v-hr'), sbp: val('v-sbp'), dbp: val('v-dbp'), rr: val('v-rr'),
+    spo2: val('v-spo2'), temp: val('v-temp'), gcs: val('v-gcs'), uop: val('v-uop'),
+    notes: val('v-notes')
+  };
+  const hasAnyVital = ['hr','sbp','dbp','rr','spo2','temp','gcs','uop'].some(k => entry[k] !== '');
+  if(!hasAnyVital && !entry.notes) return; // nothing typed, nothing to save
+
+  if(!vitalsState.logs[p.id]) vitalsState.logs[p.id] = [];
+  vitalsState.logs[p.id].push(entry);
+  saveVitalsData();
+  ['v-hr','v-sbp','v-dbp','v-rr','v-spo2','v-temp','v-gcs','v-uop','v-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  prefillVitalsTimestamp();
+  renderPatientList();
+  renderVitalsMain();
+}
+// Watches #view-vitals's own [hidden] attribute (toggled by the app's
+// shared switchView() whenever the user picks a different tab) and
+// autosaves the instant this tab becomes hidden.
+function setupVitalsAutosave(){
+  if(!window.MutationObserver) return;
+  const vitalsView = document.getElementById('view-vitals');
+  if(!vitalsView || vitalsView.dataset.autosaveWired) return;
+  vitalsView.dataset.autosaveWired = '1';
+  let wasHidden = vitalsView.hidden;
+  new MutationObserver(() => {
+    const isHidden = vitalsView.hidden;
+    if(isHidden && !wasHidden) autosaveVitalsReadingIfNeeded();
+    wasHidden = isHidden;
+  }).observe(vitalsView, { attributes: true, attributeFilter: ['hidden'] });
 }
 
 /* ---- main panel render ---- */
