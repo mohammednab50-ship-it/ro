@@ -9699,6 +9699,13 @@ function autosaveVitalsReadingIfNeeded(){
 // Watches #view-vitals's own [hidden] attribute (toggled by the app's
 // shared switchView() whenever the user picks a different tab) and
 // autosaves the instant this tab becomes hidden.
+//
+// Also covers the app being backgrounded (Android home button, switching
+// to another app) without switching to a different Rounds tab first —
+// #view-vitals's [hidden] attribute never changes in that case, so the
+// MutationObserver alone wouldn't fire. pagehide is an extra fallback for
+// timings where visibilitychange doesn't land before the WebView is
+// reclaimed. Both are gated on Vitals actually being the visible tab.
 function setupVitalsAutosave(){
   if(!window.MutationObserver) return;
   const vitalsView = document.getElementById('view-vitals');
@@ -9710,6 +9717,13 @@ function setupVitalsAutosave(){
     if(isHidden && !wasHidden) autosaveVitalsReadingIfNeeded();
     wasHidden = isHidden;
   }).observe(vitalsView, { attributes: true, attributeFilter: ['hidden'] });
+
+  document.addEventListener('visibilitychange', () => {
+    if(document.hidden && !vitalsView.hidden) autosaveVitalsReadingIfNeeded();
+  });
+  window.addEventListener('pagehide', () => {
+    if(!vitalsView.hidden) autosaveVitalsReadingIfNeeded();
+  });
 }
 
 /* ---- main panel render ---- */
@@ -12828,6 +12842,16 @@ if(landingPage){
   // shared switchView() whenever the user picks a different tab) and
   // autosaves the instant this tab becomes hidden — i.e. exactly the
   // "switched tabs mid-entry" moment.
+  //
+  // That alone misses a more common real-world interruption: the app being
+  // backgrounded (Android home button, switching to another app entirely)
+  // WITHOUT switching to a different Rounds tab first — #view-maternity's
+  // [hidden] attribute never changes in that case, so nothing would fire.
+  // visibilitychange (and pagehide as a fallback for cases/timings where
+  // that doesn't land in time before the OS reclaims the WebView) covers
+  // that, but only autosaves if Maternity is actually the tab someone's
+  // looking at — otherwise the form fields may just be stale leftovers
+  // from whichever patient was last open, unrelated to what's on screen.
   function setupAutosave(){
     if(!window.MutationObserver) return;
     const matView = document.getElementById('view-maternity');
@@ -12838,6 +12862,13 @@ if(landingPage){
       if(isHidden && !wasHidden) autosaveIfNeeded();
       wasHidden = isHidden;
     }).observe(matView, { attributes: true, attributeFilter: ['hidden'] });
+
+    document.addEventListener('visibilitychange', () => {
+      if(document.hidden && !matView.hidden) autosaveIfNeeded();
+    });
+    window.addEventListener('pagehide', () => {
+      if(!matView.hidden) autosaveIfNeeded();
+    });
   }
   function deleteCurrent(){
     if(!currentId) return;
