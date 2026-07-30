@@ -1563,6 +1563,9 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-submit-btn{width:100%;min-height:48px;}
 @media (min-width:560px){.vitals-submit-btn{width:auto;min-width:200px;}}
 
+.vitals-log-search{display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:var(--r-pill);padding:9px 14px;margin-bottom:var(--space-3);}
+.vitals-log-search svg{width:15px;height:15px;color:var(--ink-faint);flex-shrink:0;}
+.vitals-log-search input{flex:1;border:none;background:none;font-family:var(--ff-sans);font-size:13.5px;color:var(--ink);outline:none;}
 .vitals-table-wrap{border:1px solid var(--line);border-radius:var(--r-lg);background:var(--surface);box-shadow:var(--shadow-sm);overflow-x:auto;}
 table.vitals-table{width:100%;border-collapse:collapse;font-family:var(--ff-sans);font-size:13.5px;min-width:760px;}
 table.vitals-table th{text-align:left;font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--ink-faint);
@@ -1892,6 +1895,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   .mat-log-empty{color:var(--ink-3); font-size:13px; padding:14px 4px; font-style:italic}
 
   /* ---------- notes timeline ---------- */
+  .mat-notes-search{display:flex; align-items:center; gap:8px; background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:8px 12px; margin-top:14px;}
+  .mat-notes-search svg{width:15px; height:15px; color:var(--ink-3); flex-shrink:0;}
+  .mat-notes-search input{flex:1; border:none; background:none; font-family:var(--sans); font-size:13px; color:var(--ink); outline:none;}
   .mat-notes-timeline{margin-top:14px; display:flex; flex-direction:column; gap:10px}
   .mat-note-entry{
     background:var(--panel-2); border:1px solid var(--line); border-left:3px solid var(--accent);
@@ -2391,6 +2397,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <button type="submit" class="vitals-btn-primary vitals-submit-btn">+ Add reading</button>
       </form>
 
+      <div class="vitals-log-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="vitals-log-search" type="text" placeholder="Filter this patient's log — notes text or a numeric value" autocomplete="off">
+      </div>
       <div class="vitals-table-wrap">
         <table class="vitals-table" id="vitals-table">
           <thead>
@@ -2401,6 +2411,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <tbody id="vitals-table-body"></tbody>
         </table>
         <p class="vitals-table-empty" id="vitals-table-empty">No readings logged yet for this patient.</p>
+        <p class="vitals-table-empty" id="vitals-table-nomatch" hidden>No readings match that search.</p>
       </div>
     </div>
   </main>
@@ -2832,8 +2843,13 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             Add note
           </button>
         </div>
+        <div class="mat-notes-search" id="mat-notes-search-wrap">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <input id="mat-notes-search" type="text" placeholder="Filter this patient's notes timeline…" autocomplete="off">
+        </div>
         <div class="mat-notes-timeline" id="mat-notes-timeline"></div>
         <div class="mat-log-empty" id="mat-notes-empty">No progress notes logged yet.</div>
+        <div class="mat-log-empty" id="mat-notes-nomatch" style="display:none">No notes match that search.</div>
       </section>
 
       <div class="mat-notice">
@@ -3225,6 +3241,7 @@ function initVitals(){
   setupVitalsNormalFillButton();
   setupVitalsDeltaIndicators();
   setupVitalsBaselinesForm();
+  setupVitalsLogSearch();
   renderPatientList();
   renderVitalsMain();
 }
@@ -3539,6 +3556,8 @@ function setupVitalsAutosave(){
 
 /* ---- main panel render ---- */
 
+let lastRenderedVitalsPatientId = null;
+
 function renderVitalsMain(){
   const empty = document.getElementById('vitals-empty');
   const view = document.getElementById('vitals-patient-view');
@@ -3553,6 +3572,12 @@ function renderVitalsMain(){
 
   const baselinesForm = document.getElementById('vitals-baselines-form');
   if(baselinesForm) baselinesForm.hidden = true; // avoid a stale form carrying over across patients
+
+  if(p.id !== lastRenderedVitalsPatientId){
+    const searchInput = document.getElementById('vitals-log-search');
+    if(searchInput) searchInput.value = ''; // clear any filter left over from the previous patient
+    lastRenderedVitalsPatientId = p.id;
+  }
 
   const kicker = document.getElementById('vitals-patient-kicker');
   const nameEl = document.getElementById('vitals-patient-name');
@@ -3600,20 +3625,43 @@ function vitalsRowFlag(entry, patient){
   return false;
 }
 
+// Text-filter over a patient's own log: matches notes text or any
+// logged numeric value (HR/BP/RR/SpO2/Temp/GCS/UOP) — a simple
+// substring match, nothing fancier needed for a per-patient log.
+function vitalsEntryMatchesSearch(entry, needle){
+  if(!needle) return true;
+  const haystack = [entry.hr, entry.sbp, entry.dbp, entry.rr, entry.spo2, entry.temp, entry.gcs, entry.uop, entry.notes]
+    .filter(v => v !== undefined && v !== null && v !== '')
+    .join(' ')
+    .toLowerCase();
+  return haystack.includes(needle);
+}
+
 function renderVitalsTable(){
   const body = document.getElementById('vitals-table-body');
   const emptyMsg = document.getElementById('vitals-table-empty');
+  const nomatchMsg = document.getElementById('vitals-table-nomatch');
   const wrap = document.querySelector('.vitals-table-wrap table');
+  const searchInput = document.getElementById('vitals-log-search');
   if(!body) return;
   const p = activePatient();
-  const log = activeLog().slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  const fullLog = activeLog().slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  const needle = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  const log = fullLog.filter(e => vitalsEntryMatchesSearch(e, needle));
   body.innerHTML = '';
-  if(!log.length){
+  if(!fullLog.length){
     if(emptyMsg) emptyMsg.hidden = false;
+    if(nomatchMsg) nomatchMsg.hidden = true;
     if(wrap) wrap.hidden = true;
     return;
   }
   if(emptyMsg) emptyMsg.hidden = true;
+  if(!log.length){
+    if(nomatchMsg) nomatchMsg.hidden = false;
+    if(wrap) wrap.hidden = true;
+    return;
+  }
+  if(nomatchMsg) nomatchMsg.hidden = true;
   if(wrap) wrap.hidden = false;
 
   log.forEach(entry => {
@@ -3796,6 +3844,13 @@ function printVitalsSummary(){
   window.addEventListener('afterprint', cleanup);
   window.print();
   setTimeout(cleanup, 1500);
+}
+
+function setupVitalsLogSearch(){
+  const input = document.getElementById('vitals-log-search');
+  if(!input || input.dataset.wired) return;
+  input.dataset.wired = '1';
+  input.addEventListener('input', renderVitalsTable);
 }
 
 function setupVitalsPrintButton(){
@@ -4065,6 +4120,7 @@ if(document.readyState === 'loading'){
     notes:$('mat-f-notes'), advice:$('mat-f-advice'),
     notesTime:$('mat-f-notes-time'), notesAuthor:$('mat-f-notes-author'), btnLogNotes:$('mat-btn-log-notes'),
     notesTimeline:$('mat-notes-timeline'), notesEmpty:$('mat-notes-empty'),
+    notesSearch:$('mat-notes-search'), notesNomatch:$('mat-notes-nomatch'),
     // computed
     gaReadout:$('mat-ga-readout'), vitalsReadout:$('mat-vitals-readout'), vitalFlags:$('mat-vital-flags'),
     // serial vitals
@@ -4296,14 +4352,31 @@ if(document.readyState === 'loading'){
     els.notesTime.value = nowLocalInput();
     toast('Note added.');
   }
+  // Simple substring filter over a patient's own notes timeline — matches
+  // note text, advice text, or author. Nothing fancier needed for a
+  // per-patient log.
+  function noteMatchesSearch(n, needle){
+    if(!needle) return true;
+    const haystack = [n.note, n.advice, n.author].filter(Boolean).join(' ').toLowerCase();
+    return haystack.includes(needle);
+  }
   function renderNotesLog(){
     if(!notesLog.length){
       els.notesTimeline.innerHTML = '';
       els.notesEmpty.style.display = '';
+      if(els.notesNomatch) els.notesNomatch.style.display = 'none';
       return;
     }
     els.notesEmpty.style.display = 'none';
-    els.notesTimeline.innerHTML = notesLog.map(n =>
+    const needle = els.notesSearch ? els.notesSearch.value.trim().toLowerCase() : '';
+    const shown = notesLog.filter(n => noteMatchesSearch(n, needle));
+    if(!shown.length){
+      els.notesTimeline.innerHTML = '';
+      if(els.notesNomatch) els.notesNomatch.style.display = '';
+      return;
+    }
+    if(els.notesNomatch) els.notesNomatch.style.display = 'none';
+    els.notesTimeline.innerHTML = shown.map(n =>
       '<div class="mat-note-entry">' +
         '<div class="nh"><span class="t">' + fmtStamp(n.at) + '</span>' +
           (n.author ? '<span class="who">· ' + escapeHtml(n.author) + '</span>' : '') +
@@ -4695,6 +4768,7 @@ if(document.readyState === 'loading'){
     els.vitalsTime.value = nowLocalInput();
     els.ctgTime.value = nowLocalInput();
     els.notesTime.value = nowLocalInput();
+    if(els.notesSearch) els.notesSearch.value = ''; // clear any filter left over from the previous patient
 
     updateDating(); updateVitals(); updateBishop();
     renderVitalsLog(); renderCtgGallery(); renderNotesLog();
@@ -5270,6 +5344,7 @@ if(document.readyState === 'loading'){
 
     // clinical notes & advice
     els.btnLogNotes.addEventListener('click', logNote);
+    if(els.notesSearch) els.notesSearch.addEventListener('input', renderNotesLog);
     els.notesTimeline.addEventListener('click', (e)=>{
       const b = e.target.closest('[data-del-note]'); if(!b) return;
       const id = b.getAttribute('data-del-note');
