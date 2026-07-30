@@ -1813,6 +1813,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Feedback</strong><span class="settings-sub">Report a bug or send a suggestion</span></div>
+      <button type="button" class="settings-btn" id="settings-feedback">Write feedback</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Account</strong><span class="settings-sub" id="settings-account-sub">Signed in</span></div>
       <button type="button" class="settings-btn settings-btn-danger" id="settings-logout">Sign out</button>
     </div>
@@ -1835,6 +1840,21 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div class="crashlog-actions">
       <button type="button" class="settings-btn" id="crashlog-copy">Copy all</button>
       <button type="button" class="settings-btn settings-btn-danger" id="crashlog-clear">Clear</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Feedback / bug report (Settings > Feedback) ===== -->
+<div class="rename-overlay" id="feedback-modal" role="dialog" aria-modal="true" aria-labelledby="feedback-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="feedback-close" aria-label="Close feedback form">&times;</button>
+    <p class="onb-eyebrow">FEEDBACK</p>
+    <h2 class="onb-title serif" id="feedback-title">Report a bug or suggestion</h2>
+    <p class="settings-sub" style="display:block;margin:-4px 0 14px;">There's no server behind this app, so this doesn't send anywhere automatically — it downloads a text file with your note plus some basic diagnostics, ready to attach to an email.</p>
+    <label for="feedback-text" class="sr-only" style="position:absolute;left:-9999px;">Describe the issue</label>
+    <textarea id="feedback-text" class="bookmark-note-input" style="min-height:120px;margin-bottom:14px;" placeholder="What happened? What did you expect instead?" maxlength="4000"></textarea>
+    <div class="crashlog-actions">
+      <button type="button" class="settings-btn" id="feedback-download">Download report</button>
     </div>
   </div>
 </div>
@@ -10083,6 +10103,9 @@ function openSettings(){
   const crashViewBtn = document.getElementById('settings-view-crashlog');
   if(crashViewBtn) crashViewBtn.onclick = () => { haptic('Light'); openCrashLog(); };
 
+  const feedbackBtn = document.getElementById('settings-feedback');
+  if(feedbackBtn) feedbackBtn.onclick = () => { haptic('Light'); openFeedback(); };
+
   function close(){
     modal.hidden = true;
     document.removeEventListener('keydown', onKey);
@@ -10148,6 +10171,71 @@ function copyTextToClipboard(text, successMsg){
       fallbackCopy(text, done);
     }
   }catch(e){ fallbackCopy(text, done); }
+}
+
+/* ============================================================
+   Feedback / bug report — no backend, so this just packages the
+   user's note plus lightweight diagnostics into a downloadable file
+   they can attach to an email.
+   ============================================================ */
+function currentActiveTab(){
+  const el = document.querySelector('#tabbar .tab[aria-selected="true"]');
+  return el ? el.dataset.view : 'unknown';
+}
+function openFeedback(){
+  const modal = document.getElementById('feedback-modal');
+  if(!modal) return;
+  const textEl = document.getElementById('feedback-text');
+  if(textEl) textEl.value = '';
+
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('feedback-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+
+  const downloadBtn = document.getElementById('feedback-download');
+  if(downloadBtn){
+    downloadBtn.onclick = () => {
+      const description = (textEl && textEl.value.trim()) || '(no description entered)';
+      const recentErrors = getCrashLog().slice(-5);
+      const report = {
+        description: description,
+        appVersion: APP_VERSION,
+        currentTab: currentActiveTab(),
+        timestamp: new Date().toISOString(),
+        userAgent: navigator.userAgent,
+        recentErrors: recentErrors
+      };
+      const text = [
+        'Rounds feedback / bug report',
+        '=============================',
+        '',
+        'Description:',
+        description,
+        '',
+        `App version: ${report.appVersion}`,
+        `Current tab: ${report.currentTab}`,
+        `Timestamp: ${report.timestamp}`,
+        `User agent: ${report.userAgent}`,
+        '',
+        `Recent errors (last ${recentErrors.length}):`,
+        recentErrors.length ? recentErrors.map(e => `  [${e.t}] ${e.message}`).join('\n') : '  (none captured)',
+        '',
+        '--- Raw JSON ---',
+        JSON.stringify(report, null, 2)
+      ].join('\n');
+      downloadTextFile('rounds-feedback-' + new Date().toISOString().slice(0,10) + '.txt', text, 'text/plain');
+      haptic('Light');
+      showToast('Feedback report downloaded', 'ok');
+      close();
+    };
+  }
+
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
 }
 
 /* ---- First-run onboarding ---- */
