@@ -1499,6 +1499,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-spark circle.spark-dot{fill:var(--evidence);}
 
 .vitals-panel{border:1px solid transparent;border-radius:var(--r-lg);padding:var(--space-6) var(--space-7);background:var(--surface-raised);box-shadow:var(--shadow-md);margin-bottom:var(--space-6);}
+.vitals-form-toprow{display:flex;justify-content:flex-end;margin-bottom:var(--space-3);}
 .vitals-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(128px,1fr));gap:var(--space-4);margin-bottom:var(--space-4);}
 .vitals-field{display:flex;flex-direction:column;gap:6px;}
 .vitals-field label{font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--ink-soft);}
@@ -2196,6 +2197,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       </div>
 
       <form class="vitals-panel" id="vitals-entry-form" autocomplete="off">
+        <div class="vitals-form-toprow">
+          <button type="button" class="vitals-btn-outline" id="vitals-fill-normal-btn" title="Fill HR/BP/RR/SpO2/Temp with typical-normal adult values as a starting point — adjust whatever's actually abnormal, then log">Fill normal values</button>
+        </div>
         <div class="vitals-grid">
           <div class="vitals-field">
             <label for="v-ts">Time</label>
@@ -2942,6 +2946,7 @@ function initVitals(){
   setupVitalsEntryForm();
   setupVitalsAutosave();
   setupVitalsPrintButton();
+  setupVitalsNormalFillButton();
   renderPatientList();
   renderVitalsMain();
 }
@@ -3105,6 +3110,27 @@ function setupVitalsEntryForm(){
     prefillVitalsTimestamp();
     renderPatientList();
     renderVitalsMain();
+  });
+}
+
+// Typical-normal adult values — a starting point to tap and then adjust,
+// never an auto-submit. Deliberately leaves GCS/urine output/notes alone:
+// those don't have a single "typical" constant worth prefilling.
+const NORMAL_VITALS_PRESET = { 'v-hr': '75', 'v-sbp': '120', 'v-dbp': '80', 'v-rr': '16', 'v-spo2': '98', 'v-temp': '37.0' };
+
+function setupVitalsNormalFillButton(){
+  const btn = document.getElementById('vitals-fill-normal-btn');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => {
+    Object.keys(NORMAL_VITALS_PRESET).forEach(id => {
+      const el = document.getElementById(id);
+      if(el){
+        el.value = NORMAL_VITALS_PRESET[id];
+        el.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
+    haptic('Light');
   });
 }
 
