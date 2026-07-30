@@ -1134,6 +1134,11 @@ body.locked{overflow:hidden;}
 .shortcuts-table tr:last-child td{border-bottom:none;}
 .shortcuts-table td:first-child{width:1%;white-space:nowrap;}
 kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-mono);font-size:12px;font-weight:600;color:var(--shell-ink);background:rgba(255,255,255,0.08);border:1px solid var(--shell-line);border-bottom-width:2px;border-radius:5px;padding:2px 6px;}
+.whatsnew-version{margin:0 0 18px;}
+.whatsnew-version:last-child{margin-bottom:0;}
+.whatsnew-version h3{font-family:var(--ff-sans);font-size:12px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--shell-ink-soft);margin:0 0 8px;padding-bottom:6px;border-bottom:1px solid var(--shell-line);}
+.whatsnew-version ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:7px;}
+.whatsnew-version li{font-family:var(--ff-sans);font-size:13.5px;line-height:1.5;color:var(--shell-ink-soft);}
 
 /* =====================================================================
    Responsive — tablet & phone tuning (additive overrides)
@@ -1835,6 +1840,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>What's new</strong><span class="settings-sub">Recent changes to Rounds</span></div>
+      <button type="button" class="settings-btn" id="settings-view-whatsnew">View</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Backup</strong><span class="settings-sub">Saved articles in one file</span></div>
       <button type="button" class="settings-btn" id="settings-export-all">Export all Rounds data</button>
     </div>
@@ -1926,6 +1936,16 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       </tbody>
     </table>
     <p class="settings-sub" style="display:block;margin-top:12px;">Number keys and <kbd>/</kbd> only act when you're not typing in a text field.</p>
+  </div>
+</div>
+
+<!-- ===== What's new (shown once per version bump; reopen from Settings) ===== -->
+<div class="rename-overlay" id="whatsnew-modal" role="dialog" aria-modal="true" aria-labelledby="whatsnew-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="whatsnew-close" aria-label="Close what's new">&times;</button>
+    <p class="onb-eyebrow">WHAT'S NEW</p>
+    <h2 class="onb-title serif" id="whatsnew-title">What's new in Rounds</h2>
+    <div id="whatsnew-body"></div>
   </div>
 </div>
 
@@ -6068,7 +6088,28 @@ const CBER_REFERENCE = [
 ];
 
 const BASE = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/';
-const APP_VERSION = '1.4';
+const APP_VERSION = '1.5';
+const LAST_SEEN_VERSION_KEY = 'rounds_last_seen_version_v1';
+/* Real, dated entries — kept in sync with what actually shipped, newest
+   first. Shown once per version bump (Settings > What's new to reopen). */
+const CHANGELOG = [
+  { version: '1.5', bullets: [
+    'Personal notes on saved articles — jot something like "relevant for X" on any bookmarked paper.',
+    'Export your saved articles as BibTeX or RIS citation files.',
+    'Pin your most-used departments to the top of the Literature sidebar.',
+    '"Recently viewed" history for drug lookups, conditions, advances, and trials (Settings).',
+    'Pick a default tab so the app always opens where you want it (Settings).',
+    'Keyboard shortcuts: press ? for the list, 1-5 to jump tabs, / to search.',
+    'A quiet, local error log and a feedback/bug-report form, both in Settings.',
+    'Printing now stays readable in dark mode instead of printing white-on-black.'
+  ]},
+  { version: '1.4', bullets: [
+    'Vitals and Maternity moved out of Rounds into a new standalone app, Wards — Rounds now focuses on literature, drugs, conditions, advances, and trials.',
+    'New Rounds app icon and an animated homepage with a circular specialty carousel.',
+    'Autosave fixes: unsubmitted vitals readings, patient info, and Maternity notes/CTG drafts no longer get silently discarded when you switch tabs or the app backgrounds.',
+    '"Export all Rounds data" backup added to Settings.'
+  ]}
+];
 const BOOKMARK_KEY = 'rounds_bookmarks_v1';
 const THEME_KEY = 'rounds_theme_v1';
 const DISCLAIMER_KEY = 'rounds_disclaimer_dismissed';
@@ -10109,6 +10150,7 @@ function enterApp(user){
   refreshGreeting();
   if(!appBooted){ appBooted = true; init(); }
   maybeShowOnboarding();
+  maybeShowWhatsNew();
 }
 
 function displayNameFor(user){
@@ -10280,6 +10322,9 @@ function openSettings(){
   }
   const recentViewBtn = document.getElementById('settings-view-recent');
   if(recentViewBtn) recentViewBtn.onclick = () => { haptic('Light'); openRecentlyViewed(); };
+
+  const whatsNewBtn = document.getElementById('settings-view-whatsnew');
+  if(whatsNewBtn) whatsNewBtn.onclick = () => { haptic('Light'); openWhatsNew(); };
 
   function close(){
     modal.hidden = true;
@@ -10489,7 +10534,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','rename-modal','onboarding','login-overlay']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
@@ -10504,6 +10549,49 @@ function openShortcuts(){
   modal.onclick = (e) => { if(e.target === modal) close(); };
   modal.hidden = false;
   document.addEventListener('keydown', onKey);
+}
+
+/* ============================================================
+   What's new — a static changelog modal, shown once when
+   APP_VERSION changes vs. the last-seen version in localStorage, and
+   reopenable any time from Settings.
+   ============================================================ */
+function renderWhatsNewBody(){
+  const body = document.getElementById('whatsnew-body');
+  if(!body) return;
+  body.innerHTML = CHANGELOG.map(entry => `
+    <div class="whatsnew-version">
+      <h3>Version ${escapeHtml(entry.version)}</h3>
+      <ul>${entry.bullets.map(b => `<li>${escapeHtml(b)}</li>`).join('')}</ul>
+    </div>`).join('');
+}
+function openWhatsNew(){
+  const modal = document.getElementById('whatsnew-modal');
+  if(!modal) return;
+  renderWhatsNewBody();
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+    try{ localStorage.setItem(LAST_SEEN_VERSION_KEY, APP_VERSION); }catch(e){}
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('whatsnew-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+function maybeShowWhatsNew(){
+  let lastSeen = null;
+  try{ lastSeen = localStorage.getItem(LAST_SEEN_VERSION_KEY); }catch(e){}
+  if(lastSeen === APP_VERSION) return;
+  // First-ever launch (no stored version at all) shouldn't greet a brand new
+  // user with a changelog — onboarding already covers that. Just record the
+  // current version silently and skip straight to onboarding/normal use.
+  if(lastSeen === null){
+    try{ localStorage.setItem(LAST_SEEN_VERSION_KEY, APP_VERSION); }catch(e){}
+    return;
+  }
+  openWhatsNew();
 }
 function setupKeyboardShortcuts(){
   document.addEventListener('keydown', (e) => {
