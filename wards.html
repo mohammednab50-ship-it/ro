@@ -1498,6 +1498,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-patient-sub{font-family:var(--ff-sans);font-size:13px;color:var(--ink-faint);margin:4px 0 0;}
 .vitals-patient-actions{display:flex;gap:8px;flex-wrap:wrap;}
 
+.vitals-baselines-form{margin:0 0 var(--space-5);padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);}
+.vitals-baselines-note{font-family:var(--ff-sans);font-size:12px;color:var(--ink-faint);margin:0 0 12px;line-height:1.5;}
+.vitals-baselines-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:var(--space-3);margin-bottom:12px;}
+.vitals-baselines-actions{display:flex;gap:8px;}
+
 .vitals-btn-primary{border:none;background:var(--cta-bg);color:var(--cta-ink);border-radius:var(--r-pill);padding:12px 22px;
   font-family:var(--ff-sans);font-size:13.5px;font-weight:700;letter-spacing:0.01em;cursor:pointer;
   transition:background var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);}
@@ -2074,7 +2079,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   #vitals-print-summary{display:none}
   @media print{
     .wards-header,.wards-tabbar,.chapters,.vitals-patient-actions,
-    #vitals-entry-form,.vitals-trend-row,#vitals-add-form{display:none !important}
+    #vitals-entry-form,.vitals-trend-row,#vitals-add-form,#vitals-baselines-form{display:none !important}
     body.vitals-print-summary .layout{display:none !important}
     body.vitals-print-summary #vitals-print-summary{display:block !important}
   }
@@ -2251,11 +2256,50 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <p class="vitals-patient-sub" id="vitals-patient-sub"></p>
         </div>
         <div class="vitals-patient-actions">
+          <button type="button" class="vitals-btn-outline" id="vitals-baselines-btn" title="Set this patient's own normal-range overrides">Baselines</button>
           <button type="button" class="vitals-btn-outline" id="vitals-print-btn" title="Print a one-page vitals summary">Print summary</button>
           <button type="button" class="vitals-btn-outline" id="vitals-export-btn">Export CSV</button>
           <button type="button" class="vitals-btn-outline vitals-btn-danger" id="vitals-remove-patient-btn">Remove patient</button>
         </div>
       </header>
+
+      <div class="vitals-baselines-form" id="vitals-baselines-form" hidden>
+        <p class="vitals-baselines-note">Optional per-patient overrides for this patient's typical range — used instead of the global defaults when flagging abnormal readings below. Leave a field blank to use the global default.</p>
+        <div class="vitals-baselines-grid">
+          <div class="vitals-field">
+            <label for="vb-hr-low">HR low</label>
+            <input id="vb-hr-low" type="number" inputmode="numeric" placeholder="50">
+          </div>
+          <div class="vitals-field">
+            <label for="vb-hr-high">HR high</label>
+            <input id="vb-hr-high" type="number" inputmode="numeric" placeholder="130">
+          </div>
+          <div class="vitals-field">
+            <label for="vb-sbp-low">BP systolic low</label>
+            <input id="vb-sbp-low" type="number" inputmode="numeric" placeholder="90">
+          </div>
+          <div class="vitals-field">
+            <label for="vb-sbp-high">BP systolic high</label>
+            <input id="vb-sbp-high" type="number" inputmode="numeric" placeholder="180">
+          </div>
+          <div class="vitals-field">
+            <label for="vb-spo2-low">SpO&#8322; low</label>
+            <input id="vb-spo2-low" type="number" inputmode="numeric" placeholder="90">
+          </div>
+          <div class="vitals-field">
+            <label for="vb-temp-low">Temp low</label>
+            <input id="vb-temp-low" type="number" inputmode="decimal" step="0.1" placeholder="35">
+          </div>
+          <div class="vitals-field">
+            <label for="vb-temp-high">Temp high</label>
+            <input id="vb-temp-high" type="number" inputmode="decimal" step="0.1" placeholder="38.5">
+          </div>
+        </div>
+        <div class="vitals-baselines-actions">
+          <button type="button" class="vitals-btn-primary" id="vitals-baselines-save">Save baselines</button>
+          <button type="button" class="vitals-btn-ghost" id="vitals-baselines-cancel">Close</button>
+        </div>
+      </div>
 
       <p class="vitals-disclaimer">Personal charting aid only, for your own reference during a shift — stored locally on this device and never uploaded anywhere. Not a substitute for your institution&rsquo;s official EHR or nursing flowsheet; always chart definitively there.</p>
 
@@ -3152,6 +3196,7 @@ function initVitals(){
   setupVitalsPrintButton();
   setupVitalsNormalFillButton();
   setupVitalsDeltaIndicators();
+  setupVitalsBaselinesForm();
   renderPatientList();
   renderVitalsMain();
 }
@@ -3478,6 +3523,9 @@ function renderVitalsMain(){
   if(empty) empty.hidden = true;
   if(view) view.hidden = false;
 
+  const baselinesForm = document.getElementById('vitals-baselines-form');
+  if(baselinesForm) baselinesForm.hidden = true; // avoid a stale form carrying over across patients
+
   const kicker = document.getElementById('vitals-patient-kicker');
   const nameEl = document.getElementById('vitals-patient-name');
   const subEl = document.getElementById('vitals-patient-sub');
@@ -3500,15 +3548,26 @@ function deleteVitalsRow(patientId, entryId){
   renderVitalsMain();
 }
 
-function vitalsRowFlag(entry){
+// Global default thresholds — unchanged, still the fallback whenever a
+// patient has no per-patient override set for a given bound.
+const VITALS_GLOBAL_BASELINES = { hrLow: 50, hrHigh: 130, sbpLow: 90, sbpHigh: 180, spo2Low: 90, tempLow: 35, tempHigh: 38.5 };
+
+function vitalsRowFlag(entry, patient){
   // A light, non-diagnostic visual nudge only — flags values a shift
   // nurse/intern would typically double-check, nothing more.
+  // Additive per-patient baseline overrides (e.g. a known-baseline
+  // arrhythmia's resting HR) take precedence per-bound when set;
+  // any bound left unset on the patient falls back to the global default.
+  const p = patient || activePatient();
+  const b = (p && p.baselines) || {};
+  const g = VITALS_GLOBAL_BASELINES;
+  const bound = key => (b[key] !== undefined && b[key] !== null && b[key] !== '') ? parseFloat(b[key]) : g[key];
   const n = v => v === '' ? null : parseFloat(v);
   const hr = n(entry.hr), sbp = n(entry.sbp), spo2 = n(entry.spo2), temp = n(entry.temp);
-  if(spo2 !== null && spo2 < 90) return true;
-  if(sbp !== null && (sbp < 90 || sbp > 180)) return true;
-  if(hr !== null && (hr < 50 || hr > 130)) return true;
-  if(temp !== null && (temp < 35 || temp >= 38.5)) return true;
+  if(spo2 !== null && spo2 < bound('spo2Low')) return true;
+  if(sbp !== null && (sbp < bound('sbpLow') || sbp > bound('sbpHigh'))) return true;
+  if(hr !== null && (hr < bound('hrLow') || hr > bound('hrHigh'))) return true;
+  if(temp !== null && (temp < bound('tempLow') || temp >= bound('tempHigh'))) return true;
   return false;
 }
 
@@ -3643,7 +3702,7 @@ function printVitalsSummary(){
   const log = activeLog().slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
   const MAX_ROWS = 20; // most recent N readings — keeps a busy log to one printable page
   const shown = log.slice(0, MAX_ROWS);
-  const flaggedCount = log.filter(vitalsRowFlag).length;
+  const flaggedCount = log.filter(e => vitalsRowFlag(e)).length;
 
   const item = (k, v) => v ? `<div class="vps-item"><span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(String(v))}</span></div>` : '';
   const rows = shown.map(e => {
@@ -3686,6 +3745,55 @@ function setupVitalsPrintButton(){
   if(!btn || btn.dataset.wired) return;
   btn.dataset.wired = '1';
   btn.addEventListener('click', printVitalsSummary);
+}
+
+/* ---- per-patient baseline overrides ---- */
+const BASELINE_FIELDS = [
+  ['hrLow', 'vb-hr-low'], ['hrHigh', 'vb-hr-high'],
+  ['sbpLow', 'vb-sbp-low'], ['sbpHigh', 'vb-sbp-high'],
+  ['spo2Low', 'vb-spo2-low'],
+  ['tempLow', 'vb-temp-low'], ['tempHigh', 'vb-temp-high']
+];
+
+function populateBaselinesForm(patient){
+  BASELINE_FIELDS.forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    const v = patient && patient.baselines && patient.baselines[key];
+    el.value = (v === undefined || v === null) ? '' : v;
+  });
+}
+
+function setupVitalsBaselinesForm(){
+  const openBtn = document.getElementById('vitals-baselines-btn');
+  const form = document.getElementById('vitals-baselines-form');
+  const saveBtn = document.getElementById('vitals-baselines-save');
+  const cancelBtn = document.getElementById('vitals-baselines-cancel');
+  if(!openBtn || !form || openBtn.dataset.wired) return;
+  openBtn.dataset.wired = '1';
+
+  openBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(!p) return;
+    populateBaselinesForm(p);
+    form.hidden = !form.hidden;
+  });
+  cancelBtn.addEventListener('click', () => { form.hidden = true; });
+  saveBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(!p) return;
+    const baselines = {};
+    BASELINE_FIELDS.forEach(([key, id]) => {
+      const el = document.getElementById(id);
+      const raw = el ? el.value.trim() : '';
+      if(raw !== '' && !isNaN(parseFloat(raw))) baselines[key] = parseFloat(raw);
+    });
+    p.baselines = baselines;
+    saveVitalsData();
+    form.hidden = true;
+    renderVitalsTable();
+    haptic('Light');
+  });
 }
 
 window.initVitals = initVitals;
