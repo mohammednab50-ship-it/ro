@@ -2039,6 +2039,34 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   #mat-print-summary .mat-ps-flag{font-weight:700}
   #mat-print-summary .mat-ps-flag.warn{color:#9a6b00} #mat-print-summary .mat-ps-flag.crit{color:#b11}
 
+  /* ---------- Vitals print summary sheet (same pattern as Maternity's
+     #mat-print-summary above — separate container/classes since Vitals
+     lives in the main script scope, not the mat- IIFE, but visually and
+     structurally identical: hidden by default, swapped in for print) ---------- */
+  #vitals-print-summary{display:none}
+  @media print{
+    .wards-header,.wards-tabbar,.chapters,.vitals-patient-actions,
+    #vitals-entry-form,.vitals-trend-row,#vitals-add-form{display:none !important}
+    body.vitals-print-summary .layout{display:none !important}
+    body.vitals-print-summary #vitals-print-summary{display:block !important}
+  }
+  #vitals-print-summary{color:#000; font-family:var(--ff-sans); max-width:800px; margin:0 auto; padding:0 4px}
+  #vitals-print-summary h1{font-family:var(--ff-display); font-size:22px; margin:0 0 2px}
+  #vitals-print-summary .vps-sub{font-size:12.5px; color:#444; margin-bottom:14px}
+  #vitals-print-summary .vps-sec{margin:0 0 14px; break-inside:avoid}
+  #vitals-print-summary .vps-sec h2{
+    font-family:var(--ff-display); font-size:14px; margin:0 0 7px; padding-bottom:4px;
+    border-bottom:1px solid #bbb; font-weight:600;
+  }
+  #vitals-print-summary .vps-grid{display:grid; grid-template-columns:repeat(2,1fr); gap:5px 22px}
+  #vitals-print-summary .vps-item{font-size:13px; display:flex; gap:8px}
+  #vitals-print-summary .vps-item .k{color:#555; min-width:120px}
+  #vitals-print-summary .vps-item .v{color:#000; font-weight:600}
+  #vitals-print-summary table{width:100%; border-collapse:collapse; font-size:12px; margin-top:4px}
+  #vitals-print-summary th,#vitals-print-summary td{border:1px solid #ccc; padding:4px 6px; text-align:left}
+  #vitals-print-summary tr.vps-flag td{font-weight:700; color:#9a6b00}
+  #vitals-print-summary .vps-note{font-size:11.5px; color:#555; margin-top:6px}
+
 
 /* =====================================================================
    Wards — app shell (header, tab switcher, footer, brand mark)
@@ -2148,6 +2176,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <p class="vitals-patient-sub" id="vitals-patient-sub"></p>
         </div>
         <div class="vitals-patient-actions">
+          <button type="button" class="vitals-btn-outline" id="vitals-print-btn" title="Print a one-page vitals summary">Print summary</button>
           <button type="button" class="vitals-btn-outline" id="vitals-export-btn">Export CSV</button>
           <button type="button" class="vitals-btn-outline vitals-btn-danger" id="vitals-remove-patient-btn">Remove patient</button>
         </div>
@@ -2226,6 +2255,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     </div>
   </main>
 </div>
+
+<div id="vitals-print-summary"></div>
 
 <div class="layout" id="view-maternity" style="display:none;grid-template-columns:1fr;" role="tabpanel" aria-labelledby="tab-maternity" hidden>
 <!-- ===== Toolbar: internal Patients|BP monitor sub-nav + roster-wide actions.
@@ -2910,6 +2941,7 @@ function initVitals(){
   setupAddPatientForm();
   setupVitalsEntryForm();
   setupVitalsAutosave();
+  setupVitalsPrintButton();
   renderPatientList();
   renderVitalsMain();
 }
@@ -3313,6 +3345,61 @@ function exportActivePatientCsv(){
   a.click();
   a.remove();
   setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+/* ---- print-friendly one-page vitals summary (reference: Maternity's
+   printSummary() — same "swap in a hidden sheet, window.print(), swap
+   back on afterprint" pattern) ---- */
+function printVitalsSummary(){
+  const p = activePatient();
+  const container = document.getElementById('vitals-print-summary');
+  if(!p || !container) return;
+  const log = activeLog().slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  const MAX_ROWS = 20; // most recent N readings — keeps a busy log to one printable page
+  const shown = log.slice(0, MAX_ROWS);
+  const flaggedCount = log.filter(vitalsRowFlag).length;
+
+  const item = (k, v) => v ? `<div class="vps-item"><span class="k">${escapeHtml(k)}</span><span class="v">${escapeHtml(String(v))}</span></div>` : '';
+  const rows = shown.map(e => {
+    const bp = (e.sbp || e.dbp) ? `${escapeHtml(e.sbp || '—')}/${escapeHtml(e.dbp || '—')}` : '—';
+    const flagged = vitalsRowFlag(e);
+    return `<tr class="${flagged ? 'vps-flag' : ''}">
+      <td>${escapeHtml(fmtVitalsTime(e.ts))}</td>
+      <td>${escapeHtml(e.hr || '—')}</td>
+      <td>${bp}</td>
+      <td>${escapeHtml(e.rr || '—')}</td>
+      <td>${escapeHtml(e.spo2 || '—')}</td>
+      <td>${escapeHtml(e.temp || '—')}</td>
+      <td>${escapeHtml(e.notes || '')}</td>
+    </tr>`;
+  }).join('');
+
+  const html =
+    `<h1>${escapeHtml(p.name || 'Patient')}</h1>` +
+    `<div class="vps-sub">Vitals summary &middot; generated ${new Date().toLocaleString()}</div>` +
+    `<div class="vps-sec"><h2>Identity</h2><div class="vps-grid">` +
+      item('Bed / room', p.bed) + item('MRN', p.mrn) +
+    `</div></div>` +
+    `<div class="vps-sec"><h2>Serial vitals${log.length > MAX_ROWS ? ' (most recent ' + MAX_ROWS + ' of ' + log.length + ')' : ''}</h2>` +
+    (shown.length
+      ? `<table><thead><tr><th>Time</th><th>HR</th><th>BP</th><th>RR</th><th>SpO&#8322;</th><th>Temp</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>`
+      : `<p class="vps-note">No readings logged yet.</p>`) +
+    (flaggedCount ? `<p class="vps-note">${flaggedCount} reading(s) in the full log were flagged as outside typical range.</p>` : '') +
+    `</div>`;
+
+  container.innerHTML = html;
+  document.body.classList.add('vitals-print-summary');
+  const cleanup = () => { document.body.classList.remove('vitals-print-summary'); window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
+  window.print();
+  setTimeout(cleanup, 1500);
+}
+
+function setupVitalsPrintButton(){
+  const btn = document.getElementById('vitals-print-btn');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', printVitalsSummary);
 }
 
 window.initVitals = initVitals;
