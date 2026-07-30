@@ -1757,6 +1757,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   .mat-badge.warn{color:var(--amber); border-color:rgba(230,180,80,.4); background:rgba(230,180,80,.08)}
   .mat-badge.crit{color:var(--red); border-color:rgba(242,109,109,.4); background:rgba(242,109,109,.10)}
   .mat-badge.muted{color:var(--ink-3)}
+  /* Colorblind-safe severity marks: shape carries the meaning, not just
+     color, so ok/warn/crit stay distinguishable under any color vision. */
+  .mat-badge.ok::before{content:'\2713'; font-size:10px; line-height:1}
+  .mat-badge.warn::before{content:'\25B2'; font-size:8px; line-height:1}
+  .mat-badge.crit::before{content:'\2716'; font-size:10px; font-weight:800; line-height:1}
 
   .mat-vital-flags{display:flex; gap:8px; flex-wrap:wrap; margin-top:2px}
 
@@ -1985,6 +1990,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   }
   .mat-ri-alert.warn{color:var(--amber); border-color:rgba(230,180,80,.4); background:rgba(230,180,80,.08)}
   .mat-ri-alert.crit{color:var(--red); border-color:rgba(242,109,109,.4); background:rgba(242,109,109,.10)}
+  /* shape, not just color, marks severity here too */
+  .mat-ri-alert.warn::before{content:'\25B2 '; font-size:8px}
+  .mat-ri-alert.crit::before{content:'\2716 '; font-weight:800}
   .mat-ri-name .alertn{font-size:11px; font-weight:700; white-space:nowrap}
   .mat-ri-name .alertn.warn{color:var(--amber)} .mat-ri-name .alertn.crit{color:var(--red)}
 
@@ -12996,8 +13004,10 @@ if(landingPage){
     if(nN) tags.push('<span class="mat-ri-tag note">NOTE' + (nN > 1 ? ' ×' + nN : '') + '</span>');
     // show up to 2 risk chips, worst first
     const riskChips = risks.slice(0,2).map(f => '<span class="mat-ri-alert ' + f.band + '">' + escapeHtml(f.label) + '</span>').join('');
+    // glyph shape (not just color) marks severity: ▲ for a worst warn, ✕ for a worst crit
+    const alertGlyph = worst === 'crit' ? '✖' : worst === 'warn' ? '▲' : '●';
     const alertBadge = risks.length
-      ? '<span class="alertn ' + worst + '">● ' + risks.length + (risks.length === 1 ? ' alert' : ' alerts') + '</span>'
+      ? '<span class="alertn ' + worst + '">' + alertGlyph + ' ' + risks.length + (risks.length === 1 ? ' alert' : ' alerts') + '</span>'
       : (ga ? '<span class="ga">' + escapeHtml(ga) + '</span>' : '');
     return '<li class="mat-roster-item' + (p.id === currentId ? ' active' : '') + '" data-id="' + p.id + '">' +
       '<div class="mat-ri-name"><span>' + escapeHtml(p.name || 'Unnamed') + '</span>' + alertBadge + '</div>' +
