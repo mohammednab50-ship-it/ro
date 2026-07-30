@@ -283,9 +283,11 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
   font-family:var(--ff-sans);font-size:13.5px;font-weight:500;padding:12px 20px;border-radius:var(--r-pill);
   box-shadow:0 12px 34px rgba(0,0,0,0.4);opacity:0;pointer-events:none;max-width:88vw;text-align:center;
   display:inline-flex;align-items:center;gap:8px;transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
-.app-toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+.app-toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
 .app-toast::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--evidence-bright,#5B9CFF);flex-shrink:0;}
 .app-toast.toast-err::before{background:var(--caution,#E0794F);}
+.app-toast-undo{flex-shrink:0;border:1px solid var(--shell-line,rgba(244,241,234,0.28));background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;padding:3px 10px;border-radius:var(--r-pill);margin-left:2px;}
+.app-toast-undo:hover{background:rgba(244,241,234,0.14);}
 
 /* ---- app footer / version ---- */
 .app-footer{max-width:1280px;margin:0 auto;padding:28px 40px 40px;display:flex;flex-wrap:wrap;gap:6px 16px;
@@ -1919,7 +1921,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     padding:12px 20px; border-radius:999px; font-size:14px; box-shadow:var(--shadow);
     opacity:0; pointer-events:none; transition:opacity .2s, transform .2s; z-index:60;
   }
-  .mat-toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+  .mat-toast.show{opacity:1; transform:translateX(-50%) translateY(0); pointer-events:auto}
+  .mat-toast-undo{flex-shrink:0; border:1px solid var(--accent); background:transparent; color:inherit; font:inherit; font-weight:700; cursor:pointer; padding:3px 10px; border-radius:999px; margin-left:8px}
+  .mat-toast-undo:hover{background:var(--accent); color:var(--panel)}
 
   .hidden{display:none !important}
 
@@ -7096,7 +7100,11 @@ function haptic(style){
    Toast — lightweight action confirmations
    ============================================================ */
 let toastTimer = null;
-function showToast(msg, kind){
+// `action`, when given, is {label, onClick} — appends a small button into the
+// toast (e.g. "Undo") and keeps the toast up longer (~5s) so there's a real
+// chance to click it before it's gone. onClick fires once, then the toast
+// dismisses immediately.
+function showToast(msg, kind, action){
   let el = document.getElementById('app-toast');
   if(!el){
     el = document.createElement('div');
@@ -7107,9 +7115,22 @@ function showToast(msg, kind){
     document.body.appendChild(el);
   }
   el.textContent = msg;
+  if(action && action.label && typeof action.onClick === 'function'){
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'app-toast-undo';
+    btn.textContent = action.label;
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      if(toastTimer) clearTimeout(toastTimer);
+      el.className = el.className.replace(' show', '');
+      action.onClick();
+    });
+    el.appendChild(btn);
+  }
   el.className = 'app-toast' + (kind ? ' toast-' + kind : '') + ' show';
   if(toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, 2200);
+  toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, action ? 5000 : 2200);
 }
 
 /* Build a formatted citation string for an article. */
@@ -9599,13 +9620,30 @@ function setupAddPatientForm(){
     removeBtn.addEventListener('click', () => {
       const p = activePatient();
       if(!p) return;
-      if(!window.confirm(`Remove ${p.name} and delete all logged readings for this patient? This can't be undone.`)) return;
+      // Immediate delete + an "Undo" toast instead of a blocking confirm()
+      // dialog — keep exactly what was removed (and where it sat in the
+      // list) in memory for the few seconds the undo window is open.
+      const removedIdx = vitalsState.patients.findIndex(x => x.id === p.id);
+      const removedPatient = p;
+      const removedLog = vitalsState.logs[p.id];
       vitalsState.patients = vitalsState.patients.filter(x => x.id !== p.id);
       delete vitalsState.logs[p.id];
       vitalsState.activePatientId = vitalsState.patients.length ? vitalsState.patients[0].id : null;
       saveVitalsData();
       renderPatientList();
       renderVitalsMain();
+      showToast(`Removed ${removedPatient.name}.`, null, {
+        label: 'Undo',
+        onClick: () => {
+          const at = Math.min(removedIdx, vitalsState.patients.length);
+          vitalsState.patients.splice(at < 0 ? 0 : at, 0, removedPatient);
+          vitalsState.logs[removedPatient.id] = removedLog;
+          vitalsState.activePatientId = removedPatient.id;
+          saveVitalsData();
+          renderPatientList();
+          renderVitalsMain();
+        }
+      });
     });
   }
 
@@ -12817,13 +12855,17 @@ if(landingPage){
   // setupAutosave()) so typing a patient's details and then switching to
   // another tab *before* clicking "Save patient" doesn't just discard the
   // entry: without this, the roster shows nothing was ever saved and
-  // there's no way back to what you just typed. Deliberately does NOT
-  // call logCtg()/logNote() (unlike saveCurrent()) — those commit a staged
-  // CTG image or a note draft into their permanent timelines, which should
-  // stay an explicit action, not something that happens silently mid-typing.
+  // there's no way back to what you just typed. Also flushes a staged CTG
+  // image and/or a typed note/advice draft into their permanent timelines
+  // (same as saveCurrent() already does) — being interrupted mid-entry
+  // shouldn't make those vanish either, they just wouldn't be reachable
+  // again since the textarea/staging area is transient UI state, not
+  // itself persisted.
   // No-ops if the name field is still empty (nothing worth saving yet).
   function autosaveIfNeeded(){
     if(!els.name.value.trim()) return;
+    if(ctgDataUrl){ logCtg(); }
+    if(els.notes.value.trim() || els.advice.value.trim()){ logNote(); }
     const data = readForm();
     const now = new Date().toISOString();
     if(currentId){
@@ -12873,13 +12915,27 @@ if(landingPage){
   function deleteCurrent(){
     if(!currentId) return;
     const r = patients.find(p => p.id === currentId);
-    if(!confirm('Delete ' + (r ? r.name : 'this patient') + '? This cannot be undone.')) return;
-    patients = patients.filter(p => p.id !== currentId);
+    if(!r) return;
+    // Immediate delete + an "Undo" toast instead of a blocking confirm() —
+    // keep the removed record and its roster position in memory for the
+    // few seconds the undo window is open.
+    const removedIdx = patients.findIndex(p => p.id === currentId);
+    const removed = r;
+    const removedId = currentId;
+    patients = patients.filter(p => p.id !== removedId);
     persist(); renderRoster();
     currentId = null;
     els.form.classList.add('hidden');
     els.empty.classList.remove('hidden');
-    toast('Patient deleted.');
+    toast('Deleted ' + (removed.name || 'patient') + '.', {
+      label: 'Undo',
+      onClick: () => {
+        const at = Math.min(removedIdx, patients.length);
+        patients.splice(at < 0 ? 0 : at, 0, removed);
+        persist(); renderRoster();
+        openPatient(removedId);
+      }
+    });
   }
 
   /* ---------- roster ---------- */
@@ -13196,9 +13252,27 @@ if(landingPage){
   /* ---------- misc ---------- */
   function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
   let toastTimer;
-  function toast(msg){
-    els.toast.textContent = msg; els.toast.classList.add('show');
-    clearTimeout(toastTimer); toastTimer = setTimeout(() => els.toast.classList.remove('show'), 2600);
+  // `action`, when given, is {label, onClick} — renders as a small button
+  // appended to the toast (used for "Undo" after an immediate delete) and
+  // keeps the toast up longer so there's a real chance to click it.
+  function toast(msg, action){
+    els.toast.textContent = msg;
+    if(action && action.label && typeof action.onClick === 'function'){
+      const btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'mat-toast-undo';
+      btn.textContent = action.label;
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        clearTimeout(toastTimer);
+        els.toast.classList.remove('show');
+        action.onClick();
+      });
+      els.toast.appendChild(btn);
+    }
+    els.toast.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => els.toast.classList.remove('show'), action ? 5000 : 2600);
   }
 
   /* ---------- wiring ---------- */
@@ -13246,17 +13320,38 @@ if(landingPage){
     els.btnLogVitals.addEventListener('click', logVitals);
     els.vitalsLogBody.addEventListener('click', (e)=>{
       const b = e.target.closest('[data-del-vital]'); if(!b) return;
-      vitalsLog = vitalsLog.filter(r => r.id !== b.getAttribute('data-del-vital'));
+      const id = b.getAttribute('data-del-vital');
+      const idx = vitalsLog.findIndex(r => r.id === id);
+      if(idx < 0) return;
+      const removed = vitalsLog[idx];
+      vitalsLog = vitalsLog.filter(r => r.id !== id);
       renderVitalsLog();
+      toast('Reading removed.', {
+        label: 'Undo',
+        onClick: () => {
+          vitalsLog.splice(Math.min(idx, vitalsLog.length), 0, removed);
+          renderVitalsLog();
+        }
+      });
     });
 
     // clinical notes & advice
     els.btnLogNotes.addEventListener('click', logNote);
     els.notesTimeline.addEventListener('click', (e)=>{
       const b = e.target.closest('[data-del-note]'); if(!b) return;
-      if(!confirm('Remove this progress note?')) return;
-      notesLog = notesLog.filter(n => n.id !== b.getAttribute('data-del-note'));
+      const id = b.getAttribute('data-del-note');
+      const idx = notesLog.findIndex(n => n.id === id);
+      if(idx < 0) return;
+      const removed = notesLog[idx];
+      notesLog = notesLog.filter(n => n.id !== id);
       renderNotesLog();
+      toast('Note removed.', {
+        label: 'Undo',
+        onClick: () => {
+          notesLog.splice(Math.min(idx, notesLog.length), 0, removed);
+          renderNotesLog();
+        }
+      });
     });
 
     // induction
@@ -13271,9 +13366,20 @@ if(landingPage){
     els.ctgGallery.addEventListener('click', (e)=>{
       const del = e.target.closest('[data-del-ctg]');
       if(del){
-        if(!confirm('Remove this CTG trace from the timeline?')) return;
-        ctgLog = ctgLog.filter(c => c.id !== del.getAttribute('data-del-ctg'));
-        renderCtgGallery(); return;
+        const id = del.getAttribute('data-del-ctg');
+        const idx = ctgLog.findIndex(c => c.id === id);
+        if(idx < 0) return;
+        const removed = ctgLog[idx];
+        ctgLog = ctgLog.filter(c => c.id !== id);
+        renderCtgGallery();
+        toast('CTG trace removed.', {
+          label: 'Undo',
+          onClick: () => {
+            ctgLog.splice(Math.min(idx, ctgLog.length), 0, removed);
+            renderCtgGallery();
+          }
+        });
+        return;
       }
       const thumb = e.target.closest('[data-lb]');
       if(thumb) openLightbox(thumb.getAttribute('data-lb'));
