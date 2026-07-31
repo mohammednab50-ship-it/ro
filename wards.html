@@ -2432,6 +2432,13 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <button type="button" class="seg-btn" data-size="xlarge">A++</button>
           </div>
         </div>
+        <div class="ws-row">
+          <span class="ws-label">Open on launch<span class="ws-sub">Per-device default</span></span>
+          <select id="wards-default-view-select" class="settings-select">
+            <option value="last">Last-active patient</option>
+            <option value="board">Board view — all patients</option>
+          </select>
+        </div>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-cbsafe-toggle"> Colour-blind-safe palette</label>
         <p class="qh-note">Shifts status colours (NEWS2 bands, trend badges, isolation flags) off a red/green-only scheme and adds icon/label redundancy.</p>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-battery-saver-toggle"> Battery saver</label>
@@ -3298,6 +3305,15 @@ function setupWardsSettingsUI(){
     });
   }
 
+  const viewSel = document.getElementById('wards-default-view-select');
+  if(viewSel){
+    viewSel.value = (typeof window.getDefaultVitalsView === 'function') ? window.getDefaultVitalsView() : 'last';
+    viewSel.addEventListener('change', () => {
+      if(typeof window.setDefaultVitalsView === 'function') window.setDefaultVitalsView(viewSel.value);
+      haptic('Light');
+    });
+  }
+
   const cbInput = document.getElementById('wards-cbsafe-toggle');
   if(cbInput){
     cbInput.checked = getInitialCbSafe();
@@ -3596,7 +3612,28 @@ function initVitals(){
   setupMarSection();
   setupSbarButtons();
   renderPatientList();
-  renderVitalsMain();
+  if(getDefaultVitalsView() === 'board' && vitalsState.patients.length){
+    setVitalsBoardActive(true);
+  }else{
+    renderVitalsMain();
+  }
+}
+
+/* ============================================================
+   Default view on launch — a per-device preference. The tab merge
+   left Patients as the only top-level view, so "default tab" (as
+   index.html has it) doesn't apply here; this is the meaningful
+   equivalent instead: open straight to the multi-patient Board, or
+   to the last-active patient's chart (the existing behaviour,
+   default) — same rationale, one level down.
+   ============================================================ */
+const DEFAULT_VITALS_VIEW_KEY = 'wards_default_view_v1';
+function getDefaultVitalsView(){
+  try{ const v = localStorage.getItem(DEFAULT_VITALS_VIEW_KEY); if(v === 'board' || v === 'last') return v; }catch(e){}
+  return 'last';
+}
+function setDefaultVitalsView(v){
+  try{ localStorage.setItem(DEFAULT_VITALS_VIEW_KEY, (v === 'board') ? 'board' : 'last'); }catch(e){}
 }
 
 /* ---- patient list (sidebar) ---- */
@@ -6436,6 +6473,8 @@ function setupPediatricsSection(){
 }
 
 window.initVitals = initVitals;
+window.getDefaultVitalsView = getDefaultVitalsView;
+window.setDefaultVitalsView = setDefaultVitalsView;
 })();
 
 /* ============================================================
