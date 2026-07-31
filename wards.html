@@ -2407,6 +2407,12 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-settings-panel .qh-note{margin-bottom:12px;}
 .wards-settings-panel .qh-note:last-child{margin-bottom:0;}
 
+.wards-demo-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
+  padding:8px 20px;background:#664d03;color:#fff3cd;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
+.wards-demo-banner button{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;
+  border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:700;cursor:pointer;}
+.wards-demo-banner button:hover{background:rgba(255,255,255,.22);}
+
 .wards-tabbar{
   display:flex; gap:6px; padding:10px 28px; max-width:1280px; margin:0 auto;
   border-bottom:1px solid var(--line);
@@ -2499,10 +2505,19 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <p class="qh-note">Shifts status colours (NEWS2 bands, trend badges, isolation flags) off a red/green-only scheme and adds icon/label redundancy.</p>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-battery-saver-toggle"> Battery saver</label>
         <p class="qh-note" id="wards-battery-saver-note">Reduces animation and transition effects. Auto-enables on low battery where the device reports it.</p>
+        <div class="ws-row">
+          <span class="ws-label">Demo mode<span class="ws-sub">Fake sample patients, for showing colleagues</span></span>
+          <button type="button" class="settings-btn" id="wards-demo-toggle-btn">Try demo mode</button>
+        </div>
       </div>
     </div>
   </div>
 </header>
+
+<div class="wards-demo-banner" id="wards-demo-banner" hidden>
+  <span>&#9888; DEMO MODE — fake sample patients shown below. Nothing here is your real data, and nothing you do while demoing is saved.</span>
+  <button type="button" id="wards-demo-exit-btn">Exit demo mode</button>
+</div>
 
 <nav class="wards-tabbar" id="wards-tabbar" aria-label="Sections">
   <button type="button" class="wards-tab" data-view="vitals" role="tab" aria-selected="true" aria-controls="view-vitals">Patients</button>
@@ -3405,6 +3420,34 @@ function setupWardsSettingsUI(){
     bsInput.addEventListener('change', () => { setBatterySaverManual(bsInput.checked); haptic('Light'); });
   }
 
+  const demoBtn = document.getElementById('wards-demo-toggle-btn');
+  const demoBanner = document.getElementById('wards-demo-banner');
+  const demoExitBtn = document.getElementById('wards-demo-exit-btn');
+  function syncDemoUI(){
+    const on = typeof window.isWardsDemoMode === 'function' && window.isWardsDemoMode();
+    if(demoBanner) demoBanner.hidden = !on;
+    if(demoBtn) demoBtn.textContent = on ? 'In demo mode' : 'Try demo mode';
+    if(demoBtn) demoBtn.disabled = on;
+  }
+  if(demoBtn){
+    demoBtn.addEventListener('click', () => {
+      if(typeof window.enterWardsDemoMode === 'function') window.enterWardsDemoMode();
+      haptic('Medium');
+      showToast('Demo mode on — sample patients only, nothing is saved', 'ok');
+      syncDemoUI();
+      panel.hidden = true;
+    });
+  }
+  if(demoExitBtn){
+    demoExitBtn.addEventListener('click', () => {
+      if(typeof window.exitWardsDemoMode === 'function') window.exitWardsDemoMode();
+      haptic('Light');
+      showToast('Exited demo mode — your real patient list is back', 'ok');
+      syncDemoUI();
+    });
+  }
+  syncDemoUI();
+
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
     const isHidden = panel.hidden;
@@ -3617,12 +3660,71 @@ function loadVitalsData(){
 }
 
 function saveVitalsData(){
+  if(wardsDemoMode) return; // demo session is in-memory only — never touches real storage
   try{
     localStorage.setItem(VITALS_KEY, JSON.stringify({
       patients: vitalsState.patients, logs: vitalsState.logs,
       migratedMaternityV1: !!vitalsState.migratedMaternityV1
     }));
   }catch(e){}
+}
+
+/* ============================================================
+   Guest / demo mode — swaps the in-memory patient roster for clearly-
+   fake sample data so someone can demo Wards to a colleague without
+   ever touching (or even reading, beyond this one load) real patient
+   data. saveVitalsData() above no-ops for the whole time it's active,
+   and exiting restores exactly what was there before.
+   ============================================================ */
+let wardsDemoMode = false;
+let wardsDemoStash = null;
+function wardsDemoPatients(){
+  const now = new Date().toISOString();
+  return [
+    { id: 'demo_pt_1', name: 'Demo Patient — ICU', bed: 'ICU-1', mrn: 'DEMO0001', department: 'icu', createdAt: now },
+    { id: 'demo_pt_2', name: 'Demo Patient — Surgical', bed: 'SW-4', mrn: 'DEMO0002', department: 'surgery', createdAt: now },
+    { id: 'demo_pt_3', name: 'Demo Patient — General', bed: 'W3-12', mrn: 'DEMO0003', department: 'general', createdAt: now },
+    { id: 'demo_pt_4', name: 'Demo Patient — Maternity', bed: 'MAT-2', mrn: 'DEMO0004', department: 'maternity', createdAt: now }
+  ];
+}
+function wardsDemoLogs(){
+  const now = Date.now();
+  const iso = (minsAgo) => new Date(now - minsAgo * 60000).toISOString();
+  return {
+    demo_pt_1: [
+      { id: 'demo_vr_1a', ts: iso(240), hr: '92', sbp: '108', dbp: '64', rr: '20', spo2: '95', temp: '37.6', gcs: '15', uop: '', intakeOral: '', intakeIv: '', outputOther: '', o2sup: true, notes: 'Sample reading — demo data, not a real patient.' },
+      { id: 'demo_vr_1b', ts: iso(30), hr: '88', sbp: '112', dbp: '68', rr: '18', spo2: '97', temp: '37.2', gcs: '15', uop: '', intakeOral: '', intakeIv: '', outputOther: '', o2sup: false, notes: 'Sample reading — demo data, not a real patient.' }
+    ],
+    demo_pt_2: [
+      { id: 'demo_vr_2a', ts: iso(120), hr: '78', sbp: '124', dbp: '78', rr: '16', spo2: '98', temp: '36.9', gcs: '15', uop: '', intakeOral: '', intakeIv: '', outputOther: '', o2sup: false, notes: 'Sample post-op reading — demo data.' }
+    ],
+    demo_pt_3: [],
+    demo_pt_4: []
+  };
+}
+function enterWardsDemoMode(){
+  if(wardsDemoMode) return;
+  wardsDemoStash = {
+    patients: vitalsState.patients,
+    logs: vitalsState.logs,
+    activePatientId: vitalsState.activePatientId
+  };
+  vitalsState.patients = wardsDemoPatients();
+  vitalsState.logs = wardsDemoLogs();
+  vitalsState.activePatientId = vitalsState.patients[0].id;
+  wardsDemoMode = true;
+  renderPatientList();
+  renderVitalsMain();
+}
+function exitWardsDemoMode(){
+  if(!wardsDemoMode || !wardsDemoStash) return;
+  vitalsState.patients = wardsDemoStash.patients;
+  vitalsState.logs = wardsDemoStash.logs;
+  vitalsState.activePatientId = wardsDemoStash.activePatientId;
+  wardsDemoStash = null;
+  wardsDemoMode = false;
+  renderPatientList();
+  renderVitalsMain();
 }
 
 function genVitalsId(prefix){
@@ -6827,6 +6929,9 @@ window.getWardsLocale = getWardsLocale;
 window.setWardsLocale = setWardsLocale;
 window.renderPatientList = renderPatientList;
 window.renderVitalsTable = renderVitalsTable;
+window.enterWardsDemoMode = enterWardsDemoMode;
+window.exitWardsDemoMode = exitWardsDemoMode;
+window.isWardsDemoMode = () => wardsDemoMode;
 })();
 
 /* ============================================================
