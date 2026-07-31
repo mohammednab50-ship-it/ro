@@ -2046,7 +2046,9 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <textarea id="feedback-text" class="bookmark-note-input" style="min-height:120px;margin-bottom:14px;" placeholder="What happened? What did you expect instead?" maxlength="4000"></textarea>
     <div class="crashlog-actions">
       <button type="button" class="settings-btn" id="feedback-download">Download report</button>
+      <button type="button" class="settings-btn" id="feedback-copy-debug">Copy debug data</button>
     </div>
+    <p class="settings-sub" style="display:block;margin:10px 0 0;">"Copy debug data" copies structural info only — storage key names, item counts, schema version — never the actual saved text/content.</p>
   </div>
 </div>
 
@@ -11183,6 +11185,41 @@ function currentActiveTab(){
   const el = document.querySelector('#tabbar .tab[aria-selected="true"]');
   return el ? el.dataset.view : 'unknown';
 }
+/* Structural-only shape of a value — array length, object key count,
+   string length — never the actual content, so this stays safe to share
+   even though some localStorage values hold user-entered text. */
+function debugDumpShapeOf(val){
+  if(val === null || val === undefined) return String(val);
+  if(Array.isArray(val)) return `array(len=${val.length})`;
+  if(typeof val === 'object') return `object(keys=[${Object.keys(val).join(',')}])`;
+  if(typeof val === 'string') return `string(len=${val.length})`;
+  return typeof val;
+}
+function buildDebugDump(){
+  const dump = { generatedAt: new Date().toISOString(), appVersion: (typeof APP_VERSION !== 'undefined') ? APP_VERSION : '', userAgent: navigator.userAgent, localStorageKeys: {} };
+  try{
+    for(let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      const raw = localStorage.getItem(k);
+      let parsed;
+      try{ parsed = JSON.parse(raw); }catch(e){ parsed = raw; }
+      dump.localStorageKeys[k] = debugDumpShapeOf(parsed);
+    }
+  }catch(e){}
+  return dump;
+}
+function copyDebugDump(){
+  const text = JSON.stringify(buildDebugDump(), null, 2);
+  const done = () => { haptic('Light'); showToast('Debug data copied — key names and shapes only, no saved text', 'ok'); };
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }catch(e){ fallbackCopy(text, done); }
+}
+
 function openFeedback(){
   const modal = document.getElementById('feedback-modal');
   if(!modal) return;
@@ -11234,6 +11271,9 @@ function openFeedback(){
       close();
     };
   }
+
+  const copyDebugBtn = document.getElementById('feedback-copy-debug');
+  if(copyDebugBtn) copyDebugBtn.onclick = copyDebugDump;
 
   modal.hidden = false;
   document.addEventListener('keydown', onKey);
