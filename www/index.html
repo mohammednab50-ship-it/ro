@@ -50,6 +50,7 @@
   --caution:      #D1372A;
   --caution-bg:   #FBEAE8;
   --caution-line: #F4C9C2;
+  --sev-major:    #C0392B;
 
   /* primary CTA — solid black pill (the reference's recurring button motif) */
   --cta-bg:        #0A0D12;
@@ -150,6 +151,7 @@
   --caution:      #F0897B;
   --caution-bg:   #241412;
   --caution-line: #422320;
+  --sev-major:    #E0685A;
 
   /* dark mode flips the CTA motif: white/off-white pill on near-black */
   --cta-bg:        #F4F5F7;
@@ -783,14 +785,14 @@ details.guideline-updates[open] > summary .section-chevron{transform:rotate(180d
 .ix-count-pill.warn{background:var(--fresh-bg);color:var(--fresh);}
 .ix-card{border:1px solid var(--line);border-left-width:3px;border-radius:var(--r-md);padding:var(--space-5) var(--space-6);background:var(--surface);margin-bottom:var(--space-4);animation:card-in var(--dur-base) var(--ease-out) both;}
 .ix-card.sev-contraindicated{border-left-color:var(--caution);}
-.ix-card.sev-major{border-left-color:#C0392B;}
+.ix-card.sev-major{border-left-color:var(--sev-major);}
 .ix-card.sev-moderate{border-left-color:var(--fresh);}
 .ix-card.sev-minor{border-left-color:var(--tag-supplement);}
 .ix-card-head{display:flex;align-items:baseline;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:8px;}
 .ix-pair{font-family:var(--ff-display);font-size:19px;font-weight:700;color:var(--ink);margin:0;}
 .ix-sev{font-family:var(--ff-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:var(--tracking-wide);padding:3px 10px;border-radius:var(--r-pill);white-space:nowrap;color:#fff;}
 .ix-sev.sev-contraindicated{background:var(--caution);}
-.ix-sev.sev-major{background:#C0392B;}
+.ix-sev.sev-major{background:var(--sev-major);}
 .ix-sev.sev-moderate{background:var(--fresh);}
 .ix-sev.sev-minor{background:var(--tag-supplement);}
 .ix-mech{font-family:var(--ff-serif);font-size:14.5px;line-height:1.6;color:var(--ink-soft);margin:0 0 6px;}
@@ -979,6 +981,31 @@ body,.card,.drug-card,.approval-card,.guidelines-box,.sources-box,.disclaimer-bo
              color var(--dur-base) var(--ease-out),
              border-color var(--dur-base) var(--ease-out);
 }
+
+/* ---- colour-blind-safe palette ----
+   Separate toggle from the light/dark theme. Overrides the status
+   tokens used by interaction-checker severity badges, advance-impact
+   tags and trial-status tags to a blue/orange scheme (further apart
+   for red-green colour vision deficiency than the default red/orange),
+   plus glyph redundancy on severity badges so severity never rests on
+   colour alone — the text label was already there. Applies in both
+   light and dark theme. */
+:root[data-cbsafe="1"]{ --fresh:#0B6FA8; --fresh-bg:#E1F0FA; --caution:#B95000; --caution-bg:#FCE8D9; --caution-line:#F0C79B; --sev-major:#6A3FA0; }
+:root[data-theme="dark"][data-cbsafe="1"]{ --fresh:#7FC8F5; --fresh-bg:#0E2536; --caution:#FFA552; --caution-bg:#2A1D0D; --caution-line:#4A3216; --sev-major:#C9A6EE; }
+:root[data-cbsafe="1"] .ix-sev.sev-contraindicated::before{content:"\2715 ";}
+:root[data-cbsafe="1"] .ix-sev.sev-major::before{content:"\25b2 ";}
+:root[data-cbsafe="1"] .ix-sev.sev-moderate::before{content:"\25cf ";}
+:root[data-cbsafe="1"] .ix-sev.sev-minor::before{content:"\25cb ";}
+
+/* ---- battery saver ----
+   Manual toggle in Settings, or auto-enabled when navigator.getBattery()
+   reports a low, unplugged battery (Chromium/Android WebView only — the
+   API is unsupported on iOS Safari/Firefox, where this stays
+   manual-only). Same blanket animation/transition kill as
+   prefers-reduced-motion, plus it pauses the landing-page carousel's
+   autoplay interval (see restartAutoplay/battery-saver JS below). */
+html.battery-saver *,html.battery-saver *::before,html.battery-saver *::after{
+  animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important;}
 
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce){
@@ -1424,7 +1451,7 @@ body::before{background:
 
 /* interaction severity cards: faint tinted wash matching the rail colour */
 .ix-card.sev-contraindicated{background-image:linear-gradient(100deg,var(--caution-bg),transparent 55%);}
-.ix-card.sev-major{background-image:linear-gradient(100deg,rgba(192,57,43,0.09),transparent 55%);}
+.ix-card.sev-major{background-image:linear-gradient(100deg,color-mix(in srgb,var(--sev-major) 12%,transparent),transparent 55%);}
 .ix-card.sev-moderate{background-image:linear-gradient(100deg,var(--fresh-bg),transparent 55%);}
 .ix-card.sev-minor{background-image:linear-gradient(100deg,var(--tag-supplement-bg),transparent 55%);}
 
@@ -1914,7 +1941,18 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
         <button type="button" class="seg-btn" data-size="small">A-</button>
         <button type="button" class="seg-btn" data-size="normal">A</button>
         <button type="button" class="seg-btn" data-size="large">A+</button>
+        <button type="button" class="seg-btn" data-size="xlarge">A++</button>
       </div>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Colour-blind-safe palette</strong><span class="settings-sub">Status colours shift off red/green</span></div>
+      <button type="button" class="settings-btn" id="settings-cbsafe-toggle" aria-pressed="false">Off</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Battery saver</strong><span class="settings-sub" id="settings-battery-saver-sub">Reduce animation, auto on low battery</span></div>
+      <button type="button" class="settings-btn" id="settings-battery-saver-toggle" aria-pressed="false">Off</button>
     </div>
 
     <div class="settings-row">
@@ -6541,7 +6579,7 @@ function showToast(msg, kind, action){
   }
   el.className = 'app-toast' + (kind ? ' toast-' + kind : '') + ' show';
   if(toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, action ? 5000 : 2200);
+  toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, action ? 7000 : 2200);
 }
 
 /* Build a formatted citation string for an article. */
@@ -6602,8 +6640,58 @@ async function shareArticle(a){
   copyCitation(a);
 }
 
+/* ---- Colour-blind-safe palette (accessibility) — separate toggle
+   from the light/dark theme. See the CSS block above
+   (:root[data-cbsafe="1"]) for what it actually changes. ---- */
+const CBSAFE_KEY = 'rounds_cbsafe_v1';
+function getInitialCbSafe(){
+  try{ return localStorage.getItem(CBSAFE_KEY) === '1'; }catch(e){ return false; }
+}
+function applyCbSafe(on){
+  document.documentElement.setAttribute('data-cbsafe', on ? '1' : '0');
+}
+function setCbSafe(on){
+  applyCbSafe(on);
+  try{ localStorage.setItem(CBSAFE_KEY, on ? '1' : '0'); }catch(e){}
+  haptic('Light');
+}
+
+/* ---- Battery saver — manual Settings toggle, or auto-enabled via
+   navigator.getBattery() where the browser implements it (feature-
+   detected; no-ops silently where it isn't, e.g. iOS Safari/Firefox).
+   Effective state is manual-on OR auto-detected-low. ---- */
+const BATTERY_SAVER_KEY = 'rounds_battery_saver_v1';
+let _batteryAutoLow = false;
+function getBatterySaverManual(){
+  try{ return localStorage.getItem(BATTERY_SAVER_KEY) === '1'; }catch(e){ return false; }
+}
+function setBatterySaverManual(on){
+  try{ localStorage.setItem(BATTERY_SAVER_KEY, on ? '1' : '0'); }catch(e){}
+  updateBatterySaverState();
+}
+function updateBatterySaverState(){
+  const on = getBatterySaverManual() || _batteryAutoLow;
+  document.documentElement.classList.toggle('battery-saver', on);
+  if(on && typeof restartAutoplay === 'function' && autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; }
+  const sub = document.getElementById('settings-battery-saver-sub');
+  if(sub) sub.textContent = _batteryAutoLow ? 'Auto-enabled — battery is low and unplugged' : 'Reduce animation, auto on low battery';
+}
+function setupBatterySaver(){
+  updateBatterySaverState();
+  if(!(navigator && typeof navigator.getBattery === 'function')) return;
+  navigator.getBattery().then(battery => {
+    const check = () => {
+      _batteryAutoLow = battery.level <= 0.2 && !battery.charging;
+      updateBatterySaverState();
+    };
+    check();
+    battery.addEventListener('levelchange', check);
+    battery.addEventListener('chargingchange', check);
+  }).catch(() => {});
+}
+
 /* ---- Font size (accessibility) ---- */
-const FONT_SCALES = { small: '0.92', normal: '1', large: '1.12' };
+const FONT_SCALES = { small: '0.92', normal: '1', large: '1.12', xlarge: '1.32' };
 // `zoom` reflows correctly on Chrome/Android/desktop and modern iOS (16.4+),
 // but is a no-op on older iOS Safari/WKWebView. Feature-detect it, and fall
 // back to a CSS custom property that scales the root font-size — supported on
@@ -6663,12 +6751,33 @@ function setBookmarks(obj){ localStorage.setItem(BOOKMARK_KEY, JSON.stringify(ob
 function isBookmarked(pmid){ return !!getBookmarks()[pmid]; }
 function toggleBookmark(article){
   const bm = getBookmarks();
-  let added;
-  if(bm[article.pmid]){ delete bm[article.pmid]; added = false; removeBookmarkNote(article.pmid); }
+  let added, removedArticle, removedNote;
+  if(bm[article.pmid]){
+    removedArticle = bm[article.pmid];
+    removedNote = getBookmarkNote(article.pmid);
+    delete bm[article.pmid];
+    added = false;
+    removeBookmarkNote(article.pmid);
+  }
   else { bm[article.pmid] = article; added = true; }
   haptic('Medium');
   setBookmarks(bm);
-  showToast(added ? 'Saved to your list' : 'Removed from saved', 'ok');
+  if(added){
+    showToast('Saved to your list', 'ok');
+  }else{
+    showToast('Removed from saved.', null, {
+      label: 'Undo',
+      onClick: () => {
+        const bm2 = getBookmarks();
+        bm2[removedArticle.pmid] = removedArticle;
+        setBookmarks(bm2);
+        if(removedNote) setBookmarkNote(removedArticle.pmid, removedNote);
+        if(state.viewingBookmarks) renderBookmarksView();
+        else render();
+        renderChapters();
+      }
+    });
+  }
   if(state.viewingBookmarks) renderBookmarksView();
   else render();
   renderChapters();
@@ -10585,6 +10694,8 @@ function init(){
   const verEl = document.getElementById('app-version');
   if(verEl) verEl.textContent = 'Rounds v' + APP_VERSION;
   applyFontSize(localStorage.getItem(FONTSIZE_KEY) || 'normal');
+  applyCbSafe(getInitialCbSafe());
+  setupBatterySaver();
   applyTheme(getInitialTheme());
   setupTheme();
   setupDisclaimer();
@@ -10842,6 +10953,28 @@ function openSettings(){
         sizeWrap.querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x === b));
       };
     });
+  }
+
+  const cbBtn = document.getElementById('settings-cbsafe-toggle');
+  if(cbBtn){
+    const syncCb = () => {
+      const on = document.documentElement.getAttribute('data-cbsafe') === '1';
+      cbBtn.textContent = on ? 'On' : 'Off';
+      cbBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    cbBtn.onclick = () => { setCbSafe(document.documentElement.getAttribute('data-cbsafe') !== '1'); syncCb(); };
+    syncCb();
+  }
+
+  const bsBtn = document.getElementById('settings-battery-saver-toggle');
+  if(bsBtn){
+    const syncBs = () => {
+      const on = getBatterySaverManual();
+      bsBtn.textContent = on ? 'On' : 'Off';
+      bsBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    bsBtn.onclick = () => { setBatterySaverManual(!getBatterySaverManual()); haptic('Light'); syncBs(); };
+    syncBs();
   }
 
   const sel = document.getElementById('settings-default-specialty');
