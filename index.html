@@ -997,6 +997,16 @@ body,.card,.drug-card,.approval-card,.guidelines-box,.sources-box,.disclaimer-bo
 :root[data-cbsafe="1"] .ix-sev.sev-moderate::before{content:"\25cf ";}
 :root[data-cbsafe="1"] .ix-sev.sev-minor::before{content:"\25cb ";}
 
+/* ---- battery saver ----
+   Manual toggle in Settings, or auto-enabled when navigator.getBattery()
+   reports a low, unplugged battery (Chromium/Android WebView only — the
+   API is unsupported on iOS Safari/Firefox, where this stays
+   manual-only). Same blanket animation/transition kill as
+   prefers-reduced-motion, plus it pauses the landing-page carousel's
+   autoplay interval (see restartAutoplay/battery-saver JS below). */
+html.battery-saver *,html.battery-saver *::before,html.battery-saver *::after{
+  animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important;}
+
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important;}
@@ -1938,6 +1948,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div class="settings-row">
       <div class="settings-label"><strong>Colour-blind-safe palette</strong><span class="settings-sub">Status colours shift off red/green</span></div>
       <button type="button" class="settings-btn" id="settings-cbsafe-toggle" aria-pressed="false">Off</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Battery saver</strong><span class="settings-sub" id="settings-battery-saver-sub">Reduce animation, auto on low battery</span></div>
+      <button type="button" class="settings-btn" id="settings-battery-saver-toggle" aria-pressed="false">Off</button>
     </div>
 
     <div class="settings-row">
@@ -6641,6 +6656,40 @@ function setCbSafe(on){
   haptic('Light');
 }
 
+/* ---- Battery saver — manual Settings toggle, or auto-enabled via
+   navigator.getBattery() where the browser implements it (feature-
+   detected; no-ops silently where it isn't, e.g. iOS Safari/Firefox).
+   Effective state is manual-on OR auto-detected-low. ---- */
+const BATTERY_SAVER_KEY = 'rounds_battery_saver_v1';
+let _batteryAutoLow = false;
+function getBatterySaverManual(){
+  try{ return localStorage.getItem(BATTERY_SAVER_KEY) === '1'; }catch(e){ return false; }
+}
+function setBatterySaverManual(on){
+  try{ localStorage.setItem(BATTERY_SAVER_KEY, on ? '1' : '0'); }catch(e){}
+  updateBatterySaverState();
+}
+function updateBatterySaverState(){
+  const on = getBatterySaverManual() || _batteryAutoLow;
+  document.documentElement.classList.toggle('battery-saver', on);
+  if(on && typeof restartAutoplay === 'function' && autoplayTimer) { clearInterval(autoplayTimer); autoplayTimer = null; }
+  const sub = document.getElementById('settings-battery-saver-sub');
+  if(sub) sub.textContent = _batteryAutoLow ? 'Auto-enabled — battery is low and unplugged' : 'Reduce animation, auto on low battery';
+}
+function setupBatterySaver(){
+  updateBatterySaverState();
+  if(!(navigator && typeof navigator.getBattery === 'function')) return;
+  navigator.getBattery().then(battery => {
+    const check = () => {
+      _batteryAutoLow = battery.level <= 0.2 && !battery.charging;
+      updateBatterySaverState();
+    };
+    check();
+    battery.addEventListener('levelchange', check);
+    battery.addEventListener('chargingchange', check);
+  }).catch(() => {});
+}
+
 /* ---- Font size (accessibility) ---- */
 const FONT_SCALES = { small: '0.92', normal: '1', large: '1.12', xlarge: '1.32' };
 // `zoom` reflows correctly on Chrome/Android/desktop and modern iOS (16.4+),
@@ -10625,6 +10674,7 @@ function init(){
   if(verEl) verEl.textContent = 'Rounds v' + APP_VERSION;
   applyFontSize(localStorage.getItem(FONTSIZE_KEY) || 'normal');
   applyCbSafe(getInitialCbSafe());
+  setupBatterySaver();
   applyTheme(getInitialTheme());
   setupTheme();
   setupDisclaimer();
@@ -10893,6 +10943,17 @@ function openSettings(){
     };
     cbBtn.onclick = () => { setCbSafe(document.documentElement.getAttribute('data-cbsafe') !== '1'); syncCb(); };
     syncCb();
+  }
+
+  const bsBtn = document.getElementById('settings-battery-saver-toggle');
+  if(bsBtn){
+    const syncBs = () => {
+      const on = getBatterySaverManual();
+      bsBtn.textContent = on ? 'On' : 'Off';
+      bsBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    bsBtn.onclick = () => { setBatterySaverManual(!getBatterySaverManual()); haptic('Light'); syncBs(); };
+    syncBs();
   }
 
   const sel = document.getElementById('settings-default-specialty');
