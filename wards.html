@@ -2158,6 +2158,18 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   }
   .mat-lightbox.show{display:grid}
   .mat-lightbox img{max-width:100%; max-height:92vh; object-fit:contain; border-radius:8px; box-shadow:var(--shadow)}
+  .mat-lb-imgwrap{position:relative; display:inline-block; max-height:92vh;}
+  .mat-lb-imgwrap img{display:block;}
+  .mat-lb-grid{position:absolute; inset:0; pointer-events:none; border-radius:8px;
+    background-image:
+      repeating-linear-gradient(0deg, rgba(255,255,255,.35) 0, rgba(255,255,255,.35) 1px, transparent 1px, transparent 10%),
+      repeating-linear-gradient(90deg, rgba(255,255,255,.35) 0, rgba(255,255,255,.35) 1px, transparent 1px, transparent 10%);
+  }
+  .mat-lightbox .mat-lb-grid-toggle{
+    position:absolute; top:18px; right:64px; width:auto; height:36px; padding:0 14px; border-radius:18px;
+    border:1px solid rgba(255,255,255,.4); background:rgba(0,0,0,.35); color:#e8e8e8; font-family:var(--ff-sans); font-size:12.5px; cursor:pointer;
+  }
+  .mat-lightbox .mat-lb-grid-toggle[aria-pressed="true"]{background:rgba(255,255,255,.85); color:#111; border-color:transparent;}
   .mat-lightbox .mat-lb-close{
     position:absolute; top:16px; right:20px; width:40px;height:40px; border-radius:50%;
     background:var(--panel); border:1px solid var(--line); color:var(--ink); cursor:pointer;
@@ -3128,7 +3140,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 
 <div class="mat-lightbox" id="mat-lightbox">
   <button class="mat-lb-close" id="mat-lb-close" aria-label="Close">&times;</button>
-  <img id="mat-lb-img" alt="CTG trace enlarged">
+  <button type="button" class="mat-lb-grid-toggle" id="mat-lb-grid-toggle" aria-pressed="false" title="Toggle readability gridlines over the CTG trace">Grid</button>
+  <div class="mat-lb-imgwrap">
+    <img id="mat-lb-img" alt="CTG trace enlarged">
+    <div class="mat-lb-grid" id="mat-lb-grid" aria-hidden="true" hidden></div>
+  </div>
   <div class="mat-lb-cap" id="mat-lb-cap"></div>
 </div>
 
@@ -6098,6 +6114,24 @@ async function handleCtgFiles(fileList){
 }
 
 let ctgLightboxToken = 0;
+const CTG_GRID_KEY = 'wards_ctg_grid_v1';
+function getCtgGridOn(){
+  try{ return localStorage.getItem(CTG_GRID_KEY) === '1'; }catch(e){ return false; }
+}
+function setCtgGridOn(on){
+  try{ localStorage.setItem(CTG_GRID_KEY, on ? '1' : '0'); }catch(e){}
+  const grid = document.getElementById('mat-lb-grid');
+  const btn = document.getElementById('mat-lb-grid-toggle');
+  if(grid) grid.hidden = !on;
+  if(btn) btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+}
+function setupCtgGridToggle(){
+  const btn = document.getElementById('mat-lb-grid-toggle');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => { setCtgGridOn(!getCtgGridOn()); haptic('Light'); });
+}
+
 function openCtgLightbox(id){
   const p = activePatient(); if(!p) return;
   const m = ensureMaternity(p);
@@ -6107,6 +6141,8 @@ function openCtgLightbox(id){
   if(lbImg) lbImg.src = '';
   if(lbCap) lbCap.textContent = fmtVitalsTime(c.at) + (c.ctgClass ? ' · ' + c.ctgClass : '');
   if(lightbox) lightbox.classList.add('show');
+  setupCtgGridToggle();
+  setCtgGridOn(getCtgGridOn());
   ctgImageGet(id).then(dataUrl => {
     if(token !== ctgLightboxToken) return;
     if(lbImg) lbImg.src = safeCtgImageSrc(dataUrl);
