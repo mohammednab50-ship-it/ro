@@ -2327,6 +2327,16 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .quiet-hours-panel .qh-times input{border:1px solid var(--line); border-radius:var(--r-sm); padding:6px 8px; font-family:var(--ff-sans); font-size:13px; background:var(--paper); color:var(--ink);}
 .quiet-hours-panel .qh-note{font-size:11px; color:var(--ink-faint); line-height:1.4; margin:0;}
 
+/* ---- display settings popover (text size / colour-blind-safe / battery saver) ---- */
+.wards-settings-wrap{position:relative;}
+#wards-settings-toggle[aria-pressed="true"]{color:var(--evidence-dark);border-color:var(--evidence);background:var(--evidence-bg);}
+.wards-settings-panel{width:270px;}
+.wards-settings-panel .ws-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
+.wards-settings-panel .ws-label{display:flex; flex-direction:column; gap:2px; font-size:12.5px; font-weight:600; color:var(--ink);}
+.wards-settings-panel .ws-sub{font-size:10.5px; font-weight:500; color:var(--ink-faint);}
+.wards-settings-panel .qh-note{margin-bottom:12px;}
+.wards-settings-panel .qh-note:last-child{margin-bottom:0;}
+
 .wards-tabbar{
   display:flex; gap:6px; padding:10px 28px; max-width:1280px; margin:0 auto;
   border-bottom:1px solid var(--line);
@@ -2380,6 +2390,22 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <label>End <input type="time" id="quiet-hours-end" value="06:00"></label>
         </div>
         <p class="qh-note">Suppresses haptic buzz and toast animation flourish during this window (toast text still shows). Default 22:00&ndash;06:00.</p>
+      </div>
+    </div>
+    <div class="wards-settings-wrap">
+      <button id="wards-settings-toggle" class="theme-toggle" type="button" aria-label="Display settings" title="Text size, colour-blind-safe palette, battery saver" aria-expanded="false" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+      </button>
+      <div class="quiet-hours-panel wards-settings-panel" id="wards-settings-panel" hidden>
+        <div class="ws-row">
+          <span class="ws-label">Text size<span class="ws-sub">Comfort of reading</span></span>
+          <div class="seg" id="wards-fontsize-seg" role="group" aria-label="Text size">
+            <button type="button" class="seg-btn" data-size="small">A-</button>
+            <button type="button" class="seg-btn" data-size="normal">A</button>
+            <button type="button" class="seg-btn" data-size="large">A+</button>
+            <button type="button" class="seg-btn" data-size="xlarge">A++</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -3121,6 +3147,79 @@ function toggleA11yMode(){
   const next = !document.documentElement.classList.contains('wards-hc');
   applyA11yMode(next);
   try{ localStorage.setItem(A11Y_KEY, next ? 'hc' : 'off'); }catch(e){}
+}
+
+/* ============================================================
+   Text size — independent of the high-contrast mode above (that
+   bumps font-size as a side effect of its own fixed profile; this is
+   a separate, adjustable small/normal/large/extra-large control).
+   Same zoom-with-iOS-fallback approach as index.html's own copy,
+   own storage key so the two apps' choices don't collide.
+   ============================================================ */
+const WARDS_FONTSIZE_KEY = 'wards_fontsize_v1';
+const WARDS_FONT_SCALES = { small: '0.92', normal: '1', large: '1.12', xlarge: '1.32' };
+let _wardsZoomSupported = null;
+function wardsZoomSupported(){
+  if(_wardsZoomSupported === null){
+    _wardsZoomSupported = (typeof CSS !== 'undefined' && CSS.supports && CSS.supports('zoom', '1.1'));
+  }
+  return _wardsZoomSupported;
+}
+function applyWardsFontSize(size){
+  const scale = WARDS_FONT_SCALES[size] || '1';
+  const root = document.documentElement;
+  if(wardsZoomSupported()){
+    root.style.zoom = scale;
+    root.style.fontSize = '';
+  }else{
+    root.style.zoom = '';
+    root.style.fontSize = (parseFloat(scale) * 100) + '%';
+  }
+  root.setAttribute('data-fontsize', size in WARDS_FONT_SCALES ? size : 'normal');
+}
+function setWardsFontSize(size){
+  if(!(size in WARDS_FONT_SCALES)) size = 'normal';
+  applyWardsFontSize(size);
+  try{ localStorage.setItem(WARDS_FONTSIZE_KEY, size); }catch(e){}
+  haptic('Light');
+}
+function getInitialWardsFontSize(){
+  try{ const s = localStorage.getItem(WARDS_FONTSIZE_KEY); if(s && s in WARDS_FONT_SCALES) return s; }catch(e){}
+  return 'normal';
+}
+
+/* ============================================================
+   Display settings popover — text size, colour-blind-safe palette
+   and battery saver all live here (same open/close pattern as the
+   quiet-hours popover above).
+   ============================================================ */
+function setupWardsSettingsUI(){
+  const btn = document.getElementById('wards-settings-toggle');
+  const panel = document.getElementById('wards-settings-panel');
+  if(!btn || !panel || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+
+  const sizeSeg = document.getElementById('wards-fontsize-seg');
+  const curSize = getInitialWardsFontSize();
+  if(sizeSeg){
+    sizeSeg.querySelectorAll('.seg-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.size === curSize);
+      b.onclick = () => {
+        setWardsFontSize(b.dataset.size);
+        sizeSeg.querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x === b));
+      };
+    });
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isHidden = panel.hidden;
+    panel.hidden = !isHidden;
+    btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+  });
+  document.addEventListener('click', (e) => {
+    if(!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true;
+  });
 }
 
 
@@ -6303,8 +6402,10 @@ function boot(){
   applyA11yMode(getInitialA11yMode());
   const a11yToggle = document.getElementById('a11y-toggle');
   if(a11yToggle) a11yToggle.onclick = toggleA11yMode;
+  applyWardsFontSize(getInitialWardsFontSize());
   setupConnectivityIndicator();
   setupQuietHoursUI();
+  setupWardsSettingsUI();
   const exportBtn = document.getElementById('wards-export-all');
   if(exportBtn) exportBtn.onclick = () => { haptic('Light'); exportAllWardsData(); };
   setupWardsTabs();
