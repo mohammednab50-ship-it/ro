@@ -1956,6 +1956,19 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Date/number format</strong><span class="settings-sub">Locale used for dates and numbers</span></div>
+      <select id="settings-locale-select" class="settings-select">
+        <option value="device">Use device default</option>
+        <option value="en-US">English (US)</option>
+        <option value="en-GB">English (UK)</option>
+        <option value="en-AU">English (Australia)</option>
+        <option value="fr-FR">Français (France)</option>
+        <option value="de-DE">Deutsch (Germany)</option>
+        <option value="es-ES">Español (Spain)</option>
+      </select>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Default department</strong><span class="settings-sub">Opens here on launch</span></div>
       <select id="settings-default-specialty" class="settings-select"></select>
     </div>
@@ -8745,6 +8758,18 @@ const ADVANCE_FIELDS = [
 
 const ADVANCE_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+const ROUNDS_LOCALE_KEY = 'rounds_locale_v1';
+function getRoundsLocale(){ try{ return localStorage.getItem(ROUNDS_LOCALE_KEY) || 'device'; }catch(e){ return 'device'; } }
+function setRoundsLocale(v){ try{ localStorage.setItem(ROUNDS_LOCALE_KEY, v); }catch(e){} }
+function roundsLocaleArg(){ const l = getRoundsLocale(); return l === 'device' ? [] : [l]; }
+function roundsFmtNumber(n){ return Number(n).toLocaleString(roundsLocaleArg()); }
+function roundsFmtDate(y, monIdx, d){
+  if(!y) return '';
+  const dt = new Date(Date.UTC(Number(y), monIdx >= 0 ? monIdx : 0, d || 1));
+  const opts = monIdx >= 0 ? (d ? {year:'numeric', month:'short', day:'numeric', timeZone:'UTC'} : {year:'numeric', month:'short', timeZone:'UTC'}) : {year:'numeric', timeZone:'UTC'};
+  return dt.toLocaleDateString(roundsLocaleArg(), opts);
+}
+
 /* Normalize a PubMed date ("2024 Mar 14", "2024 Mar", "2024") to a display
    string and a sortable YYYYMMDD key. */
 function advanceParseDate(raw){
@@ -8754,8 +8779,7 @@ function advanceParseDate(raw){
   const y = m[1];
   const monIdx = m[2] ? ADVANCE_MONTHS.findIndex(mm => mm.toLowerCase() === m[2].slice(0,3).toLowerCase()) : -1;
   const d = m[3] ? Number(m[3]) : null;
-  let display = y;
-  if(monIdx >= 0) display = d ? `${ADVANCE_MONTHS[monIdx]} ${d}, ${y}` : `${ADVANCE_MONTHS[monIdx]} ${y}`;
+  let display = roundsFmtDate(y, monIdx, d);
   const mm = monIdx >= 0 ? String(monIdx + 1).padStart(2,'0') : '00';
   const dd = d ? String(d).padStart(2,'0') : '00';
   return { display, sort: `${y}${mm}${dd}`, year: y };
@@ -9091,8 +9115,8 @@ function mapTrial(study){
 
 function fmtTrialDate(raw){
   const s = String(raw || '').trim();
-  if(/^\d{4}-\d{2}$/.test(s)){ return `${ADVANCE_MONTHS[Number(s.slice(5,7))-1] || ''} ${s.slice(0,4)}`; }
-  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ return `${ADVANCE_MONTHS[Number(s.slice(5,7))-1] || ''} ${Number(s.slice(8,10))}, ${s.slice(0,4)}`; }
+  if(/^\d{4}-\d{2}$/.test(s)){ return roundsFmtDate(s.slice(0,4), Number(s.slice(5,7))-1, null); }
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ return roundsFmtDate(s.slice(0,4), Number(s.slice(5,7))-1, Number(s.slice(8,10))); }
   return s;
 }
 
@@ -9107,12 +9131,12 @@ function renderTrials(){
   const shown = items.length;
   const total = trialsState.total || shown;
   const statusName = (TRIAL_STATUS_FILTERS.find(f => f.id === trialsState.status) || {}).name || 'All studies';
-  const totalLabel = total > shown ? `${shown} of ${total.toLocaleString()} studies` : `${shown} ${shown === 1 ? 'study' : 'studies'}`;
+  const totalLabel = total > shown ? `${shown} of ${roundsFmtNumber(total)} studies` : `${shown} ${shown === 1 ? 'study' : 'studies'}`;
 
   const rows = items.map(t => {
     const meta = [
       t.sponsor ? `<span><b>Sponsor</b> ${escapeHtml(t.sponsor)}</span>` : '',
-      t.enrollment ? `<span><b>Enrollment</b> ${t.enrollment.toLocaleString()}</span>` : '',
+      t.enrollment ? `<span><b>Enrollment</b> ${roundsFmtNumber(t.enrollment)}</span>` : '',
       t.start ? `<span><b>Started</b> ${escapeHtml(fmtTrialDate(t.start))}</span>` : '',
       t.studyType ? `<span><b>Type</b> ${escapeHtml(t.studyType)}</span>` : ''
     ].filter(Boolean).join('');
@@ -10977,6 +11001,16 @@ function openSettings(){
     syncBs();
   }
 
+  const localeSel = document.getElementById('settings-locale-select');
+  if(localeSel){
+    localeSel.value = getRoundsLocale();
+    localeSel.onchange = () => {
+      setRoundsLocale(localeSel.value);
+      haptic('Light');
+      showToast('Date/number format updated', 'ok');
+    };
+  }
+
   const sel = document.getElementById('settings-default-specialty');
   if(sel){
     let curSp = '';
@@ -11971,7 +12005,7 @@ function buildStudySheetHtml(){
   const formulary = getFormulary();
   const drugs = RX_DRUGS.filter(d => formulary[d.id]);
   const total = bm.length + condBm.length + drugs.length;
-  let html = `<h1 class="ss-title">Rounds — Study sheet</h1><p class="ss-meta">${total} item${total === 1 ? '' : 's'} · generated ${escapeHtml(new Date().toLocaleDateString())} · educational self-study aid, not a clinical protocol</p>`;
+  let html = `<h1 class="ss-title">Rounds — Study sheet</h1><p class="ss-meta">${total} item${total === 1 ? '' : 's'} · generated ${escapeHtml(new Date().toLocaleDateString(roundsLocaleArg()))} · educational self-study aid, not a clinical protocol</p>`;
   bm.forEach(a => {
     const note = getBookmarkNote(a.pmid);
     html += `<div class="ss-item"><span class="ss-tag">Literature</span><h3>${escapeHtml(a.title || 'Untitled')}</h3>` +

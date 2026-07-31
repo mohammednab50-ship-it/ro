@@ -2439,6 +2439,18 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <option value="board">Board view — all patients</option>
           </select>
         </div>
+        <div class="ws-row">
+          <span class="ws-label">Date/number format<span class="ws-sub">Locale used for timestamps</span></span>
+          <select id="wards-locale-select" class="settings-select">
+            <option value="device">Use device default</option>
+            <option value="en-US">English (US)</option>
+            <option value="en-GB">English (UK)</option>
+            <option value="en-AU">English (Australia)</option>
+            <option value="fr-FR">Français (France)</option>
+            <option value="de-DE">Deutsch (Germany)</option>
+            <option value="es-ES">Español (Spain)</option>
+          </select>
+        </div>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-cbsafe-toggle"> Colour-blind-safe palette</label>
         <p class="qh-note">Shifts status colours (NEWS2 bands, trend badges, isolation flags) off a red/green-only scheme and adds icon/label redundancy.</p>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-battery-saver-toggle"> Battery saver</label>
@@ -3314,6 +3326,17 @@ function setupWardsSettingsUI(){
     });
   }
 
+  const localeSel = document.getElementById('wards-locale-select');
+  if(localeSel){
+    localeSel.value = getWardsLocale();
+    localeSel.addEventListener('change', () => {
+      setWardsLocale(localeSel.value);
+      haptic('Light');
+      if(typeof renderPatientList === 'function') renderPatientList();
+      if(typeof renderVitalsTable === 'function') renderVitalsTable();
+    });
+  }
+
   const cbInput = document.getElementById('wards-cbsafe-toggle');
   if(cbInput){
     cbInput.checked = getInitialCbSafe();
@@ -3558,14 +3581,30 @@ function localDateTimeInputValue(d){
   return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
+const WARDS_LOCALE_KEY = 'wards_locale_v1';
+function getWardsLocale(){
+  try{ const v = localStorage.getItem(WARDS_LOCALE_KEY); return v || 'device'; }catch(e){ return 'device'; }
+}
+function setWardsLocale(v){
+  try{ localStorage.setItem(WARDS_LOCALE_KEY, v); }catch(e){}
+}
+function wardsLocaleArg(){
+  const l = getWardsLocale();
+  return l === 'device' ? [] : [l];
+}
 function fmtVitalsTime(iso){
   const d = new Date(iso);
   if(isNaN(d.getTime())) return iso;
   const today = new Date();
   const sameDay = d.toDateString() === today.toDateString();
-  const time = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const loc = wardsLocaleArg();
+  const time = d.toLocaleTimeString(loc, { hour: '2-digit', minute: '2-digit' });
   if(sameDay) return time;
-  return d.toLocaleDateString([], { month: 'short', day: 'numeric' }) + ' ' + time;
+  return d.toLocaleDateString(loc, { month: 'short', day: 'numeric' }) + ' ' + time;
+}
+function fmtWardsDateTime(d){
+  const loc = wardsLocaleArg();
+  return d.toLocaleString(loc);
 }
 
 function activePatient(){
@@ -4985,7 +5024,7 @@ function printVitalsSummary(){
 
   const html =
     `<h1>${escapeHtml(p.name || 'Patient')}</h1>` +
-    `<div class="vps-sub">Vitals summary &middot; generated ${new Date().toLocaleString()}</div>` +
+    `<div class="vps-sub">Vitals summary &middot; generated ${fmtWardsDateTime(new Date())}</div>` +
     `<div class="vps-sec"><h2>Identity</h2><div class="vps-grid">` +
       item('Bed / room', p.bed) + item('MRN', p.mrn) +
     `</div></div>` +
@@ -5034,7 +5073,7 @@ function generateSbarForPatient(p){
   const lines = [];
   lines.push(`SBAR HANDOVER — ${p.name || 'Unnamed'} (Bed ${p.bed || '—'}${p.mrn ? ', MRN ' + p.mrn : ''})`);
   lines.push(`Department: ${DEPT_LABELS[p.department || 'general']}`);
-  lines.push(`Generated: ${new Date().toLocaleString()}`);
+  lines.push(`Generated: ${fmtWardsDateTime(new Date())}`);
   lines.push('');
 
   lines.push('SITUATION');
