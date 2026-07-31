@@ -1632,6 +1632,29 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .iso-badge.iso-droplet{background:var(--evidence-bg);color:var(--evidence-dark);}
 .iso-badge.iso-airborne{background:var(--caution-bg);color:var(--caution);}
 
+/* ---- roster-wide board view ---- */
+.vitals-main-toprow{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;}
+.vitals-board-toggle-btn[aria-pressed="true"]{background:var(--evidence);color:var(--shell-ink);border-color:var(--evidence);}
+.vitals-board{margin-bottom:var(--space-6);}
+.vitals-board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--space-4);}
+.vitals-board-card{text-align:left;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
+  padding:14px 16px;cursor:pointer;font-family:var(--ff-sans);color:var(--ink);transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);}
+.vitals-board-card:hover{border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
+.vitals-board-card.is-overdue{border-color:var(--caution-line);}
+.vitals-board-card-top{display:flex;align-items:center;gap:8px;margin-bottom:6px;}
+.vitals-board-bed{font-family:var(--ff-mono);font-size:11.5px;font-weight:700;color:var(--ink-faint);}
+.vitals-board-name{font-family:var(--ff-display);font-size:17px;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vitals-board-dept{font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-faint);margin-bottom:8px;}
+.vitals-board-vitals{display:flex;flex-wrap:wrap;gap:6px 12px;font-size:12.5px;color:var(--ink-soft);margin-bottom:8px;}
+.vitals-board-vitals b{color:var(--ink);font-variant-numeric:tabular-nums;}
+.vitals-board-flags{display:flex;flex-wrap:wrap;align-items:center;gap:6px;}
+.vitals-board-n2{font-family:var(--ff-mono);font-size:11.5px;font-weight:800;padding:2px 8px;border-radius:var(--r-pill);}
+.vitals-board-n2.n2-low{background:var(--surface-raised);color:var(--ink-soft);}
+.vitals-board-n2.n2-medium{background:var(--fresh-bg);color:var(--fresh);}
+.vitals-board-n2.n2-high{background:var(--caution-bg);color:var(--caution);}
+.vitals-board-overdue-tag{font-size:11px;font-weight:700;color:var(--caution);}
+.vitals-board-noreadings{font-size:12.5px;color:var(--ink-faint);}
+
 /* ---- "not seen recently" sweep ---- */
 .vitals-overdue-banner{display:block;width:100%;text-align:left;font-family:var(--ff-sans);font-size:12.5px;font-weight:700;color:var(--caution);
   padding:10px 12px;margin:0 0 12px;border:1px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-sm);cursor:pointer;}
@@ -2369,8 +2392,18 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     </div>
   </nav>
   <main>
-    <p class="drug-kicker" style="margin-bottom:8px;">SECTION 07 <span class="dot">&middot;</span> PATIENT CHARTING</p>
-    <h2 class="drug-title" style="font-size:38px;margin-bottom:16px;">Patients</h2>
+    <div class="vitals-main-toprow">
+      <div>
+        <p class="drug-kicker" style="margin-bottom:8px;">SECTION 07 <span class="dot">&middot;</span> PATIENT CHARTING</p>
+        <h2 class="drug-title" style="font-size:38px;margin-bottom:16px;">Patients</h2>
+      </div>
+      <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-board-toggle-btn" aria-pressed="false">Board view — all patients</button>
+    </div>
+
+    <div id="vitals-board" class="vitals-board" hidden>
+      <div class="vitals-board-grid" id="vitals-board-grid"></div>
+      <p class="vitals-board-empty" id="vitals-board-empty" hidden>No patients on the roster yet — add one on the left.</p>
+    </div>
 
     <div id="vitals-empty" class="vitals-empty">
       <p>Add a patient on the left to start charting serial vitals through your shift. Everything you enter here stays only on this device.</p>
@@ -2482,6 +2515,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       <form class="vitals-panel" id="vitals-entry-form" autocomplete="off" novalidate>
         <div class="vitals-form-toprow">
           <button type="button" class="vitals-btn-outline" id="vitals-fill-normal-btn" title="Fill HR/BP/RR/SpO2/Temp with typical-normal adult values as a starting point — adjust whatever's actually abnormal, then log">Fill normal values</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-copy-last-btn" title="Prefill every field from this patient's most recent reading — for a stable patient where you're just confirming unchanged vitals">Copy last reading</button>
         </div>
         <div class="vitals-grid">
           <div class="vitals-field">
@@ -3218,6 +3252,8 @@ function initVitals(){
   setupIcuSection();
   setupSurgerySection();
   setupPediatricsSection();
+  setupVitalsBoardToggle();
+  setupVitalsCopyLastButton();
   renderPatientList();
   renderVitalsMain();
 }
@@ -3377,6 +3413,105 @@ function setupVitalsMineFilterToggle(){
     vitalsMineFilterActive = toggle.checked;
     renderPatientList();
   });
+}
+
+/* ---- roster-wide board view — a tap-to-jump-into-detail overview of
+   every patient at once, the highest-value item in this feature set. ---- */
+let vitalsBoardActive = false;
+
+function latestVitalsEntryFor(p){
+  const log = vitalsState.logs[p.id] || [];
+  if(!log.length) return null;
+  return log.slice().sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+}
+
+function renderVitalsBoard(){
+  const grid = document.getElementById('vitals-board-grid');
+  const empty = document.getElementById('vitals-board-empty');
+  if(!grid) return;
+  const now = Date.now();
+  grid.innerHTML = '';
+  if(!vitalsState.patients.length){
+    if(empty) empty.hidden = false;
+    return;
+  }
+  if(empty) empty.hidden = true;
+
+  vitalsState.patients.forEach(p => {
+    const overdue = isVitalsPatientOverdue(p, now);
+    const latest = latestVitalsEntryFor(p);
+    const n2 = latest ? computeNews2(latest, p) : null;
+    const isoBadge = isolationBadgeHtml(p.isolation);
+    const allergyIcon = (p.allergies || '').trim() ? '<span title="Has known allergies" aria-label="Has known allergies">&#9888;&#65039;</span>' : '';
+
+    let vitalsLine = '<span class="vitals-board-noreadings">No readings logged yet</span>';
+    if(latest){
+      const bp = (latest.sbp || latest.dbp) ? `${escapeHtml(latest.sbp || '—')}/${escapeHtml(latest.dbp || '—')}` : '—';
+      vitalsLine =
+        `<span>HR <b>${escapeHtml(latest.hr || '—')}</b></span>` +
+        `<span>BP <b>${bp}</b></span>` +
+        `<span>SpO&#8322; <b>${escapeHtml(latest.spo2 || '—')}</b></span>` +
+        `<span>RR <b>${escapeHtml(latest.rr || '—')}</b></span>` +
+        `<span>Temp <b>${escapeHtml(latest.temp || '—')}</b></span>`;
+    }
+
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'vitals-board-card' + (overdue ? ' is-overdue' : '');
+    card.dataset.patientId = p.id;
+    card.innerHTML =
+      `<div class="vitals-board-card-top">` +
+        `<span class="vitals-board-bed">${escapeHtml(p.bed || '—')}</span>` +
+        `<span class="vitals-board-name">${isoBadge}${escapeHtml(p.name || 'Unnamed')}</span>` +
+        allergyIcon +
+      `</div>` +
+      `<div class="vitals-board-dept">${escapeHtml(DEPT_LABELS[p.department || 'general'] || '')}</div>` +
+      `<div class="vitals-board-vitals">${vitalsLine}</div>` +
+      `<div class="vitals-board-flags">` +
+        (n2 && n2.dataPresent ? `<span class="vitals-board-n2 n2-${n2.level}">NEWS2 ${n2.score}</span>` : '') +
+        (overdue ? `<span class="vitals-board-overdue-tag">&#9679; Not seen in over ${unseenThresholdHours(p.department)}h</span>` : '') +
+      `</div>`;
+    grid.appendChild(card);
+  });
+
+  if(!grid.dataset.wired){
+    grid.dataset.wired = '1';
+    grid.addEventListener('click', e => {
+      const card = e.target.closest('.vitals-board-card');
+      if(!card) return;
+      vitalsState.activePatientId = card.dataset.patientId;
+      setVitalsBoardActive(false);
+      renderPatientList();
+      renderVitalsMain();
+    });
+  }
+}
+
+function setVitalsBoardActive(active){
+  vitalsBoardActive = active;
+  const board = document.getElementById('vitals-board');
+  const toggleBtn = document.getElementById('vitals-board-toggle-btn');
+  const empty = document.getElementById('vitals-empty');
+  const view = document.getElementById('vitals-patient-view');
+  if(board) board.hidden = !active;
+  if(toggleBtn){
+    toggleBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    toggleBtn.textContent = active ? 'Back to patient detail' : 'Board view — all patients';
+  }
+  if(active){
+    if(empty) empty.hidden = true;
+    if(view) view.hidden = true;
+    renderVitalsBoard();
+  }else{
+    renderVitalsMain();
+  }
+}
+
+function setupVitalsBoardToggle(){
+  const btn = document.getElementById('vitals-board-toggle-btn');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => setVitalsBoardActive(!vitalsBoardActive));
 }
 
 /* ---- add / remove patient ---- */
@@ -3756,6 +3891,36 @@ function setupVitalsNormalFillButton(){
   });
 }
 
+// Copies every field (except time/notes, which stay whatever's already
+// there — a fresh timestamp, not the old reading's) from the patient's
+// most recently *logged* reading, distinct from setupVitalsNormalFillButton's
+// fixed textbook-normal preset above.
+const COPY_LAST_FIELD_IDS = { 'v-hr':'hr', 'v-sbp':'sbp', 'v-dbp':'dbp', 'v-rr':'rr', 'v-spo2':'spo2', 'v-temp':'temp', 'v-gcs':'gcs', 'v-uop':'uop' };
+
+function setupVitalsCopyLastButton(){
+  const btn = document.getElementById('vitals-copy-last-btn');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => {
+    const log = activeLog();
+    if(!log.length){
+      showToast("No previous reading for this patient yet.");
+      return;
+    }
+    const last = log.slice().sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+    Object.keys(COPY_LAST_FIELD_IDS).forEach(id => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      const v = last[COPY_LAST_FIELD_IDS[id]];
+      el.value = (v === undefined || v === null) ? '' : v;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const o2El = document.getElementById('v-o2sup');
+    if(o2El) o2El.checked = !!last.o2sup;
+    haptic('Light');
+  });
+}
+
 function prefillVitalsTimestamp(){
   const tsInput = document.getElementById('v-ts');
   if(tsInput) tsInput.value = localDateTimeInputValue(new Date());
@@ -3816,6 +3981,7 @@ function setupVitalsAutosave(){
 let lastRenderedVitalsPatientId = null;
 
 function renderVitalsMain(){
+  if(vitalsBoardActive){ renderVitalsBoard(); return; }
   const empty = document.getElementById('vitals-empty');
   const view = document.getElementById('vitals-patient-view');
   const p = activePatient();
