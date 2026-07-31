@@ -2406,6 +2406,25 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-settings-panel .ws-sub{font-size:10.5px; font-weight:500; color:var(--ink-faint);}
 .wards-settings-panel .qh-note{margin-bottom:12px;}
 .wards-settings-panel .qh-note:last-child{margin-bottom:0;}
+.wards-settings-panel input[type="email"],.wards-settings-panel input[type="password"]{
+  font-family:var(--ff-sans);font-size:13px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);
+  background:var(--surface);color:var(--ink);width:100%;
+}
+#wards-sync-toggle{position:relative;}
+.wards-sync-dot{position:absolute;top:5px;right:5px;width:8px;height:8px;border-radius:50%;background:var(--ink-faint);}
+.wards-sync-dot[data-state="synced"]{background:#2e7d32;}
+.wards-sync-dot[data-state="syncing"]{background:#c4750a;animation:wardsSyncPulse 1s ease-in-out infinite;}
+.wards-sync-dot[data-state="error"]{background:#c62828;}
+@keyframes wardsSyncPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
+
+.wards-lock-overlay{position:fixed;inset:0;z-index:900;display:none;place-items:center;background:var(--bg,#0b0d10);padding:20px;}
+.wards-lock-overlay.show{display:grid;}
+.wards-lock-card{max-width:320px;width:100%;background:var(--surface);border-radius:var(--r-md);padding:28px 24px;text-align:center;box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,.3));}
+.wards-lock-card h2{margin:0 0 6px;font-family:var(--ff-display);font-size:19px;color:var(--ink);}
+.wards-lock-card p{margin:0 0 16px;font-family:var(--ff-sans);font-size:13px;color:var(--ink-faint);}
+.wards-lock-pin{font-family:var(--ff-mono);font-size:22px;letter-spacing:8px;text-align:center;width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg-soft,var(--surface));color:var(--ink);margin-bottom:12px;}
+.wards-lock-error{color:#c62828;font-family:var(--ff-sans);font-size:12.5px;min-height:16px;margin:0 0 10px;}
+.wards-lock-actions{display:flex;flex-direction:column;gap:8px;}
 
 .wards-demo-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
   padding:8px 20px;background:#664d03;color:#fff3cd;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
@@ -2459,6 +2478,39 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <span class="connectivity-indicator" id="connectivity-indicator" role="status" aria-live="polite" data-state="online" title="Online — Wards itself works fully offline; this reflects general network status">
       <span class="dot" aria-hidden="true"></span><span class="label">Online</span>
     </span>
+    <div class="wards-settings-wrap">
+      <button id="wards-sync-toggle" class="theme-toggle" type="button" aria-label="Cloud sync" title="Sign in to sync patients across devices (optional)" aria-expanded="false" aria-pressed="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.4-8.98A6 6 0 0 1 18 8.5a4 4 0 0 1-1 7.87" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        <span class="wards-sync-dot" id="wards-sync-dot" hidden></span>
+      </button>
+      <div class="quiet-hours-panel wards-settings-panel" id="wards-sync-panel" hidden>
+        <div id="wards-sync-signed-out">
+          <p class="ws-label" style="margin-bottom:8px;">Sync patients across devices<span class="ws-sub">Optional — sign in with the same account you use for Rounds</span></p>
+          <div class="ws-row"><input type="email" id="wards-sync-email" class="settings-select" placeholder="Email" autocomplete="email" style="flex:1;"></div>
+          <div class="ws-row"><input type="password" id="wards-sync-pass" class="settings-select" placeholder="Password" autocomplete="current-password" minlength="6" style="flex:1;"></div>
+          <p class="login-error" id="wards-sync-error" role="alert" style="margin:2px 0 6px;"></p>
+          <div class="ws-row" style="gap:8px;">
+            <button type="button" class="settings-btn" id="wards-sync-signin-btn">Sign in</button>
+            <button type="button" class="settings-btn" id="wards-sync-signup-btn">Create account</button>
+          </div>
+          <div class="ws-row"><button type="button" class="settings-btn" id="wards-sync-google-btn">Continue with Google</button></div>
+        </div>
+        <div id="wards-sync-signed-in" hidden>
+          <p class="ws-label" style="margin-bottom:8px;">Signed in as <span id="wards-sync-user-email"></span></p>
+          <div class="ws-row">
+            <span class="ws-label">Ward group<span class="ws-sub">Patients in the selected group sync live</span></span>
+          </div>
+          <select id="wards-sync-group-select" class="settings-select" style="width:100%;margin-bottom:8px;">
+            <option value="">Local-only (no sync)</option>
+          </select>
+          <div class="ws-row" style="gap:8px;">
+            <button type="button" class="settings-btn" id="wards-sync-newgroup-btn">Create ward group…</button>
+            <button type="button" class="settings-btn" id="wards-sync-signout-btn">Sign out</button>
+          </div>
+          <p class="qh-note" id="wards-sync-status-note"></p>
+        </div>
+      </div>
+    </div>
     <button id="wards-export-all" class="theme-toggle" type="button" aria-label="Export all Wards data" title="Export all Wards data (Vitals + Maternity backup)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
@@ -2522,6 +2574,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div class="ws-row">
           <span class="ws-label">Demo mode<span class="ws-sub">Fake sample patients, for showing colleagues</span></span>
           <button type="button" class="settings-btn" id="wards-demo-toggle-btn">Try demo mode</button>
+        </div>
+        <div class="ws-row">
+          <span class="ws-label">App lock<span class="ws-sub" id="wards-applock-sub">Biometric/PIN gate before the app opens</span></span>
+          <button type="button" class="settings-btn" id="wards-applock-btn">Set up</button>
         </div>
       </div>
     </div>
@@ -2644,6 +2700,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <button type="button" class="vitals-btn-outline" id="vitals-sbar-btn" title="Generate a Situation-Background-Assessment-Recommendation handover summary">SBAR handover</button>
           <button type="button" class="vitals-btn-outline" id="vitals-print-btn" title="Print a one-page vitals summary">Print summary</button>
           <button type="button" class="vitals-btn-outline" id="vitals-export-btn">Export CSV</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-history-btn" title="Audit trail — who changed what, and when (synced patients only)" hidden>History</button>
           <button type="button" class="vitals-btn-outline vitals-btn-danger" id="vitals-remove-patient-btn">Remove patient</button>
         </div>
       </header>
@@ -3204,6 +3261,39 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <video id="wards-scan-video" playsinline muted></video>
     <p class="wards-qr-value" id="wards-scan-status">Point the camera at a patient ID QR code.</p>
     <p class="wards-qr-disclaimer">Reads a QR/barcode you generated from this app's own "ID QR" screen — not any official hospital wristband system.</p>
+  </div>
+</div>
+
+<div class="wards-qr-modal" id="wards-newgroup-modal" hidden>
+  <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-newgroup-title">
+    <button type="button" class="mat-lb-close" id="wards-newgroup-close" aria-label="Close">&times;</button>
+    <h3 id="wards-newgroup-title">Create a ward group</h3>
+    <div class="ws-row"><input type="text" id="wards-newgroup-name" class="settings-select" placeholder="e.g. ICU Ward A" style="width:100%;"></div>
+    <p class="login-error" id="wards-newgroup-error" role="alert"></p>
+    <button type="button" class="settings-btn" id="wards-newgroup-create-btn" style="width:100%;">Create</button>
+    <p class="wards-qr-disclaimer">You'll be the group's admin and can invite teammates later from the Firebase console until an in-app invite flow is added.</p>
+  </div>
+</div>
+
+<div class="wards-qr-modal" id="wards-history-modal" hidden>
+  <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-history-title" style="max-width:420px;text-align:left;">
+    <button type="button" class="mat-lb-close" id="wards-history-close" aria-label="Close">&times;</button>
+    <h3 id="wards-history-title" style="text-align:center;">Patient history</h3>
+    <div id="wards-history-list" style="max-height:50vh;overflow-y:auto;font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);"></div>
+    <p class="wards-qr-disclaimer">Audit entries for this patient within the synced ward group — who changed what, and when.</p>
+  </div>
+</div>
+
+<div class="wards-lock-overlay" id="wards-lock-overlay">
+  <div class="wards-lock-card" role="dialog" aria-modal="true" aria-labelledby="wards-lock-title">
+    <h2 id="wards-lock-title">Wards is locked</h2>
+    <p id="wards-lock-sub">Enter your PIN to continue.</p>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" class="wards-lock-pin" id="wards-lock-pin-input" autocomplete="off">
+    <p class="wards-lock-error" id="wards-lock-error"></p>
+    <div class="wards-lock-actions">
+      <button type="button" class="settings-btn" id="wards-lock-unlock-btn">Unlock</button>
+      <button type="button" class="settings-btn" id="wards-lock-biometric-btn" hidden>Use biometrics</button>
+    </div>
   </div>
 </div>
 
@@ -4015,6 +4105,418 @@ const QrGen = (function(){
 })();
 
 /* ============================================================
+   Cloud sync — optional Firebase Auth + Firestore layer, same
+   project as Rounds. Entirely opt-in: nothing here runs, and every
+   function below no-ops, unless a user explicitly signs in and picks
+   a ward group. Local-only patients (no groupId) are never touched.
+   The Vitals IIFE below calls into window.scheduleWardsSyncPush()/
+   window.wardsAuditLog()/window.getWardsActiveSyncGroupId() from its
+   single save choke point (saveVitalsData) rather than this module
+   reaching into that closure directly.
+   ============================================================ */
+const WARDS_FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyDdkLxliyLvSJeKm5-aejYvnEqwFnDO0_k',
+  authDomain: 'rounds-46bd6.firebaseapp.com',
+  projectId: 'rounds-46bd6',
+  appId: '1:520092307583:web:63218da2b83ec3da8e2f4a'
+};
+const WARDS_FIREBASE_SDK = [
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js'
+];
+const WARDS_SYNC_GROUP_KEY = 'wards_sync_group_id';
+
+function wardsLoadScript(src){
+  return new Promise((resolve, reject) => {
+    const s = document.createElement('script');
+    s.src = src; s.async = false;
+    s.onload = resolve; s.onerror = () => reject(new Error('Failed to load ' + src));
+    document.head.appendChild(s);
+  });
+}
+
+let wfbAuth = null, wfdb = null, wardsFirebaseReady = false, wardsFirebaseLoading = null;
+async function initWardsFirebase(){
+  if(wardsFirebaseReady) return true;
+  if(wardsFirebaseLoading) return wardsFirebaseLoading;
+  wardsFirebaseLoading = (async () => {
+    try{
+      for(const src of WARDS_FIREBASE_SDK){ await wardsLoadScript(src); }
+      if(!window.firebase) throw new Error('firebase SDK did not load');
+      if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(WARDS_FIREBASE_CONFIG);
+      wfbAuth = firebase.auth();
+      wfdb = firebase.firestore();
+      try{ await wfdb.enablePersistence({ synchronizeTabs: true }); }
+      catch(e){ /* multi-tab or unsupported browser — sync still works, just without offline cache */ }
+      wardsFirebaseReady = true;
+      return true;
+    }catch(e){
+      console.warn('Wards cloud sync unavailable (offline/blocked network, or Firebase failed to load):', e);
+      return false;
+    }
+  })();
+  return wardsFirebaseLoading;
+}
+
+let currentWardsUser = null;
+let wardsMyGroups = [];
+let activeSyncGroupId = null;
+let wardsGroupsUnsub = null;
+let wardsPatientsUnsub = null;
+let wardsLastPushedIds = new Set();
+let wardsSyncPushTimer = null;
+let wardsPatientsPendingWrites = false;
+let wardsBatchInFlight = false;
+let wardsSyncErrored = false;
+
+function getWardsActiveSyncGroupId(){ return activeSyncGroupId; }
+window.getWardsActiveSyncGroupId = getWardsActiveSyncGroupId;
+
+function wardsSyncSetError(msg){
+  wardsSyncErrored = !!msg;
+  const note = document.getElementById('wards-sync-status-note');
+  if(note && msg) note.textContent = msg;
+  updateWardsSyncIndicator();
+}
+
+function updateWardsSyncIndicator(){
+  const dot = document.getElementById('wards-sync-dot');
+  if(!dot) return;
+  if(!activeSyncGroupId){ dot.hidden = true; return; }
+  dot.hidden = false;
+  if(wardsSyncErrored) dot.dataset.state = 'error';
+  else if(wardsBatchInFlight || wardsPatientsPendingWrites) dot.dataset.state = 'syncing';
+  else dot.dataset.state = 'synced';
+  const note = document.getElementById('wards-sync-status-note');
+  if(note && !wardsSyncErrored){
+    note.textContent = (wardsBatchInFlight || wardsPatientsPendingWrites)
+      ? 'Syncing… changes are saved locally and will reach the server shortly.'
+      : 'All changes synced.';
+  }
+}
+
+/* ---- auth ---- */
+async function wardsSignInEmail(email, pass, isSignup){
+  const ok = await initWardsFirebase();
+  if(!ok) throw new Error('Could not reach the sign-in service — check your connection.');
+  if(isSignup) await wfbAuth.createUserWithEmailAndPassword(email, pass);
+  else await wfbAuth.signInWithEmailAndPassword(email, pass);
+}
+async function wardsSignInGoogle(){
+  const ok = await initWardsFirebase();
+  if(!ok) throw new Error('Could not reach the sign-in service — check your connection.');
+  const provider = new firebase.auth.GoogleAuthProvider();
+  await wfbAuth.signInWithPopup(provider);
+}
+async function wardsSignOut(){
+  try{ if(wfbAuth) await wfbAuth.signOut(); }catch(e){}
+}
+function wardsAuthErrorMessage(err){
+  const code = (err && err.code) || '';
+  const map = {
+    'auth/invalid-email': 'That email address looks invalid.',
+    'auth/user-not-found': 'No account found with that email.',
+    'auth/wrong-password': 'Incorrect email or password.',
+    'auth/invalid-credential': 'Incorrect email or password.',
+    'auth/email-already-in-use': 'An account with that email already exists — try signing in.',
+    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/too-many-requests': 'Too many attempts. Please wait a moment and try again.',
+    'auth/popup-closed-by-user': 'Google sign-in was cancelled.',
+    'auth/network-request-failed': 'Network error — check your connection.'
+  };
+  return map[code] || (err && err.message) || 'Something went wrong. Please try again.';
+}
+
+/* ---- "which groups am I in" via the flat groupMemberships index ---- */
+function wardsSubscribeMyGroups(uid){
+  if(wardsGroupsUnsub){ wardsGroupsUnsub(); wardsGroupsUnsub = null; }
+  wardsGroupsUnsub = wfdb.collection('groupMemberships').where('uid', '==', uid)
+    .onSnapshot(snap => {
+      wardsMyGroups = snap.docs.map(d => d.data());
+      renderWardsGroupSelect();
+    }, err => { console.warn('Wards: could not list ward groups', err); });
+}
+
+async function wardsCreateGroup(name){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const uid = currentWardsUser.uid;
+  const email = currentWardsUser.email || '';
+  const groupRef = wfdb.collection('wardGroups').doc();
+  const membershipRef = wfdb.collection('groupMemberships').doc(uid + '_' + groupRef.id);
+  const batch = wfdb.batch();
+  batch.set(groupRef, {
+    name: name || 'New ward group',
+    createdBy: uid,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    departmentId: null,
+    members: { [uid]: { role: 'admin', email, joinedAt: new Date().toISOString() } }
+  });
+  batch.set(membershipRef, { uid, groupId: groupRef.id, role: 'admin', groupName: name || 'New ward group', joinedAt: new Date().toISOString() });
+  await batch.commit();
+  return groupRef.id;
+}
+
+/* ---- patient sync ---- */
+function wardsUnsubscribePatients(){
+  if(wardsPatientsUnsub){ wardsPatientsUnsub(); wardsPatientsUnsub = null; }
+}
+
+function selectWardsSyncGroup(groupId){
+  activeSyncGroupId = groupId || null;
+  try{
+    if(activeSyncGroupId) localStorage.setItem(WARDS_SYNC_GROUP_KEY, activeSyncGroupId);
+    else localStorage.removeItem(WARDS_SYNC_GROUP_KEY);
+  }catch(e){}
+  wardsUnsubscribePatients();
+  wardsLastPushedIds = new Set();
+  wardsSyncSetError(null);
+  renderWardsGroupSelect();
+  updateWardsSyncIndicator();
+  if(!activeSyncGroupId) return;
+  const col = wfdb.collection('wardGroups').doc(activeSyncGroupId).collection('patients');
+  wardsPatientsUnsub = col.onSnapshot({ includeMetadataChanges: true }, snap => {
+    wardsPatientsPendingWrites = snap.metadata.hasPendingWrites;
+    const remotePatients = [];
+    const remoteLogs = {};
+    snap.forEach(doc => {
+      const data = doc.data() || {};
+      const logs = Array.isArray(data.logs) ? data.logs : [];
+      const patient = Object.assign({}, data);
+      delete patient.logs; delete patient.updatedAt; delete patient.updatedBy;
+      patient.id = doc.id;
+      patient.groupId = activeSyncGroupId;
+      remotePatients.push(patient);
+      remoteLogs[doc.id] = logs;
+      wardsLastPushedIds.add(doc.id);
+    });
+    if(typeof window.applyRemoteWardsPatients === 'function'){
+      window.applyRemoteWardsPatients(activeSyncGroupId, remotePatients, remoteLogs);
+    }
+    wardsSyncSetError(null);
+    updateWardsSyncIndicator();
+  }, err => {
+    console.warn('Wards: patient sync listener error', err);
+    wardsSyncSetError('Sync paused — could not reach the server.');
+  });
+}
+
+function wardsSanitizeForFirestore(obj){
+  try{ return JSON.parse(JSON.stringify(obj)); }catch(e){ return {}; }
+}
+
+function scheduleWardsSyncPush(){
+  if(!activeSyncGroupId || !currentWardsUser) return;
+  if(wardsSyncPushTimer) clearTimeout(wardsSyncPushTimer);
+  wardsSyncPushTimer = setTimeout(pushWardsGroupPatients, 700);
+}
+window.scheduleWardsSyncPush = scheduleWardsSyncPush;
+
+async function pushWardsGroupPatients(){
+  if(!activeSyncGroupId || !currentWardsUser || !wardsFirebaseReady || !wfdb) return;
+  const snap = (typeof window.getWardsSyncSnapshot === 'function') ? window.getWardsSyncSnapshot() : null;
+  if(!snap) return;
+  const groupPatients = snap.patients.filter(p => p.groupId === activeSyncGroupId);
+  const currentIds = new Set(groupPatients.map(p => p.id));
+  const col = wfdb.collection('wardGroups').doc(activeSyncGroupId).collection('patients');
+  const batch = wfdb.batch();
+  groupPatients.forEach(p => {
+    const payload = wardsSanitizeForFirestore(Object.assign({}, p, { logs: snap.logs[p.id] || [] }));
+    payload.updatedAt = firebase.firestore.FieldValue.serverTimestamp();
+    payload.updatedBy = { uid: currentWardsUser.uid, email: currentWardsUser.email || '' };
+    batch.set(col.doc(p.id), payload);
+  });
+  wardsLastPushedIds.forEach(id => { if(!currentIds.has(id)) batch.delete(col.doc(id)); });
+  wardsLastPushedIds = currentIds;
+  wardsBatchInFlight = true;
+  updateWardsSyncIndicator();
+  try{
+    await batch.commit();
+    wardsSyncSetError(null);
+  }catch(e){
+    console.warn('Wards sync push failed', e);
+    wardsSyncSetError('Some changes could not sync — will retry.');
+  }finally{
+    wardsBatchInFlight = false;
+    updateWardsSyncIndicator();
+  }
+}
+
+/* ---- audit log — append-only, only for synced patients (see
+   firestore.rules: create by any group member, no update/delete
+   except super-admin) ---- */
+function wardsAuditLog(action, patient, detail){
+  if(!activeSyncGroupId || !currentWardsUser || !patient || patient.groupId !== activeSyncGroupId) return;
+  if(!wardsFirebaseReady || !wfdb) return;
+  wfdb.collection('wardGroups').doc(activeSyncGroupId).collection('auditLog').add({
+    action, patientId: patient.id, patientName: patient.name || '',
+    detail: detail || '',
+    uid: currentWardsUser.uid, email: currentWardsUser.email || '',
+    ts: firebase.firestore.FieldValue.serverTimestamp()
+  }).catch(e => console.warn('Wards: audit log write failed', e));
+}
+window.wardsAuditLog = wardsAuditLog;
+
+async function wardsShowHistory(patient){
+  const modal = document.getElementById('wards-history-modal');
+  const list = document.getElementById('wards-history-list');
+  if(!modal || !list) return;
+  if(!activeSyncGroupId || !patient || patient.groupId !== activeSyncGroupId){
+    list.innerHTML = '<p>Only patients in a synced ward group have a history.</p>';
+    modal.hidden = false; modal.classList.add('show');
+    return;
+  }
+  list.innerHTML = '<p>Loading…</p>';
+  modal.hidden = false; modal.classList.add('show');
+  try{
+    const ok = await initWardsFirebase();
+    if(!ok) throw new Error('offline');
+    const snap = await wfdb.collection('wardGroups').doc(activeSyncGroupId).collection('auditLog')
+      .where('patientId', '==', patient.id).orderBy('ts', 'desc').limit(50).get();
+    if(snap.empty){ list.innerHTML = '<p>No history recorded yet for this patient.</p>'; return; }
+    const ACTION_LABELS = {
+      patient_added: 'Patient added', patient_removed: 'Patient removed',
+      reading_added: 'Vitals reading logged', escalation_logged: 'Escalation logged'
+    };
+    list.innerHTML = snap.docs.map(d => {
+      const a = d.data();
+      const when = a.ts && a.ts.toDate ? a.ts.toDate().toLocaleString() : '';
+      return `<div style="padding:8px 0;border-bottom:1px solid var(--line);">` +
+        `<b>${escapeHtml(ACTION_LABELS[a.action] || a.action)}</b>` +
+        `<div>${escapeHtml(a.email || a.uid || '')} &middot; ${escapeHtml(when)}</div>` +
+        (a.detail ? `<div>${escapeHtml(a.detail)}</div>` : '') + `</div>`;
+    }).join('');
+  }catch(e){
+    list.innerHTML = (e && e.code === 'permission-denied')
+      ? '<p>History is visible to ward group admins and above.</p>'
+      : '<p>Could not load history (offline, or an index needs to be created for this query — see Firestore console).</p>';
+  }
+}
+window.wardsShowHistory = wardsShowHistory;
+
+/* ---- UI wiring ---- */
+function renderWardsGroupSelect(){
+  const sel = document.getElementById('wards-sync-group-select');
+  if(sel){
+    sel.innerHTML = '<option value="">Local-only (no sync)</option>' +
+      wardsMyGroups.map(g => `<option value="${g.groupId}">${escapeHtml(g.groupName || g.groupId)}</option>`).join('');
+    sel.value = activeSyncGroupId || '';
+  }
+  const signedOut = document.getElementById('wards-sync-signed-out');
+  const signedIn = document.getElementById('wards-sync-signed-in');
+  const emailEl = document.getElementById('wards-sync-user-email');
+  if(signedOut && signedIn){
+    signedOut.hidden = !!currentWardsUser;
+    signedIn.hidden = !currentWardsUser;
+    if(emailEl && currentWardsUser) emailEl.textContent = currentWardsUser.email || currentWardsUser.uid;
+  }
+}
+
+function wardsOnAuthChanged(user){
+  currentWardsUser = user || null;
+  if(user){
+    wardsSubscribeMyGroups(user.uid);
+    try{
+      const saved = localStorage.getItem(WARDS_SYNC_GROUP_KEY);
+      if(saved) selectWardsSyncGroup(saved);
+    }catch(e){}
+  } else {
+    if(wardsGroupsUnsub){ wardsGroupsUnsub(); wardsGroupsUnsub = null; }
+    selectWardsSyncGroup(null);
+    wardsMyGroups = [];
+  }
+  renderWardsGroupSelect();
+  updateWardsSyncIndicator();
+}
+
+function setupWardsSyncUI(){
+  const toggle = document.getElementById('wards-sync-toggle');
+  const panel = document.getElementById('wards-sync-panel');
+  if(toggle && panel){
+    toggle.addEventListener('click', () => {
+      const open = panel.hidden;
+      panel.hidden = !open;
+      toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+    document.addEventListener('click', e => {
+      if(!panel.hidden && !panel.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) panel.hidden = true;
+    });
+  }
+  const errEl = document.getElementById('wards-sync-error');
+  const setErr = msg => { if(errEl) errEl.textContent = msg || ''; };
+
+  const signinBtn = document.getElementById('wards-sync-signin-btn');
+  const signupBtn = document.getElementById('wards-sync-signup-btn');
+  const googleBtn = document.getElementById('wards-sync-google-btn');
+  const signoutBtn = document.getElementById('wards-sync-signout-btn');
+  const emailInput = document.getElementById('wards-sync-email');
+  const passInput = document.getElementById('wards-sync-pass');
+
+  async function attemptAuth(isSignup){
+    setErr('');
+    const email = (emailInput && emailInput.value || '').trim();
+    const pass = (passInput && passInput.value || '');
+    if(!email || pass.length < 6){ setErr('Enter a valid email and a password of at least 6 characters.'); return; }
+    try{
+      await wardsSignInEmail(email, pass, isSignup);
+      haptic('Light');
+    }catch(e){ setErr(wardsAuthErrorMessage(e)); }
+  }
+  if(signinBtn) signinBtn.addEventListener('click', () => attemptAuth(false));
+  if(signupBtn) signupBtn.addEventListener('click', () => attemptAuth(true));
+  if(googleBtn) googleBtn.addEventListener('click', async () => {
+    setErr('');
+    try{ await wardsSignInGoogle(); }catch(e){ setErr(wardsAuthErrorMessage(e)); }
+  });
+  if(signoutBtn) signoutBtn.addEventListener('click', async () => { await wardsSignOut(); });
+
+  const groupSelect = document.getElementById('wards-sync-group-select');
+  if(groupSelect) groupSelect.addEventListener('change', () => { selectWardsSyncGroup(groupSelect.value || null); });
+
+  const newGroupBtn = document.getElementById('wards-sync-newgroup-btn');
+  const newGroupModal = document.getElementById('wards-newgroup-modal');
+  const newGroupClose = document.getElementById('wards-newgroup-close');
+  const newGroupName = document.getElementById('wards-newgroup-name');
+  const newGroupErr = document.getElementById('wards-newgroup-error');
+  const newGroupCreateBtn = document.getElementById('wards-newgroup-create-btn');
+  if(newGroupBtn && newGroupModal){
+    newGroupBtn.addEventListener('click', () => { newGroupModal.hidden = false; newGroupModal.classList.add('show'); newGroupName.focus(); });
+  }
+  if(newGroupClose) newGroupClose.addEventListener('click', () => { newGroupModal.hidden = true; newGroupModal.classList.remove('show'); });
+  if(newGroupCreateBtn) newGroupCreateBtn.addEventListener('click', async () => {
+    if(newGroupErr) newGroupErr.textContent = '';
+    const name = (newGroupName && newGroupName.value || '').trim();
+    if(!name){ if(newGroupErr) newGroupErr.textContent = 'Give the group a name.'; return; }
+    try{
+      const groupId = await wardsCreateGroup(name);
+      newGroupModal.hidden = true; newGroupModal.classList.remove('show');
+      newGroupName.value = '';
+      selectWardsSyncGroup(groupId);
+      showToast('Ward group created.', 'ok');
+    }catch(e){ if(newGroupErr) newGroupErr.textContent = (e && e.message) || 'Could not create the group.'; }
+  });
+
+  const historyBtn = document.getElementById('vitals-history-btn');
+  if(historyBtn) historyBtn.addEventListener('click', () => {
+    if(typeof window.wardsActivePatientForHistory === 'function') wardsShowHistory(window.wardsActivePatientForHistory());
+  });
+  const historyClose = document.getElementById('wards-history-close');
+  const historyModal = document.getElementById('wards-history-modal');
+  if(historyClose && historyModal) historyClose.addEventListener('click', () => { historyModal.hidden = true; historyModal.classList.remove('show'); });
+}
+
+async function initWardsCloudSync(){
+  setupWardsSyncUI();
+  const ok = await initWardsFirebase();
+  if(!ok){
+    wardsSyncSetError(null);
+    return; // no network / blocked — Wards keeps working fully locally
+  }
+  wfbAuth.onAuthStateChanged(wardsOnAuthChanged);
+}
+
+/* ============================================================
    Vitals — serial vitals flowsheet
    ------------------------------------------------------------
    A personal charting aid for logging a patient's vitals
@@ -4046,7 +4548,7 @@ function loadVitalsData(){
   }catch(e){}
 }
 
-function saveVitalsData(){
+function saveVitalsDataQuiet(){
   if(wardsDemoMode) return; // demo session is in-memory only — never touches real storage
   try{
     localStorage.setItem(VITALS_KEY, JSON.stringify({
@@ -4055,6 +4557,27 @@ function saveVitalsData(){
     }));
   }catch(e){}
 }
+
+function saveVitalsData(){
+  saveVitalsDataQuiet();
+  if(!wardsDemoMode && typeof window.scheduleWardsSyncPush === 'function') window.scheduleWardsSyncPush();
+}
+
+/* Merge a synced ward group's patients (source of truth once signed
+   in and a group is selected) into local state without re-triggering
+   a push back to the server — see scheduleWardsSyncPush() above. */
+window.getWardsSyncSnapshot = () => ({ patients: vitalsState.patients, logs: vitalsState.logs });
+window.applyRemoteWardsPatients = function(groupId, remotePatients, remoteLogs){
+  if(typeof window.getWardsActiveSyncGroupId !== 'function' || groupId !== window.getWardsActiveSyncGroupId()) return;
+  const keepLocal = vitalsState.patients.filter(p => p.groupId !== groupId);
+  vitalsState.patients = keepLocal.concat(remotePatients);
+  remotePatients.forEach(p => { vitalsState.logs[p.id] = remoteLogs[p.id] || []; });
+  if(!vitalsState.activePatientId && vitalsState.patients.length) vitalsState.activePatientId = vitalsState.patients[0].id;
+  saveVitalsDataQuiet();
+  renderPatientList();
+  renderVitalsMain();
+};
+window.wardsActivePatientForHistory = () => activePatient();
 
 /* ============================================================
    Guest / demo mode — swaps the in-memory patient roster for clearly-
@@ -4695,10 +5218,13 @@ function setupAddPatientForm(){
     if(department === 'pediatrics' && ageInput && ageInput.value.trim() !== ''){
       patient.pediatrics = { ageYears: parseFloat(ageInput.value) };
     }
+    const syncGid = (typeof window.getWardsActiveSyncGroupId === 'function') ? window.getWardsActiveSyncGroupId() : null;
+    if(syncGid) patient.groupId = syncGid;
     vitalsState.patients.push(patient);
     vitalsState.logs[patient.id] = [];
     vitalsState.activePatientId = patient.id;
     saveVitalsData();
+    if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('patient_added', patient);
     renderPatientList();
     renderVitalsMain();
     close();
@@ -4724,6 +5250,7 @@ function setupAddPatientForm(){
       delete vitalsState.logs[p.id];
       vitalsState.activePatientId = vitalsState.patients.length ? vitalsState.patients[0].id : null;
       saveVitalsData();
+      if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('patient_removed', removedPatient);
       renderPatientList();
       renderVitalsMain();
       showToast(`Removed ${removedPatient.name}.`, null, {
@@ -4944,6 +5471,7 @@ function finalizeVitalsEntrySave(p, entry){
   const photoFile = photoInput && photoInput.files && photoInput.files[0];
   vitalsState.logs[p.id].push(entry);
   saveVitalsData();
+  if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('reading_added', p, `HR ${entry.hr||'—'} SpO2 ${entry.spo2||'—'} RR ${entry.rr||'—'}`);
   haptic('Light');
   clearVitalsEntryFormFields();
   clearNotePhotoInput('v-notes-photo', 'v-notes-photo-label', 'v-notes-photo-name');
@@ -5229,6 +5757,12 @@ function renderVitalsMain(){
   if(kicker) kicker.textContent = 'BED ' + (p.bed || '—').toUpperCase() + ' · ' + DEPT_LABELS[p.department || 'general'];
   if(nameEl) nameEl.textContent = p.name;
   if(subEl) subEl.textContent = p.mrn ? `MRN ${p.mrn}` : '';
+
+  const historyBtn = document.getElementById('vitals-history-btn');
+  if(historyBtn){
+    const gid = (typeof window.getWardsActiveSyncGroupId === 'function') ? window.getWardsActiveSyncGroupId() : null;
+    historyBtn.hidden = !(gid && p.groupId === gid);
+  }
 
   const isoSelect = document.getElementById('vitals-isolation-select');
   if(isoSelect) isoSelect.value = p.isolation || 'none';
@@ -6371,6 +6905,7 @@ function setupEscalationTrail(){
     const role = btn.dataset.escalateRole;
     ensureEscalations(p).push({ id: genVitalsId('esc'), ts: new Date().toISOString(), role });
     saveVitalsData();
+    if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('escalation_logged', p, `Notified ${ESCALATION_ROLE_LABELS[role] || role}`);
     renderEscalationList(p);
     showToast(`Logged: notified ${ESCALATION_ROLE_LABELS[role] || role}.`);
     haptic('Light');
@@ -7507,6 +8042,180 @@ function exportAllWardsData(){
   showToast('Backup downloaded', 'ok');
 }
 
+/* ============================================================
+   App lock — WebAuthn platform authenticator with a salted-PIN
+   fallback. Gates the UI itself ("is this really you holding the
+   device"), entirely separate from the optional Firebase sign-in
+   above ("who are you to the server"). Off by default; opt-in from
+   Display settings > App lock.
+   ============================================================ */
+const WARDS_LOCK_KEY = 'wards_applock_v1';
+
+function wardsLockConfig(){
+  try{ return JSON.parse(localStorage.getItem(WARDS_LOCK_KEY) || 'null'); }catch(e){ return null; }
+}
+function wardsLockSave(cfg){ try{ localStorage.setItem(WARDS_LOCK_KEY, JSON.stringify(cfg)); }catch(e){} }
+function wardsLockClear(){ try{ localStorage.removeItem(WARDS_LOCK_KEY); }catch(e){} }
+
+async function wardsSha256Hex(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function wardsRandomHex(bytes){
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function wardsWebAuthnAvailable(){
+  return !!(window.PublicKeyCredential && navigator.credentials && window.isSecureContext !== false);
+}
+
+async function wardsSetupPin(pin){
+  const salt = wardsRandomHex(16);
+  const pinHash = await wardsSha256Hex(salt + pin);
+  wardsLockSave({ mode: 'pin', pinSalt: salt, pinHash });
+}
+async function wardsVerifyPin(pin){
+  const cfg = wardsLockConfig();
+  if(!cfg || cfg.mode !== 'pin') return false;
+  const hash = await wardsSha256Hex(cfg.pinSalt + pin);
+  return hash === cfg.pinHash;
+}
+
+async function wardsSetupWebAuthn(){
+  const cred = await navigator.credentials.create({
+    publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: 'Wards' },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'wards-device-lock', displayName: 'Wards app lock' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+      timeout: 60000
+    }
+  });
+  if(!cred) throw new Error('No credential created');
+  const credId = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
+  wardsLockSave({ mode: 'webauthn', credId });
+}
+async function wardsVerifyWebAuthn(){
+  const cfg = wardsLockConfig();
+  if(!cfg || cfg.mode !== 'webauthn') return false;
+  const credIdBytes = Uint8Array.from(atob(cfg.credId), c => c.charCodeAt(0));
+  const assertion = await navigator.credentials.get({
+    publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), allowCredentials: [{ id: credIdBytes, type: 'public-key' }], userVerification: 'required', timeout: 60000 }
+  });
+  return !!assertion;
+}
+
+let wardsLockMode = 'idle';
+let wardsLockFirstPin = '';
+
+function wardsLockOverlayShow(title, sub, showBiometricBtn){
+  const overlay = document.getElementById('wards-lock-overlay');
+  if(!overlay) return;
+  overlay.classList.add('show');
+  const titleEl = document.getElementById('wards-lock-title');
+  const subEl = document.getElementById('wards-lock-sub');
+  const pinInput = document.getElementById('wards-lock-pin-input');
+  const bioBtn = document.getElementById('wards-lock-biometric-btn');
+  const errEl = document.getElementById('wards-lock-error');
+  if(titleEl) titleEl.textContent = title;
+  if(subEl) subEl.textContent = sub;
+  if(errEl) errEl.textContent = '';
+  if(pinInput){ pinInput.value = ''; pinInput.style.display = ''; setTimeout(() => pinInput.focus(), 80); }
+  if(bioBtn) bioBtn.hidden = !showBiometricBtn;
+}
+function wardsLockOverlayHide(){
+  const overlay = document.getElementById('wards-lock-overlay');
+  if(overlay) overlay.classList.remove('show');
+  wardsLockMode = 'idle';
+}
+
+function wardsStartLockSetup(){
+  wardsLockMode = 'setup-enter';
+  wardsLockFirstPin = '';
+  wardsLockOverlayShow('Set an app lock PIN', 'Enter a new 4–8 digit PIN.', false);
+}
+function wardsStartUnlock(){
+  const cfg = wardsLockConfig();
+  wardsLockMode = 'unlock';
+  if(cfg && cfg.mode === 'webauthn' && wardsWebAuthnAvailable()){
+    wardsLockOverlayShow('Wards is locked', 'Use biometrics to continue, or switch to a PIN if you set one up.', true);
+    wardsAttemptBiometricUnlock();
+  } else {
+    wardsLockOverlayShow('Wards is locked', 'Enter your PIN to continue.', false);
+  }
+}
+async function wardsAttemptBiometricUnlock(){
+  const errEl = document.getElementById('wards-lock-error');
+  try{
+    const ok = await wardsVerifyWebAuthn();
+    if(ok) wardsUnlockApp();
+    else if(errEl) errEl.textContent = 'Biometric check did not match — try again.';
+  }catch(e){
+    if(errEl) errEl.textContent = 'Biometric check unavailable right now.';
+  }
+}
+function wardsUnlockApp(){
+  wardsLockOverlayHide();
+}
+
+function setupWardsAppLock(){
+  const btn = document.getElementById('wards-applock-btn');
+  const refreshBtn = () => { if(btn) btn.textContent = wardsLockConfig() ? 'Turn off' : 'Set up'; };
+  refreshBtn();
+  if(btn) btn.addEventListener('click', async () => {
+    if(wardsLockConfig()){
+      wardsLockClear();
+      refreshBtn();
+      showToast('App lock turned off.');
+      return;
+    }
+    if(wardsWebAuthnAvailable()){
+      try{
+        await wardsSetupWebAuthn();
+        refreshBtn();
+        showToast('Biometric app lock enabled.', 'ok');
+        return;
+      }catch(e){ /* declined/unsupported — fall through to PIN */ }
+    }
+    wardsStartLockSetup();
+  });
+
+  const unlockBtn = document.getElementById('wards-lock-unlock-btn');
+  const pinInput = document.getElementById('wards-lock-pin-input');
+  const errEl = document.getElementById('wards-lock-error');
+  const submit = async () => {
+    const val = pinInput ? pinInput.value.trim() : '';
+    if(wardsLockMode === 'unlock'){
+      const ok = await wardsVerifyPin(val);
+      if(ok) wardsUnlockApp();
+      else if(errEl) errEl.textContent = 'Incorrect PIN.';
+    } else if(wardsLockMode === 'setup-enter'){
+      if(!/^\d{4,8}$/.test(val)){ if(errEl) errEl.textContent = 'PIN must be 4–8 digits.'; return; }
+      wardsLockFirstPin = val;
+      wardsLockMode = 'setup-confirm';
+      wardsLockOverlayShow('Confirm your PIN', 'Enter the same PIN again.', false);
+    } else if(wardsLockMode === 'setup-confirm'){
+      if(val !== wardsLockFirstPin){
+        wardsLockMode = 'setup-enter';
+        wardsLockOverlayShow('Set an app lock PIN', 'PINs did not match — enter a new 4–8 digit PIN.', false);
+        return;
+      }
+      await wardsSetupPin(val);
+      wardsLockOverlayHide();
+      refreshBtn();
+      showToast('PIN app lock enabled.', 'ok');
+    }
+  };
+  if(unlockBtn) unlockBtn.addEventListener('click', submit);
+  if(pinInput) pinInput.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); submit(); } });
+  const bioBtn = document.getElementById('wards-lock-biometric-btn');
+  if(bioBtn) bioBtn.addEventListener('click', wardsAttemptBiometricUnlock);
+
+  if(wardsLockConfig()) wardsStartUnlock();
+}
+
 function boot(){
   applyTheme(getInitialTheme());
   const toggle = document.getElementById('theme-toggle');
@@ -7524,6 +8233,8 @@ function boot(){
   if(exportBtn) exportBtn.onclick = () => { haptic('Light'); exportAllWardsData(); };
   setupWardsTabs();
   wardsSwitchView('vitals');
+  initWardsCloudSync();
+  setupWardsAppLock();
 }
 
 if(document.readyState === 'loading'){
