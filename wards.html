@@ -9,7 +9,7 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="format-detection" content="telephone=no">
 <title>Wards — ward patient charting</title>
-<meta name="description" content="Wards — a ward-based patient-charting tool: serial vitals flowsheets and an obstetric Maternity portal, all stored locally on-device.">
+<meta name="description" content="Wards — a unified, department-aware patient-charting tool (General/ICU/Surgery/Pediatrics/Maternity), all stored locally on-device.">
 <meta name="color-scheme" content="light dark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -1588,6 +1588,27 @@ table.vitals-table td.vitals-td-flag{color:var(--caution);font-weight:700;}
 .vitals-row-delete svg{width:16px;height:16px;}
 .vitals-table-empty{padding:var(--space-7) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:13.5px;}
 
+/* Department-specific charting sections (ICU / Surgery / Pediatrics) —
+   General reuses the vitals-panel look, kept plain/lightweight since
+   these aren't the bespoke Maternity obstetric palette. */
+.vitals-dept-section{margin-top:var(--space-6);}
+.vitals-dept-title{font-family:var(--ff-display);font-size:19px;margin:0 0 var(--space-4);}
+.vitals-dept-block{border-top:1px solid var(--line);padding-top:var(--space-4);margin-top:var(--space-4);}
+.vitals-dept-block:first-of-type{border-top:none;padding-top:0;margin-top:0;}
+.vitals-dept-subtitle{font-size:12.5px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-soft);margin:0 0 var(--space-3);}
+.vitals-dept-select-wide{width:100%;max-width:340px;padding:9px 10px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font-family:var(--ff-sans);font-size:14px;}
+.vitals-dept-empty{color:var(--ink-faint);font-size:13px;margin:0;}
+.vitals-badge-readout{display:inline-block;padding:4px 10px;border-radius:var(--r-pill);background:var(--evidence-bg);color:var(--evidence-dark);font-size:13px;font-weight:600;}
+.vitals-repeat-rows{display:flex;flex-direction:column;gap:8px;margin-bottom:var(--space-3);}
+.vitals-repeat-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+.vitals-repeat-row input{flex:1 1 110px;min-width:0;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);color:var(--ink);font-family:var(--ff-sans);font-size:13.5px;}
+.vitals-checklist{display:flex;flex-direction:column;gap:6px;}
+.vitals-check-row{display:flex;align-items:center;gap:10px;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);font-size:14px;}
+.vitals-check-row input[type="checkbox"]{width:18px;height:18px;flex:0 0 auto;}
+.vitals-check-row span:first-of-type{flex:1;}
+.vitals-check-ts{color:var(--ink-faint);font-size:12px;}
+.vitals-check-date{padding:6px 8px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface-raised);font-size:12.5px;}
+
 /* Touch-friendly bump on the packaged tablet/phone shell: bigger tap
    targets, single-column entry grid so nothing gets cramped. */
 html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110px,1fr));}
@@ -2244,8 +2265,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 </header>
 
 <nav class="wards-tabbar" id="wards-tabbar" aria-label="Sections">
-  <button type="button" class="wards-tab" data-view="vitals" role="tab" aria-selected="true" aria-controls="view-vitals">Vitals</button>
-  <button type="button" class="wards-tab" data-view="maternity" role="tab" aria-selected="false" aria-controls="view-maternity">Maternity</button>
+  <button type="button" class="wards-tab" data-view="vitals" role="tab" aria-selected="true" aria-controls="view-vitals">Patients</button>
 </nav>
 
 <div class="layout" id="view-vitals" role="tabpanel" aria-labelledby="tab-vitals">
@@ -2270,6 +2290,20 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <label for="vitals-new-mrn">MRN <span>(optional)</span></label>
         <input id="vitals-new-mrn" type="text" maxlength="24" placeholder="optional" autocomplete="off">
       </div>
+      <div class="vitals-field">
+        <label for="vitals-new-dept">Department</label>
+        <select id="vitals-new-dept">
+          <option value="general" selected>General</option>
+          <option value="icu">ICU</option>
+          <option value="surgery">Surgery / Post-op</option>
+          <option value="pediatrics">Pediatrics</option>
+          <option value="maternity">Maternity</option>
+        </select>
+      </div>
+      <div class="vitals-field" id="vitals-new-age-field" hidden>
+        <label for="vitals-new-age">Age <span>years (pediatrics)</span></label>
+        <input id="vitals-new-age" type="number" min="0" max="17" step="0.1" inputmode="decimal" placeholder="e.g. 4">
+      </div>
       <div class="vitals-add-actions">
         <button type="button" class="vitals-btn-primary" id="vitals-save-patient-btn">Add patient</button>
         <button type="button" class="vitals-btn-ghost" id="vitals-cancel-patient-btn">Cancel</button>
@@ -2277,8 +2311,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     </div>
   </nav>
   <main>
-    <p class="drug-kicker" style="margin-bottom:8px;">SECTION 07 <span class="dot">&middot;</span> SERIAL VITALS FLOWSHEET</p>
-    <h2 class="drug-title" style="font-size:38px;margin-bottom:16px;">Vitals</h2>
+    <p class="drug-kicker" style="margin-bottom:8px;">SECTION 07 <span class="dot">&middot;</span> PATIENT CHARTING</p>
+    <h2 class="drug-title" style="font-size:38px;margin-bottom:16px;">Patients</h2>
 
     <div id="vitals-empty" class="vitals-empty">
       <p>Add a patient on the left to start charting serial vitals through your shift. Everything you enter here stays only on this device.</p>
@@ -2425,495 +2459,314 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <p class="vitals-table-empty" id="vitals-table-empty">No readings logged yet for this patient.</p>
         <p class="vitals-table-empty" id="vitals-table-nomatch" hidden>No readings match that search.</p>
       </div>
+      <!-- ===== Department-specific charting sections. Exactly one is
+           visible at a time, chosen by the open patient's `department`.
+           General has none — the generic vitals form/log above is common
+           to every department. ===== -->
+
+      <!-- MATERNITY — kept as its own #view-maternity-scoped id purely so
+           the bespoke obstetric color tokens/mat-* CSS (originally written
+           for the standalone Maternity tab) still apply verbatim; it is no
+           longer a top-level tabpanel, just this patient's maternity panel. -->
+      <div id="view-maternity" class="vitals-dept-section" hidden>
+        <section class="mat-card">
+          <div class="mat-legend"><span class="dot"></span>Obstetric dating <span class="hint">EDD &amp; gestational age auto-calculate from LMP</span></div>
+          <div class="mat-grid mat-g-3">
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-lmp">LMP (last menstrual period)</label>
+              <input id="mat-f-lmp" type="date">
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-edd">EDD (expected delivery)</label>
+              <input id="mat-f-edd" type="date">
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl">Gestational age <span style="text-transform:none;color:var(--ink-3)">&middot; today</span></label>
+              <div class="mat-readout" id="mat-ga-readout"><span class="mat-badge muted">enter LMP or EDD</span></div>
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-ga-manual">Gestational age (override)</label>
+              <input id="mat-f-ga-manual" type="text" placeholder="e.g. 32+4 (optional)">
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-gravida">Gravida (G)</label>
+              <input id="mat-f-gravida" type="number" min="0" max="30" placeholder="optional">
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-para">Para (P)</label>
+              <input id="mat-f-para" type="number" min="0" max="30" placeholder="optional">
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-live">Living (L)</label>
+              <input id="mat-f-live" type="number" min="0" max="30" placeholder="optional">
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-abortion">Abortion (A)</label>
+              <input id="mat-f-abortion" type="number" min="0" max="30" placeholder="optional">
+            </div>
+          </div>
+        </section>
+
+        <section class="mat-card">
+          <div class="mat-legend"><span class="dot"></span>BP monitor
+            <button type="button" class="mat-link-btn" id="mat-bp-toggle-btn" style="margin-left:auto">Show / hide</button>
+          </div>
+          <div id="mat-bp-toggle-body" hidden>
+            <div class="mat-bp-panel" id="mat-bp-panel"></div>
+            <div class="mat-bp-panel-empty" id="mat-bp-panel-empty">No blood-pressure readings logged for this patient yet &mdash; log one above in the common vitals form.</div>
+          </div>
+        </section>
+
+        <section class="mat-card">
+          <div class="mat-legend"><span class="dot"></span>Bishop score <span class="hint">pre-induction cervical assessment</span></div>
+          <div class="mat-grid mat-g-4">
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-bishop-dilation">Dilation</label>
+              <select id="mat-f-bishop-dilation" class="bishop">
+                <option value="">&mdash;</option>
+                <option value="0">Closed (0)</option>
+                <option value="1">1&ndash;2 cm</option>
+                <option value="2">3&ndash;4 cm</option>
+                <option value="3">&ge;5 cm</option>
+              </select>
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-bishop-effacement">Effacement</label>
+              <select id="mat-f-bishop-effacement" class="bishop">
+                <option value="">&mdash;</option>
+                <option value="0">0&ndash;30%</option>
+                <option value="1">40&ndash;50%</option>
+                <option value="2">60&ndash;70%</option>
+                <option value="3">&ge;80%</option>
+              </select>
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-bishop-station">Station</label>
+              <select id="mat-f-bishop-station" class="bishop">
+                <option value="">&mdash;</option>
+                <option value="0">&minus;3</option>
+                <option value="1">&minus;2</option>
+                <option value="2">&minus;1 / 0</option>
+                <option value="3">+1 / +2</option>
+              </select>
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-bishop-consistency">Consistency</label>
+              <select id="mat-f-bishop-consistency" class="bishop">
+                <option value="">&mdash;</option>
+                <option value="0">Firm</option>
+                <option value="1">Medium</option>
+                <option value="2">Soft</option>
+              </select>
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-bishop-position">Position</label>
+              <select id="mat-f-bishop-position" class="bishop">
+                <option value="">&mdash;</option>
+                <option value="0">Posterior</option>
+                <option value="1">Mid</option>
+                <option value="2">Anterior</option>
+              </select>
+            </div>
+            <div class="mat-field mat-col-span-2">
+              <label class="mat-lbl">Bishop total</label>
+              <div class="mat-readout" id="mat-bishop-readout"><span class="mat-badge muted">rate cervix above</span></div>
+            </div>
+          </div>
+        </section>
+
+        <section class="mat-card">
+          <div class="mat-legend"><span class="dot"></span>CTG &mdash; cardiotocography <span class="hint">upload traces to a timeline</span></div>
+          <div class="mat-ctg-drop" id="mat-ctg-drop">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+            <div class="big">Click to upload, or drag &amp; drop a CTG image</div>
+            <div class="small">PNG or JPG &mdash; a photo of the printout works fine (auto-compressed for storage). Select or drop several at once to add them all to the timeline.</div>
+            <input id="mat-f-ctg-file" type="file" accept="image/*" multiple class="hidden">
+          </div>
+          <div class="mat-grid mat-g-2" style="margin-top:16px">
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-ctg-class">CTG interpretation</label>
+              <select id="mat-f-ctg-class">
+                <option value="">&mdash; select &mdash;</option>
+                <option value="Reassuring">Reassuring (normal)</option>
+                <option value="Non-reassuring">Non-reassuring (suspicious)</option>
+                <option value="Abnormal">Abnormal (pathological)</option>
+              </select>
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-ctg-baseline">Baseline FHR</label>
+              <div class="mat-with-unit"><input id="mat-f-ctg-baseline" type="number" min="60" max="220" placeholder="140"><span class="unit">bpm</span></div>
+            </div>
+            <div class="mat-field mat-col-span-2">
+              <label class="mat-lbl" for="mat-f-ctg-notes">CTG notes</label>
+              <textarea id="mat-f-ctg-notes" placeholder="Baseline variability, accelerations, decelerations, contractions, action taken&hellip;"></textarea>
+            </div>
+          </div>
+          <div class="mat-log-toolbar">
+            <label class="when" for="mat-f-ctg-time">Recorded at</label>
+            <input id="mat-f-ctg-time" type="datetime-local">
+            <button type="button" class="mat-btn-log" id="mat-btn-log-ctg">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add to timeline
+            </button>
+            <span class="when">saves image + interpretation, baseline &amp; notes as a dated entry</span>
+          </div>
+
+          <div class="mat-sub-legend"><span class="dot"></span>CTG timeline <span class="hint" id="mat-ctg-count">0 traces</span></div>
+          <div class="mat-ctg-gallery" id="mat-ctg-gallery"></div>
+          <div class="mat-ctg-gallery-empty" id="mat-ctg-gallery-empty">No traces on the timeline yet.</div>
+        </section>
+
+        <section class="mat-card">
+          <div class="mat-legend"><span class="dot"></span>Progress notes</div>
+          <div class="mat-grid mat-g-2">
+            <div class="mat-field mat-col-span-2">
+              <label class="mat-lbl" for="mat-f-notes">Note</label>
+              <textarea id="mat-f-notes" placeholder="Presenting complaint, examination, plan&hellip;" style="min-height:90px"></textarea>
+            </div>
+            <div class="mat-field mat-col-span-2">
+              <label class="mat-lbl" for="mat-f-advice">Advice given</label>
+              <textarea id="mat-f-advice" placeholder="Advice to patient / attendant, follow-up, red-flag instructions&hellip;" style="min-height:70px"></textarea>
+            </div>
+          </div>
+          <div class="mat-log-toolbar">
+            <label class="when" for="mat-f-notes-time">Recorded at</label>
+            <input id="mat-f-notes-time" type="datetime-local">
+            <input id="mat-f-notes-author" type="text" placeholder="Author / initials" style="max-width:150px">
+            <button type="button" class="mat-btn-log" id="mat-btn-log-notes">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              Add note
+            </button>
+          </div>
+          <div class="mat-notes-search" id="mat-notes-search-wrap">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="mat-notes-search" type="text" placeholder="Filter this patient's notes timeline&hellip;" autocomplete="off">
+          </div>
+          <div class="mat-notes-timeline" id="mat-notes-timeline"></div>
+          <div class="mat-log-empty" id="mat-notes-empty">No progress notes logged yet.</div>
+          <div class="mat-log-empty" id="mat-notes-nomatch" style="display:none">No notes match that search.</div>
+        </section>
+
+        <div class="mat-notice">
+          <b>Local-only demo.</b> Records and images (CTG traces) are stored in this browser (localStorage/IndexedDB) on this device only &mdash; nothing is uploaded to a server. Not a certified medical-records system.
+        </div>
+      </div>
+
+      <!-- ICU -->
+      <div id="dept-icu" class="vitals-dept-section vitals-panel" hidden>
+        <p class="vitals-dept-title">ICU charting</p>
+        <div class="vitals-dept-block">
+          <p class="vitals-dept-subtitle">Ventilator settings</p>
+          <div class="vitals-grid">
+            <div class="vitals-field">
+              <label for="icu-vent-mode">Mode</label>
+              <select id="icu-vent-mode">
+                <option value="">&mdash; not ventilated &mdash;</option>
+                <option value="AC/VC">AC/VC</option>
+                <option value="AC/PC">AC/PC</option>
+                <option value="SIMV">SIMV</option>
+                <option value="PSV">PSV (pressure support)</option>
+                <option value="CPAP">CPAP</option>
+              </select>
+            </div>
+            <div class="vitals-field"><label for="icu-vent-fio2">FiO&#8322; <span>%</span></label><input id="icu-vent-fio2" type="number" min="21" max="100"></div>
+            <div class="vitals-field"><label for="icu-vent-peep">PEEP <span>cmH&#8322;O</span></label><input id="icu-vent-peep" type="number" min="0" max="30"></div>
+            <div class="vitals-field"><label for="icu-vent-tv">Tidal volume <span>mL</span></label><input id="icu-vent-tv" type="number" min="0" max="1000"></div>
+            <div class="vitals-field"><label for="icu-vent-rr">Set RR <span>/min</span></label><input id="icu-vent-rr" type="number" min="0" max="60"></div>
+          </div>
+        </div>
+
+        <div class="vitals-dept-block">
+          <p class="vitals-dept-subtitle">Sedation &mdash; RASS score</p>
+          <select id="icu-rass" class="vitals-dept-select-wide">
+            <option value="">&mdash; not scored &mdash;</option>
+            <option value="4">+4 &nbsp;Combative</option>
+            <option value="3">+3 &nbsp;Very agitated</option>
+            <option value="2">+2 &nbsp;Agitated</option>
+            <option value="1">+1 &nbsp;Restless</option>
+            <option value="0">0 &nbsp;&nbsp;Alert and calm</option>
+            <option value="-1">&minus;1 &nbsp;Drowsy</option>
+            <option value="-2">&minus;2 &nbsp;Light sedation</option>
+            <option value="-3">&minus;3 &nbsp;Moderate sedation</option>
+            <option value="-4">&minus;4 &nbsp;Deep sedation</option>
+            <option value="-5">&minus;5 &nbsp;Unarousable</option>
+          </select>
+        </div>
+
+        <div class="vitals-dept-block">
+          <p class="vitals-dept-subtitle">Infusions / drips</p>
+          <div id="icu-infusion-rows" class="vitals-repeat-rows"></div>
+          <button type="button" class="vitals-btn-outline" id="icu-infusion-add">+ Add infusion</button>
+        </div>
+
+        <div class="vitals-dept-block">
+          <p class="vitals-dept-subtitle">Lines &amp; drains</p>
+          <div id="icu-line-rows" class="vitals-repeat-rows"></div>
+          <button type="button" class="vitals-btn-outline" id="icu-line-add">+ Add line/drain</button>
+        </div>
+      </div>
+
+      <!-- SURGERY / POST-OP -->
+      <div id="dept-surgery" class="vitals-dept-section vitals-panel" hidden>
+        <p class="vitals-dept-title">Surgery / post-op charting</p>
+        <div class="vitals-dept-block">
+          <p class="vitals-dept-subtitle">Pre-op checklist</p>
+          <div class="vitals-checklist" id="surg-preop-checklist">
+            <label class="vitals-check-row"><input type="checkbox" data-preop="consent"><span>Consent signed</span><span class="vitals-check-ts" data-preop-ts="consent"></span></label>
+            <label class="vitals-check-row"><input type="checkbox" data-preop="siteMarked"><span>Surgical site marked</span><span class="vitals-check-ts" data-preop-ts="siteMarked"></span></label>
+            <label class="vitals-check-row"><input type="checkbox" data-preop="npo"><span>NPO confirmed</span><span class="vitals-check-ts" data-preop-ts="npo"></span></label>
+            <label class="vitals-check-row"><input type="checkbox" data-preop="allergies"><span>Allergies reviewed</span><span class="vitals-check-ts" data-preop-ts="allergies"></span></label>
+          </div>
+        </div>
+
+        <div class="vitals-dept-block">
+          <div class="vitals-grid">
+            <div class="vitals-field"><label for="surg-proc-name">Procedure</label><input id="surg-proc-name" type="text" maxlength="120" placeholder="e.g. Ex-lap"></div>
+            <div class="vitals-field"><label for="surg-proc-date">Procedure date</label><input id="surg-proc-date" type="date"></div>
+            <div class="vitals-field"><label>Post-op day</label><div class="vitals-badge-readout" id="surg-postop-day">&mdash;</div></div>
+          </div>
+        </div>
+
+        <div class="vitals-dept-block">
+          <p class="vitals-dept-subtitle">Wound / drain output</p>
+          <div id="surg-drain-rows" class="vitals-repeat-rows"></div>
+          <button type="button" class="vitals-btn-outline" id="surg-drain-add">+ Add drain entry</button>
+        </div>
+      </div>
+
+      <!-- PEDIATRICS -->
+      <div id="dept-pediatrics" class="vitals-dept-section vitals-panel" hidden>
+        <p class="vitals-dept-title">Pediatrics charting</p>
+        <div class="vitals-dept-block">
+          <div class="vitals-grid">
+            <div class="vitals-field"><label for="peds-weight">Weight <span>kg</span></label><input id="peds-weight" type="number" min="0" max="150" step="0.1"></div>
+          </div>
+          <p class="vitals-disclaimer" id="peds-dosing-note">Reference-only weight-based dosing aid &mdash; not a prescription. Enter weight above. Always verify against your institution's paediatric dosing formulary.</p>
+        </div>
+
+        <div class="vitals-dept-block">
+          <p class="vitals-dept-subtitle">Growth log</p>
+          <div id="peds-growth-rows" class="vitals-repeat-rows"></div>
+          <button type="button" class="vitals-btn-outline" id="peds-growth-add">+ Add growth entry</button>
+        </div>
+
+        <div class="vitals-dept-block">
+          <p class="vitals-dept-subtitle">Immunizations</p>
+          <div class="vitals-checklist" id="peds-immunization-list"></div>
+        </div>
+      </div>
     </div>
   </main>
 </div>
 
 <div id="vitals-print-summary"></div>
 
-<div class="layout" id="view-maternity" style="display:none;grid-template-columns:1fr;" role="tabpanel" aria-labelledby="tab-maternity" hidden>
-<!-- ===== Toolbar: internal Patients|BP monitor sub-nav + roster-wide actions.
-     This replaces the standalone app's own <header class="app-header"> (brand,
-     theme toggle, sticky chrome) which was stripped entirely — the Maternity
-     tab inherits the main app's header/tabbar/theme system instead, the same
-     way every other tab does. Only the legitimate internal view-switcher and
-     the CSV/Backup/Restore actions were kept, per spec. ===== -->
-<div class="mat-toolbar">
-  <nav class="mat-view-nav" id="mat-view-nav" aria-label="Views">
-    <button type="button" class="active" data-view="patients">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/></svg>
-      Patients
-    </button>
-    <button type="button" data-view="bp">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-      BP monitor
-    </button>
-  </nav>
-  <div class="mat-toolbar-actions">
-    <button class="mat-pill-btn" id="mat-btn-csv" title="Export the roster as a CSV spreadsheet" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="8" y1="13" x2="16" y2="13"/><line x1="8" y1="17" x2="16" y2="17"/></svg>
-      CSV
-    </button>
-    <button class="mat-pill-btn" id="mat-btn-export" title="Download all records as a JSON backup" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      Backup
-    </button>
-    <button class="mat-pill-btn" id="mat-btn-import" title="Restore records from a JSON backup" type="button">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-      Restore
-    </button>
-  </div>
-</div>
-
-
-<div class="mat-shell" id="mat-patients-view">
-  <!-- ROSTER -->
-  <aside class="mat-roster">
-    <div class="mat-roster-top">
-      <div class="row">
-        <div class="mat-search">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="mat-roster-search" type="text" placeholder="Search name or IP no…" autocomplete="off">
-        </div>
-      </div>
-      <div class="mat-unit-filter" id="mat-unit-filter">
-        <button type="button" class="mat-uf-chip active" data-unit="all">All</button>
-        <button type="button" class="mat-uf-chip" data-unit="1">U1</button>
-        <button type="button" class="mat-uf-chip" data-unit="2">U2</button>
-        <button type="button" class="mat-uf-chip" data-unit="3">U3</button>
-        <button type="button" class="mat-uf-chip" data-unit="4">U4</button>
-        <button type="button" class="mat-uf-chip" data-unit="">Unassigned</button>
-      </div>
-      <button class="mat-btn-new" id="mat-btn-new">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-        New patient
-      </button>
-    </div>
-    <div class="mat-roster-meta" id="mat-roster-count">0 patients</div>
-    <ul class="mat-roster-list" id="mat-roster-list"></ul>
-  </aside>
-
-  <!-- WORKSPACE -->
-  <main class="mat-work">
-    <!-- Empty state -->
-    <div class="mat-empty-state" id="mat-empty-state">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-      <h2>No patient open</h2>
-      <p>Select a patient from the roster, or click <b>New patient</b> to register admission details, vitals and CTG.</p>
-    </div>
-
-    <!-- Form -->
-    <form id="mat-patient-form" class="hidden" autocomplete="off">
-      <div class="mat-work-head">
-        <div>
-          <h1 id="mat-form-title">New patient</h1>
-          <div class="status" id="mat-form-status">Fill in the details below and save.</div>
-        </div>
-        <div class="mat-work-actions">
-          <button type="button" class="mat-btn" id="mat-btn-summary" title="Print a one-page handover summary">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
-            Summary
-          </button>
-          <button type="button" class="mat-btn" id="mat-btn-print">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
-            Print
-          </button>
-          <button type="button" class="mat-btn danger hidden" id="mat-btn-delete">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            Delete
-          </button>
-          <button type="submit" class="mat-btn primary" id="mat-btn-save">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
-            Save patient
-          </button>
-        </div>
-      </div>
-
-      <!-- Identity -->
-      <section class="mat-card">
-        <div class="mat-legend"><span class="dot"></span>Patient identity</div>
-        <div class="mat-grid mat-g-4">
-          <div class="mat-field mat-col-span-2">
-            <label class="mat-lbl" for="mat-f-name">Patient name <span class="req">*</span></label>
-            <input id="mat-f-name" type="text" placeholder="e.g. Priya Sharma" required>
-          </div>
-          <div class="mat-field mat-col-span-2">
-            <label class="mat-lbl" for="mat-f-husband">Husband / next of kin</label>
-            <input id="mat-f-husband" type="text" placeholder="e.g. Rahul Sharma">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-ip">IP no.</label>
-            <input id="mat-f-ip" type="text" placeholder="e.g. IP-24816">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-age">Age</label>
-            <div class="mat-with-unit"><input id="mat-f-age" type="number" min="0" max="120" placeholder="27"><span class="unit">yrs</span></div>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-sex">Sex</label>
-            <select id="mat-f-sex">
-              <option value="Female" selected>Female</option>
-              <option value="Male">Male</option>
-              <option value="Other">Other</option>
-              <option value="Undisclosed">Prefer not to say</option>
-            </select>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-ward">Ward</label>
-            <input id="mat-f-ward" type="text" placeholder="e.g. Antenatal / Labour">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-unit">Unit</label>
-            <select id="mat-f-unit">
-              <option value="">— select —</option>
-              <option value="1">Unit 1</option>
-              <option value="2">Unit 2</option>
-              <option value="3">Unit 3</option>
-              <option value="4">Unit 4</option>
-            </select>
-          </div>
-        </div>
-      </section>
-
-      <!-- Obstetric -->
-      <section class="mat-card">
-        <div class="mat-legend"><span class="dot"></span>Obstetric dating <span class="hint">EDD &amp; gestational age auto-calculate from LMP</span></div>
-        <div class="mat-grid mat-g-3">
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-lmp">LMP (last menstrual period)</label>
-            <input id="mat-f-lmp" type="date">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-edd">EDD (expected delivery)</label>
-            <input id="mat-f-edd" type="date">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl">Gestational age <span style="text-transform:none;color:var(--ink-3)">· today</span></label>
-            <div class="mat-readout" id="mat-ga-readout"><span class="mat-badge muted">enter LMP or EDD</span></div>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-ga-manual">Gestational age (override)</label>
-            <input id="mat-f-ga-manual" type="text" placeholder="e.g. 32+4 (optional)">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-gravida">Gravida (G)</label>
-            <input id="mat-f-gravida" type="number" min="0" max="30" placeholder="optional">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-para">Para (P)</label>
-            <input id="mat-f-para" type="number" min="0" max="30" placeholder="optional">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-live">Living (L)</label>
-            <input id="mat-f-live" type="number" min="0" max="30" placeholder="optional">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-abortion">Abortion (A)</label>
-            <input id="mat-f-abortion" type="number" min="0" max="30" placeholder="optional">
-          </div>
-        </div>
-      </section>
-
-      <!-- Vitals -->
-      <section class="mat-card">
-        <div class="mat-legend"><span class="dot"></span>Vitals <span class="hint">MAP, shock index &amp; BP band derive automatically</span></div>
-        <div class="mat-grid mat-g-4">
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-bp-sys">BP systolic</label>
-            <div class="mat-with-unit"><input id="mat-f-bp-sys" type="number" min="40" max="300" placeholder="118"><span class="unit">mmHg</span></div>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-bp-dia">BP diastolic</label>
-            <div class="mat-with-unit"><input id="mat-f-bp-dia" type="number" min="20" max="200" placeholder="76"><span class="unit">mmHg</span></div>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-pulse">Pulse</label>
-            <div class="mat-with-unit"><input id="mat-f-pulse" type="number" min="20" max="260" placeholder="82"><span class="unit">/min</span></div>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-rr">Resp. rate</label>
-            <div class="mat-with-unit"><input id="mat-f-rr" type="number" min="4" max="80" placeholder="16"><span class="unit">/min</span></div>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-temp">Temperature</label>
-            <div class="mat-with-unit"><input id="mat-f-temp" type="number" step="0.1" min="90" max="110" placeholder="98.4"><span class="unit">°F</span></div>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-spo2">SpO₂</label>
-            <div class="mat-with-unit"><input id="mat-f-spo2" type="number" min="40" max="100" placeholder="99"><span class="unit">%</span></div>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-weight">Weight</label>
-            <div class="mat-with-unit"><input id="mat-f-weight" type="number" step="0.1" min="20" max="250" placeholder="64"><span class="unit">kg</span></div>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl">Derived</label>
-            <div class="mat-readout" id="mat-vitals-readout"><span class="mat-badge muted">enter vitals</span></div>
-          </div>
-        </div>
-        <div class="mat-vital-flags" id="mat-vital-flags"></div>
-
-        <div class="mat-sub-legend"><span class="dot"></span>Serial observations <span class="hint">log this reading to build a trend</span></div>
-        <div class="mat-log-toolbar">
-          <label class="when" for="mat-f-vitals-time">Recorded at</label>
-          <input id="mat-f-vitals-time" type="datetime-local">
-          <button type="button" class="mat-btn-log" id="mat-btn-log-vitals">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Log reading
-          </button>
-          <span class="when">uses the vitals entered above</span>
-        </div>
-        <div class="mat-sparks" id="mat-vitals-sparks" style="display:none"></div>
-        <div class="mat-log-wrap">
-          <table class="mat-log" id="mat-vitals-log-table" style="display:none">
-            <thead><tr>
-              <th>Time</th><th>BP</th><th>MAP</th><th>Pulse</th><th>RR</th><th>Temp</th><th>SpO₂</th><th>Wt</th><th>Flags</th><th></th>
-            </tr></thead>
-            <tbody id="mat-vitals-log-body"></tbody>
-          </table>
-          <div class="mat-log-empty" id="mat-vitals-log-empty">No serial readings logged yet.</div>
-        </div>
-
-        <div class="mat-sub-legend"><span class="dot"></span>Blood pressure <span class="hint" id="mat-bp-panel-hint">categorised per reading</span>
-          <button type="button" class="mat-link-btn" id="mat-btn-csv-patient" style="margin-left:auto" title="Export this patient's vitals log as CSV">Export vitals CSV</button>
-        </div>
-        <div class="mat-bp-panel" id="mat-bp-panel"></div>
-        <div class="mat-bp-panel-empty" id="mat-bp-panel-empty">No blood-pressure readings yet.</div>
-      </section>
-
-      <!-- CTG -->
-      <section class="mat-card">
-        <div class="mat-legend"><span class="dot"></span>CTG — cardiotocography <span class="hint">upload traces to a timeline</span></div>
-        <div class="mat-ctg-drop" id="mat-ctg-drop">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          <div class="big">Click to upload, or drag &amp; drop a CTG image</div>
-          <div class="small">PNG or JPG — a photo of the printout works fine (auto-compressed for storage). Select or drop several at once to add them all to the timeline.</div>
-          <input id="mat-f-ctg-file" type="file" accept="image/*" multiple class="hidden">
-        </div>
-        <div class="mat-ctg-preview" id="mat-ctg-preview">
-          <img id="mat-ctg-img" alt="CTG trace">
-          <div class="cap">
-            <span class="fname" id="mat-ctg-fname"></span>
-            <button type="button" class="mat-link-btn" id="mat-ctg-remove">Discard staged image</button>
-          </div>
-        </div>
-        <div class="mat-grid mat-g-2" style="margin-top:16px">
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-ctg-class">CTG interpretation</label>
-            <select id="mat-f-ctg-class">
-              <option value="">— select —</option>
-              <option value="Reassuring">Reassuring (normal)</option>
-              <option value="Non-reassuring">Non-reassuring (suspicious)</option>
-              <option value="Abnormal">Abnormal (pathological)</option>
-            </select>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-ctg-baseline">Baseline FHR</label>
-            <div class="mat-with-unit"><input id="mat-f-ctg-baseline" type="number" min="60" max="220" placeholder="140"><span class="unit">bpm</span></div>
-          </div>
-          <div class="mat-field mat-col-span-2">
-            <label class="mat-lbl" for="mat-f-ctg-notes">CTG notes</label>
-            <textarea id="mat-f-ctg-notes" placeholder="Baseline variability, accelerations, decelerations, contractions, action taken…"></textarea>
-          </div>
-        </div>
-        <div class="mat-log-toolbar">
-          <label class="when" for="mat-f-ctg-time">Recorded at</label>
-          <input id="mat-f-ctg-time" type="datetime-local">
-          <button type="button" class="mat-btn-log" id="mat-btn-log-ctg">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add to timeline
-          </button>
-          <span class="when">saves image + interpretation, baseline &amp; notes as a dated entry</span>
-        </div>
-
-        <div class="mat-sub-legend"><span class="dot"></span>CTG timeline <span class="hint" id="mat-ctg-count">0 traces</span></div>
-        <div class="mat-ctg-gallery" id="mat-ctg-gallery"></div>
-        <div class="mat-ctg-gallery-empty" id="mat-ctg-gallery-empty">No traces on the timeline yet.</div>
-      </section>
-
-      <!-- Induction of labour -->
-      <section class="mat-card">
-        <div class="mat-legend"><span class="dot"></span>Induction of labour <span class="hint">Bishop score derives automatically</span></div>
-        <div class="mat-grid mat-g-3">
-          <div class="mat-field mat-col-span-2">
-            <label class="mat-lbl">Method(s) used</label>
-            <div class="mat-chk-group" id="mat-iol-methods">
-              <label class="mat-chk"><input type="checkbox" data-iol="Dinoprostone (PGE2) gel"><span>Dinoprostone (PGE2) gel</span></label>
-              <label class="mat-chk"><input type="checkbox" data-iol="Misoprostol (PGE1)"><span>Misoprostol (PGE1)</span></label>
-              <label class="mat-chk"><input type="checkbox" data-iol="Foley / balloon catheter"><span>Foley / balloon catheter</span></label>
-              <label class="mat-chk"><input type="checkbox" data-iol="Membrane sweep"><span>Membrane sweep</span></label>
-              <label class="mat-chk"><input type="checkbox" data-iol="ARM (amniotomy)"><span>ARM (amniotomy)</span></label>
-              <label class="mat-chk"><input type="checkbox" data-iol="Oxytocin infusion"><span>Oxytocin infusion</span></label>
-              <label class="mat-chk"><input type="checkbox" data-iol="Cook double-balloon"><span>Cook double-balloon</span></label>
-            </div>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-iol-indication">Indication</label>
-            <input id="mat-f-iol-indication" type="text" placeholder="e.g. post-dates, PROM, IUGR">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-iol-datetime">Date &amp; time started</label>
-            <input id="mat-f-iol-datetime" type="datetime-local">
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-iol-status">Outcome / status</label>
-            <select id="mat-f-iol-status">
-              <option value="">— select —</option>
-              <option value="Not induced">Not induced</option>
-              <option value="In progress">In progress</option>
-              <option value="Successful — vaginal delivery">Successful — vaginal delivery</option>
-              <option value="Failed — LSCS">Failed induction — LSCS</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="mat-sub-legend"><span class="dot"></span>Bishop score <span class="hint">pre-induction cervical assessment</span></div>
-        <div class="mat-grid mat-g-4">
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-bishop-dilation">Dilation</label>
-            <select id="mat-f-bishop-dilation" class="bishop">
-              <option value="">—</option>
-              <option value="0">Closed (0)</option>
-              <option value="1">1–2 cm</option>
-              <option value="2">3–4 cm</option>
-              <option value="3">≥5 cm</option>
-            </select>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-bishop-effacement">Effacement</label>
-            <select id="mat-f-bishop-effacement" class="bishop">
-              <option value="">—</option>
-              <option value="0">0–30%</option>
-              <option value="1">40–50%</option>
-              <option value="2">60–70%</option>
-              <option value="3">≥80%</option>
-            </select>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-bishop-station">Station</label>
-            <select id="mat-f-bishop-station" class="bishop">
-              <option value="">—</option>
-              <option value="0">−3</option>
-              <option value="1">−2</option>
-              <option value="2">−1 / 0</option>
-              <option value="3">+1 / +2</option>
-            </select>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-bishop-consistency">Consistency</label>
-            <select id="mat-f-bishop-consistency" class="bishop">
-              <option value="">—</option>
-              <option value="0">Firm</option>
-              <option value="1">Medium</option>
-              <option value="2">Soft</option>
-            </select>
-          </div>
-          <div class="mat-field">
-            <label class="mat-lbl" for="mat-f-bishop-position">Position</label>
-            <select id="mat-f-bishop-position" class="bishop">
-              <option value="">—</option>
-              <option value="0">Posterior</option>
-              <option value="1">Mid</option>
-              <option value="2">Anterior</option>
-            </select>
-          </div>
-          <div class="mat-field mat-col-span-2">
-            <label class="mat-lbl">Bishop total</label>
-            <div class="mat-readout" id="mat-bishop-readout"><span class="mat-badge muted">rate cervix above</span></div>
-          </div>
-        </div>
-
-        <div class="mat-grid mat-g-2" style="margin-top:16px">
-          <div class="mat-field mat-col-span-2">
-            <label class="mat-lbl" for="mat-f-iol-notes">Induction notes</label>
-            <textarea id="mat-f-iol-notes" placeholder="Doses, timing, response, complications, plan…"></textarea>
-          </div>
-        </div>
-      </section>
-
-      <!-- Clinical notes -->
-      <section class="mat-card">
-        <div class="mat-legend"><span class="dot"></span>Clinical notes &amp; advice</div>
-        <div class="mat-grid mat-g-2">
-          <div class="mat-field mat-col-span-2">
-            <label class="mat-lbl" for="mat-f-notes">Note</label>
-            <textarea id="mat-f-notes" placeholder="Presenting complaint, examination, plan…" style="min-height:90px"></textarea>
-          </div>
-          <div class="mat-field mat-col-span-2">
-            <label class="mat-lbl" for="mat-f-advice">Advice given</label>
-            <textarea id="mat-f-advice" placeholder="Advice to patient / attendant, follow-up, red-flag instructions…" style="min-height:70px"></textarea>
-          </div>
-        </div>
-
-        <div class="mat-sub-legend"><span class="dot"></span>Progress log <span class="hint">add this note to the timeline</span></div>
-        <div class="mat-log-toolbar">
-          <label class="when" for="mat-f-notes-time">Recorded at</label>
-          <input id="mat-f-notes-time" type="datetime-local">
-          <input id="mat-f-notes-author" type="text" placeholder="Author / initials" style="max-width:150px">
-          <button type="button" class="mat-btn-log" id="mat-btn-log-notes">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-            Add note
-          </button>
-        </div>
-        <div class="mat-notes-search" id="mat-notes-search-wrap">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="mat-notes-search" type="text" placeholder="Filter this patient's notes timeline…" autocomplete="off">
-        </div>
-        <div class="mat-notes-timeline" id="mat-notes-timeline"></div>
-        <div class="mat-log-empty" id="mat-notes-empty">No progress notes logged yet.</div>
-        <div class="mat-log-empty" id="mat-notes-nomatch" style="display:none">No notes match that search.</div>
-      </section>
-
-      <div class="mat-notice">
-        <b>Local-only demo.</b> Records and images are stored in this browser (localStorage) on this device only — nothing is uploaded to a server. This is not a certified medical-records system and has no real security; use <b>Backup</b> regularly and don't rely on it as the sole record of patient data.
-      </div>
-    </form>
-  </main>
-</div>
-
-<!-- BP MONITOR (ward-wide) -->
-<section class="mat-bp-view hidden" id="mat-bp-view">
-  <div class="mat-bp-head">
-    <div>
-      <h1>BP monitor</h1>
-      <div class="status" id="mat-bp-status">Latest blood pressure across all patients — worst first.</div>
-    </div>
-  </div>
-  <div class="mat-unit-filter" id="mat-bp-unit-filter" style="margin:0 0 16px">
-    <button type="button" class="mat-uf-chip active" data-unit="all">All</button>
-    <button type="button" class="mat-uf-chip" data-unit="1">U1</button>
-    <button type="button" class="mat-uf-chip" data-unit="2">U2</button>
-    <button type="button" class="mat-uf-chip" data-unit="3">U3</button>
-    <button type="button" class="mat-uf-chip" data-unit="4">U4</button>
-    <button type="button" class="mat-uf-chip" data-unit="">Unassigned</button>
-  </div>
-  <div class="mat-bp-board-wrap">
-    <table class="mat-bp-board" id="mat-bp-board">
-      <thead><tr>
-        <th>Patient</th><th>Unit</th><th>BP</th><th>MAP</th><th>Category</th><th>Recorded</th>
-      </tr></thead>
-      <tbody id="mat-bp-board-body"></tbody>
-    </table>
-    <div class="mat-bp-board-empty hidden" id="mat-bp-board-empty">No patients to show.</div>
-  </div>
-  <div class="mat-bp-legend">
-    <span><i class="ok"></i> Normal / Elevated</span>
-    <span><i class="warn"></i> Hypertension (140–159 / 90–109)</span>
-    <span><i class="crit"></i> Severe ≥160/110 or hypotension &lt;90/60</span>
-  </div>
-</section>
-
-<div id="mat-print-summary"></div>
-
-<div class="mat-toast" id="mat-toast"></div>
 <div class="mat-lightbox" id="mat-lightbox">
-  <button class="mat-lb-close" id="mat-lb-close" aria-label="Close">×</button>
+  <button class="mat-lb-close" id="mat-lb-close" aria-label="Close">&times;</button>
   <img id="mat-lb-img" alt="CTG trace enlarged">
   <div class="mat-lb-cap" id="mat-lb-cap"></div>
 </div>
-<input type="file" id="mat-import-file" accept="application/json,.json" class="hidden">
 
-</div>
 
 <footer class="wards-footer">
   <span>Wards</span>
@@ -3198,12 +3051,16 @@ function loadVitalsData(){
     const parsed = JSON.parse(raw);
     if(Array.isArray(parsed.patients)) vitalsState.patients = parsed.patients;
     if(parsed.logs && typeof parsed.logs === 'object') vitalsState.logs = parsed.logs;
+    if(parsed.migratedMaternityV1) vitalsState.migratedMaternityV1 = true;
   }catch(e){}
 }
 
 function saveVitalsData(){
   try{
-    localStorage.setItem(VITALS_KEY, JSON.stringify({ patients: vitalsState.patients, logs: vitalsState.logs }));
+    localStorage.setItem(VITALS_KEY, JSON.stringify({
+      patients: vitalsState.patients, logs: vitalsState.logs,
+      migratedMaternityV1: !!vitalsState.migratedMaternityV1
+    }));
   }catch(e){}
 }
 
@@ -3242,6 +3099,7 @@ function activeLog(){
 function initVitals(){
   vitalsState.init = true;
   loadVitalsData();
+  migrateMaternityV1();
   if(!vitalsState.activePatientId && vitalsState.patients.length){
     vitalsState.activePatientId = vitalsState.patients[0].id;
   }
@@ -3255,6 +3113,10 @@ function initVitals(){
   setupVitalsBaselinesForm();
   setupVitalsLogSearch();
   setupVitalsMineFilterToggle();
+  setupMaternitySection();
+  setupIcuSection();
+  setupSurgerySection();
+  setupPediatricsSection();
   renderPatientList();
   renderVitalsMain();
 }
@@ -3352,25 +3214,40 @@ function setupAddPatientForm(){
   const nameInput = document.getElementById('vitals-new-name');
   const bedInput = document.getElementById('vitals-new-bed');
   const mrnInput = document.getElementById('vitals-new-mrn');
+  const deptInput = document.getElementById('vitals-new-dept');
+  const ageField = document.getElementById('vitals-new-age-field');
+  const ageInput = document.getElementById('vitals-new-age');
   if(!openBtn || !form || openBtn.dataset.wired) return;
   openBtn.dataset.wired = '1';
 
   const close = () => {
     form.hidden = true;
     nameInput.value = ''; bedInput.value = ''; mrnInput.value = '';
+    if(deptInput) deptInput.value = 'general';
+    if(ageInput) ageInput.value = '';
+    if(ageField) ageField.hidden = true;
   };
   openBtn.addEventListener('click', () => {
     form.hidden = !form.hidden;
     if(!form.hidden) setTimeout(() => nameInput.focus(), 30);
   });
   cancelBtn.addEventListener('click', close);
+  if(deptInput){
+    deptInput.addEventListener('change', () => {
+      if(ageField) ageField.hidden = deptInput.value !== 'pediatrics';
+    });
+  }
 
   const save = () => {
     const name = nameInput.value.trim();
     const bed = bedInput.value.trim();
     const mrn = mrnInput.value.trim();
+    const department = (deptInput && deptInput.value) || 'general';
     if(!name && !bed){ nameInput.focus(); return; }
-    const patient = { id: genVitalsId('pt'), name: name || 'Unnamed', bed: bed || '—', mrn: mrn || '', createdAt: new Date().toISOString() };
+    const patient = { id: genVitalsId('pt'), name: name || 'Unnamed', bed: bed || '—', mrn: mrn || '', department, createdAt: new Date().toISOString() };
+    if(department === 'pediatrics' && ageInput && ageInput.value.trim() !== ''){
+      patient.pediatrics = { ageYears: parseFloat(ageInput.value) };
+    }
     vitalsState.patients.push(patient);
     vitalsState.logs[patient.id] = [];
     vitalsState.activePatientId = patient.id;
@@ -3637,7 +3514,7 @@ function renderVitalsMain(){
   const kicker = document.getElementById('vitals-patient-kicker');
   const nameEl = document.getElementById('vitals-patient-name');
   const subEl = document.getElementById('vitals-patient-sub');
-  if(kicker) kicker.textContent = 'BED ' + (p.bed || '—').toUpperCase();
+  if(kicker) kicker.textContent = 'BED ' + (p.bed || '—').toUpperCase() + ' · ' + DEPT_LABELS[p.department || 'general'];
   if(nameEl) nameEl.textContent = p.name;
   if(subEl) subEl.textContent = p.mrn ? `MRN ${p.mrn}` : '';
 
@@ -3646,7 +3523,10 @@ function renderVitalsMain(){
   renderVitalsSparklines();
   renderVitalsCombinedTrend();
   refreshAllVitalsDeltas();
+  renderDeptSections(p);
 }
+
+const DEPT_LABELS = { general: 'GENERAL', icu: 'ICU', surgery: 'SURGERY / POST-OP', pediatrics: 'PEDIATRICS', maternity: 'MATERNITY' };
 
 function deleteVitalsRow(patientId, entryId){
   const log = vitalsState.logs[patientId];
@@ -3661,6 +3541,20 @@ function deleteVitalsRow(patientId, entryId){
 // patient has no per-patient override set for a given bound.
 const VITALS_GLOBAL_BASELINES = { hrLow: 50, hrHigh: 130, sbpLow: 90, sbpHigh: 180, spo2Low: 90, tempLow: 35, tempHigh: 38.5 };
 
+// Age-band HR/RR normal ranges for pediatrics — a simple lookup, not a
+// clinical scoring system. BP/SpO2/temp bounds stay the adult defaults
+// (no widely-agreed simple age-band equivalent worth hard-coding here).
+const PEDIATRIC_AGE_BANDS = [
+  { max: 1,  label: 'infant',     hrLow: 100, hrHigh: 160, rrLow: 30, rrHigh: 60 },
+  { max: 3,  label: 'toddler',    hrLow: 90,  hrHigh: 150, rrLow: 24, rrHigh: 40 },
+  { max: 11, label: 'child',      hrLow: 70,  hrHigh: 120, rrLow: 18, rrHigh: 30 },
+  { max: 17, label: 'adolescent', hrLow: 60,  hrHigh: 100, rrLow: 12, rrHigh: 20 }
+];
+function pediatricAgeBand(ageYears){
+  if(ageYears === undefined || ageYears === null || ageYears === '' || isNaN(ageYears)) return null;
+  return PEDIATRIC_AGE_BANDS.find(b => ageYears <= b.max) || PEDIATRIC_AGE_BANDS[PEDIATRIC_AGE_BANDS.length - 1];
+}
+
 function vitalsRowFlag(entry, patient){
   // A light, non-diagnostic visual nudge only — flags values a shift
   // nurse/intern would typically double-check, nothing more.
@@ -3670,7 +3564,17 @@ function vitalsRowFlag(entry, patient){
   const p = patient || activePatient();
   const b = (p && p.baselines) || {};
   const g = VITALS_GLOBAL_BASELINES;
-  const bound = key => (b[key] !== undefined && b[key] !== null && b[key] !== '') ? parseFloat(b[key]) : g[key];
+  // Pediatric patients use age-band HR/RR thresholds instead of the adult
+  // global defaults, unless the clinician has set an explicit per-patient
+  // baseline override for that bound (overrides still win either way).
+  const ageBand = (p && p.department === 'pediatrics' && p.pediatrics)
+    ? pediatricAgeBand(p.pediatrics.ageYears) : null;
+  const gEff = ageBand ? Object.assign({}, g, { hrLow: ageBand.hrLow, hrHigh: ageBand.hrHigh }) : g;
+  const bound = key => (b[key] !== undefined && b[key] !== null && b[key] !== '') ? parseFloat(b[key]) : gEff[key];
+  if(ageBand){
+    const rr = entry.rr === '' || entry.rr === undefined ? null : parseFloat(entry.rr);
+    if(rr !== null && (rr < ageBand.rrLow || rr > ageBand.rrHigh)) return true;
+  }
   const n = v => v === '' ? null : parseFloat(v);
   const hr = n(entry.hr), sbp = n(entry.sbp), spo2 = n(entry.spo2), temp = n(entry.temp);
   if(spo2 !== null && spo2 < bound('spo2Low')) return true;
@@ -3964,40 +3868,967 @@ function setupVitalsBaselinesForm(){
   });
 }
 
+/* ============================================================
+   Department-specific charting — Maternity / ICU / Surgery / Pediatrics.
+   Each renders/writes to its own patient.<dept> sub-object living on the
+   SAME unified patient record the generic vitals form/log above already
+   uses (patient.department picks which one is shown; General has none).
+   ============================================================ */
+
+function num(v){ const n = parseFloat(v); return isNaN(n) ? null : n; }
+const MS_DAY = 86400000;
+function parseDateOnly(str){
+  if(!str) return null;
+  const d = new Date(str + 'T00:00:00');
+  return isNaN(d.getTime()) ? null : d;
+}
+function toISODate(d){
+  const p2 = n => String(n).padStart(2, '0');
+  return d.getFullYear() + '-' + p2(d.getMonth()+1) + '-' + p2(d.getDate());
+}
+
+/* ---------- migration: fold the old standalone Maternity tab's
+   mat_portal_patients_v1 array into the unified patient list, once. The
+   old key is deliberately left untouched in localStorage as a backup. */
+function migrateMaternityV1(){
+  if(vitalsState.migratedMaternityV1) return;
+  vitalsState.migratedMaternityV1 = true;
+  let legacy = [];
+  try{
+    const raw = localStorage.getItem('mat_portal_patients_v1');
+    legacy = raw ? JSON.parse(raw) : [];
+  }catch(e){ legacy = []; }
+  if(Array.isArray(legacy) && legacy.length){
+    const existingIds = new Set(vitalsState.patients.map(p => p.id));
+    legacy.forEach(r => {
+      if(!r || (r.id && existingIds.has(r.id))) return;
+      const id = r.id || genVitalsId('pt');
+      vitalsState.patients.push({
+        id, name: r.name || 'Unnamed',
+        bed: r.unit ? ('Unit ' + r.unit) : (r.ward || '—'),
+        mrn: r.ip || '', department: 'maternity',
+        createdAt: r.createdAt || new Date().toISOString(),
+        maternity: {
+          lmp: r.lmp || '', edd: r.edd || '', gaManual: r.gaManual || '',
+          gravida: r.gravida || '', para: r.para || '', live: r.live || '', abortion: r.abortion || '',
+          bishopDilation: r.bishopDilation || '', bishopEffacement: r.bishopEffacement || '',
+          bishopStation: r.bishopStation || '', bishopConsistency: r.bishopConsistency || '', bishopPosition: r.bishopPosition || '',
+          ctgLog: Array.isArray(r.ctgLog) ? r.ctgLog.slice() : [],
+          notesLog: Array.isArray(r.notesLog) ? r.notesLog.slice() : []
+        }
+      });
+      existingIds.add(id);
+      // Fold the legacy per-patient serial vitals (BP/pulse/RR/temp°F/SpO2)
+      // into the unified generic vitals log so trend history isn't lost.
+      vitalsState.logs[id] = (Array.isArray(r.vitalsLog) ? r.vitalsLog : []).map(v => ({
+        id: genVitalsId('vr'), ts: v.at || new Date().toISOString(),
+        hr: v.pulse || '', sbp: v.bpSys || '', dbp: v.bpDia || '', rr: v.rr || '',
+        spo2: v.spo2 || '',
+        temp: (v.temp !== undefined && v.temp !== '' && !isNaN(parseFloat(v.temp)))
+          ? String(Math.round(((parseFloat(v.temp) - 32) * 5 / 9) * 10) / 10) : '',
+        gcs: '', uop: '', notes: ''
+      }));
+    });
+  }
+  saveVitalsData();
+}
+
+function renderDeptSections(p){
+  const dept = (p && p.department) || 'general';
+  const map = { maternity: 'view-maternity', icu: 'dept-icu', surgery: 'dept-surgery', pediatrics: 'dept-pediatrics' };
+  Object.keys(map).forEach(d => {
+    const el = document.getElementById(map[d]);
+    if(!el) return;
+    const show = dept === d;
+    el.hidden = !show;
+    // #view-maternity carries its own `display:block` in its bespoke
+    // token-scope CSS rule (an ID selector), which otherwise outranks the
+    // `[hidden]` attribute's UA-stylesheet `display:none` — set an inline
+    // style explicitly so hiding actually takes effect for that section.
+    el.style.display = show ? '' : 'none';
+  });
+  if(!p) return;
+  if(dept === 'maternity') renderMaternitySection(p);
+  else if(dept === 'icu') renderIcuSection(p);
+  else if(dept === 'surgery') renderSurgerySection(p);
+  else if(dept === 'pediatrics') renderPediatricsSection(p);
+}
+
+/* ============================================================
+   MATERNITY
+   ============================================================ */
+
+function ensureMaternity(p){
+  if(!p.maternity) p.maternity = {};
+  if(!Array.isArray(p.maternity.ctgLog)) p.maternity.ctgLog = [];
+  if(!Array.isArray(p.maternity.notesLog)) p.maternity.notesLog = [];
+  return p.maternity;
+}
+
+function eddFromLmp(lmpStr){
+  const d = parseDateOnly(lmpStr); if(!d) return '';
+  const edd = new Date(d.getTime());
+  edd.setDate(edd.getDate() + 280); // Naegele's rule
+  return toISODate(edd);
+}
+function gaDaysToday(lmpStr, eddStr){
+  let start = parseDateOnly(lmpStr);
+  if(!start){
+    const edd = parseDateOnly(eddStr);
+    if(edd){ start = new Date(edd.getTime()); start.setDate(start.getDate() - 280); }
+  }
+  if(!start) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((today - start) / MS_DAY);
+}
+function gaText(days){
+  if(days === null || days < 0 || days > 320) return null;
+  return Math.floor(days/7) + 'w ' + (days % 7) + 'd';
+}
+function bpCategory(sys, dia){
+  const s = num(sys), d = num(dia);
+  if(s === null || d === null) return null;
+  if(s < 90 || d < 60)     return { band:'crit', label:'Hypotension' };
+  if(s >= 160 || d >= 110) return { band:'crit', label:'Severe hypertension' };
+  if(s >= 140 || d >= 90)  return { band:'warn', label:'Hypertension' };
+  if(s >= 120 && d < 80)   return { band:'muted', label:'Elevated' };
+  return { band:'ok', label:'Normal' };
+}
+
+const BISHOP_FIELDS = [
+  ['bishopDilation','mat-f-bishop-dilation'], ['bishopEffacement','mat-f-bishop-effacement'],
+  ['bishopStation','mat-f-bishop-station'], ['bishopConsistency','mat-f-bishop-consistency'],
+  ['bishopPosition','mat-f-bishop-position']
+];
+
+function renderMaternityDating(m){
+  const readout = document.getElementById('mat-ga-readout');
+  if(!readout) return;
+  const gaDays = gaDaysToday(m.lmp, m.edd);
+  const txt = gaText(gaDays);
+  const edd = parseDateOnly(m.edd);
+  let html = '';
+  if(m.gaManual && m.gaManual.trim()){
+    html = '<span class="big">' + escapeHtml(m.gaManual.trim()) + '</span><span class="mat-badge muted">manual</span>';
+  } else if(txt){
+    let band = 'ok', lbl = '';
+    if(gaDays < 259){ lbl = 'preterm zone <37w'; band = gaDays < 245 ? 'warn' : 'ok'; }
+    else if(gaDays <= 293){ lbl = 'term'; band = 'ok'; }
+    else { lbl = 'post-term >42w'; band = 'crit'; }
+    html = '<span class="big">' + txt + '</span>';
+    if(edd){
+      const today = new Date(); today.setHours(0,0,0,0);
+      const rem = Math.round((edd - today) / MS_DAY);
+      const remTxt = rem > 0 ? (rem + 'd to EDD') : (rem === 0 ? 'EDD today' : (Math.abs(rem) + 'd past EDD'));
+      html += '<span class="mat-badge ' + (rem < 0 ? 'crit' : 'muted') + '">' + remTxt + '</span>';
+    }
+    if(lbl) html += '<span class="mat-badge ' + band + '">' + lbl + '</span>';
+  } else {
+    html = '<span class="mat-badge muted">enter LMP or EDD</span>';
+  }
+  readout.innerHTML = html;
+}
+
+function renderBishop(m){
+  const readout = document.getElementById('mat-bishop-readout');
+  if(!readout) return;
+  let sum = 0, rated = 0;
+  BISHOP_FIELDS.forEach(([key]) => {
+    const v = m[key];
+    if(v !== undefined && v !== null && v !== ''){ sum += parseInt(v, 10); rated++; }
+  });
+  if(rated === 0){ readout.innerHTML = '<span class="mat-badge muted">rate cervix above</span>'; return; }
+  let html = '<span class="big">' + sum + '</span><span style="color:var(--ink-3)">/13</span>';
+  if(rated < BISHOP_FIELDS.length){
+    html += '<span class="mat-badge muted">' + rated + '/5 components</span>';
+  } else {
+    let band, lbl;
+    if(sum <= 6){ band = 'warn'; lbl = 'unfavourable — ripen'; }
+    else if(sum <= 7){ band = 'muted'; lbl = 'intermediate'; }
+    else { band = 'ok'; lbl = 'favourable'; }
+    html += '<span class="mat-badge ' + band + '">' + lbl + '</span>';
+  }
+  readout.innerHTML = html;
+}
+
+function renderMaternityBpPanel(p){
+  const panel = document.getElementById('mat-bp-panel');
+  const empty = document.getElementById('mat-bp-panel-empty');
+  if(!panel) return;
+  const rows = (vitalsState.logs[p.id] || [])
+    .filter(e => e.sbp !== '' && e.dbp !== '' && e.sbp != null && e.dbp != null)
+    .slice().sort((a,b) => new Date(b.ts) - new Date(a.ts));
+  if(!rows.length){
+    panel.innerHTML = ''; panel.style.display = 'none';
+    if(empty) empty.style.display = '';
+    return;
+  }
+  panel.style.display = 'flex';
+  if(empty) empty.style.display = 'none';
+  panel.innerHTML = rows.map(r => {
+    const cat = bpCategory(r.sbp, r.dbp) || { band:'muted', label:'—' };
+    const s = num(r.sbp), d = num(r.dbp);
+    const map = (s !== null && d !== null) ? Math.round((s + 2*d)/3) : '';
+    return '<div class="mat-bp-row ' + cat.band + '">' +
+      '<span class="v">' + escapeHtml(r.sbp) + '/' + escapeHtml(r.dbp) + '</span>' +
+      '<span class="mat-badge ' + cat.band + '">' + cat.label + '</span>' +
+      (map !== '' ? '<span class="map">MAP ' + map + '</span>' : '') +
+      '<span class="t">' + escapeHtml(fmtVitalsTime(r.ts)) + '</span>' +
+    '</div>';
+  }).join('');
+}
+
+function ctgClassBand(c){
+  if(c === 'Reassuring') return 'ok';
+  if(c === 'Non-reassuring') return 'warn';
+  if(c === 'Abnormal') return 'crit';
+  return 'muted';
+}
+function safeCtgImageSrc(s){
+  return (typeof s === 'string' && /^data:image\//.test(s)) ? s : '';
+}
+function renderCtgGallery(m){
+  const gallery = document.getElementById('mat-ctg-gallery');
+  const emptyEl = document.getElementById('mat-ctg-gallery-empty');
+  const countEl = document.getElementById('mat-ctg-count');
+  if(!gallery) return;
+  const log = m.ctgLog.slice().sort((a,b) => new Date(b.at) - new Date(a.at));
+  if(countEl) countEl.textContent = log.length + (log.length === 1 ? ' trace' : ' traces');
+  if(!log.length){
+    gallery.innerHTML = '';
+    if(emptyEl) emptyEl.style.display = '';
+    return;
+  }
+  if(emptyEl) emptyEl.style.display = 'none';
+  gallery.innerHTML = log.map(c => {
+    const badge = c.ctgClass ? '<span class="mat-badge ' + ctgClassBand(c.ctgClass) + '">' + escapeHtml(c.ctgClass) + '</span>' : '';
+    const base = c.baseline ? '<span class="mat-badge muted">FHR ' + escapeHtml(c.baseline) + ' bpm</span>' : '';
+    return '<div class="mat-ctg-card">' +
+      '<img class="thumb loading" alt="CTG trace" data-lb="' + c.id + '" data-ctg-thumb="' + c.id + '">' +
+      '<div class="meta">' +
+        '<span class="t">' + escapeHtml(fmtVitalsTime(c.at)) + '</span>' +
+        ((badge || base) ? '<span class="row">' + badge + base + '</span>' : '') +
+        (c.notes ? '<span class="n">' + escapeHtml(c.notes) + '</span>' : '') +
+        '<span class="row"><button type="button" class="del" data-del-ctg="' + c.id + '">Remove</button></span>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+  log.forEach(c => {
+    ctgImageGet(c.id).then(dataUrl => {
+      const img = gallery.querySelector('img[data-ctg-thumb="' + c.id + '"]');
+      if(!img) return;
+      img.src = safeCtgImageSrc(dataUrl);
+      img.classList.remove('loading');
+    }).catch(() => {});
+  });
+}
+
+function renderMaternityNotesLog(m){
+  const timeline = document.getElementById('mat-notes-timeline');
+  const emptyEl = document.getElementById('mat-notes-empty');
+  const nomatchEl = document.getElementById('mat-notes-nomatch');
+  const searchInput = document.getElementById('mat-notes-search');
+  if(!timeline) return;
+  const log = m.notesLog.slice().sort((a,b) => new Date(b.at) - new Date(a.at));
+  if(!log.length){
+    timeline.innerHTML = '';
+    if(emptyEl) emptyEl.style.display = '';
+    if(nomatchEl) nomatchEl.style.display = 'none';
+    return;
+  }
+  if(emptyEl) emptyEl.style.display = 'none';
+  const needle = searchInput ? searchInput.value.trim().toLowerCase() : '';
+  const shown = needle
+    ? log.filter(n => [n.note, n.advice, n.author].filter(Boolean).join(' ').toLowerCase().includes(needle))
+    : log;
+  if(!shown.length){
+    timeline.innerHTML = '';
+    if(nomatchEl) nomatchEl.style.display = '';
+    return;
+  }
+  if(nomatchEl) nomatchEl.style.display = 'none';
+  timeline.innerHTML = shown.map(n =>
+    '<div class="mat-note-entry">' +
+      '<div class="nh"><span class="t">' + escapeHtml(fmtVitalsTime(n.at)) + '</span>' +
+        (n.author ? '<span class="who">· ' + escapeHtml(n.author) + '</span>' : '') +
+        '<button type="button" class="del" data-del-note="' + n.id + '">Remove</button></div>' +
+      (n.note ? '<div class="body">' + escapeHtml(n.note) + '</div>' : '') +
+      (n.advice ? '<div class="adv"><b>Advice:</b> ' + escapeHtml(n.advice) + '</div>' : '') +
+    '</div>'
+  ).join('');
+}
+
+function renderMaternitySection(p){
+  const m = ensureMaternity(p);
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = v || ''; };
+  set('mat-f-lmp', m.lmp); set('mat-f-edd', m.edd); set('mat-f-ga-manual', m.gaManual);
+  set('mat-f-gravida', m.gravida); set('mat-f-para', m.para); set('mat-f-live', m.live); set('mat-f-abortion', m.abortion);
+  BISHOP_FIELDS.forEach(([key, id]) => set(id, m[key]));
+  renderMaternityDating(m);
+  renderBishop(m);
+  renderMaternityBpPanel(p);
+  renderCtgGallery(m);
+  renderMaternityNotesLog(m);
+  const ctgTime = document.getElementById('mat-f-ctg-time');
+  if(ctgTime) ctgTime.value = localDateTimeInputValue(new Date());
+  const notesTime = document.getElementById('mat-f-notes-time');
+  if(notesTime) notesTime.value = localDateTimeInputValue(new Date());
+}
+
+/* ---------- CTG image store (IndexedDB) — same DB/store name as the
+   original standalone Maternity tab so already-migrated CTG images
+   (referenced by id from migrateMaternityV1()) keep resolving. ---------- */
+const CTG_DB_NAME = 'mat_ctg_images_v1';
+const CTG_STORE = 'ctgImages';
+let ctgDbPromise = null;
+function ctgDb(){
+  if(ctgDbPromise) return ctgDbPromise;
+  ctgDbPromise = new Promise((resolve, reject) => {
+    if(!window.indexedDB){ reject(new Error('IndexedDB unavailable')); return; }
+    const req = indexedDB.open(CTG_DB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(CTG_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return ctgDbPromise;
+}
+function ctgImageSet(id, dataUrl){
+  return ctgDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(CTG_STORE, 'readwrite');
+    tx.objectStore(CTG_STORE).put(dataUrl, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+function ctgImageGet(id){
+  return ctgDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(CTG_STORE, 'readonly');
+    const req = tx.objectStore(CTG_STORE).get(id);
+    req.onsuccess = () => resolve(req.result || '');
+    req.onerror = () => reject(req.error);
+  }));
+}
+function ctgImageDelete(id){
+  return ctgDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(CTG_STORE, 'readwrite');
+    tx.objectStore(CTG_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  })).catch(() => {});
+}
+
+function compressCtgFile(file){
+  return new Promise(resolve => {
+    if(!file || !/^image\//.test(file.type)){ showToast('Skipped a non-image file.'); resolve(null); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const maxEdge = 1400;
+        let { width, height } = img;
+        const scale = Math.min(1, maxEdge / Math.max(width, height));
+        width = Math.round(width * scale); height = Math.round(height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = () => { showToast('Could not read that image.'); resolve(null); };
+      img.src = e.target.result;
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
+async function handleCtgFiles(fileList){
+  const p = activePatient(); if(!p) return;
+  const m = ensureMaternity(p);
+  const files = Array.from(fileList || []);
+  if(!files.length) return;
+  const classEl = document.getElementById('mat-f-ctg-class');
+  const baselineEl = document.getElementById('mat-f-ctg-baseline');
+  const notesEl = document.getElementById('mat-f-ctg-notes');
+  const timeEl = document.getElementById('mat-f-ctg-time');
+  const at = timeEl && timeEl.value ? new Date(timeEl.value).toISOString() : new Date().toISOString();
+  let added = 0;
+  for(const file of files){
+    const dataUrl = await compressCtgFile(file);
+    if(!dataUrl) continue;
+    const entry = {
+      id: genVitalsId('ctg'), at, fname: file.name || 'CTG image',
+      ctgClass: classEl ? classEl.value : '', baseline: baselineEl ? baselineEl.value : '',
+      notes: notesEl ? notesEl.value.trim() : ''
+    };
+    m.ctgLog.push(entry);
+    ctgImageSet(entry.id, dataUrl).catch(() => showToast('Could not save a CTG image (storage error).'));
+    added++;
+  }
+  saveVitalsData();
+  renderCtgGallery(m);
+  if(timeEl) timeEl.value = localDateTimeInputValue(new Date());
+  if(added) showToast(added + ' CTG image' + (added === 1 ? '' : 's') + ' added.', 'ok');
+}
+
+let ctgLightboxToken = 0;
+function openCtgLightbox(id){
+  const p = activePatient(); if(!p) return;
+  const m = ensureMaternity(p);
+  const c = m.ctgLog.find(x => x.id === id); if(!c) return;
+  const token = ++ctgLightboxToken;
+  const lbImg = document.getElementById('mat-lb-img'), lbCap = document.getElementById('mat-lb-cap'), lightbox = document.getElementById('mat-lightbox');
+  if(lbImg) lbImg.src = '';
+  if(lbCap) lbCap.textContent = fmtVitalsTime(c.at) + (c.ctgClass ? ' · ' + c.ctgClass : '');
+  if(lightbox) lightbox.classList.add('show');
+  ctgImageGet(id).then(dataUrl => {
+    if(token !== ctgLightboxToken) return;
+    if(lbImg) lbImg.src = safeCtgImageSrc(dataUrl);
+  }).catch(() => {});
+}
+
+function setupMaternitySection(){
+  const root = document.getElementById('view-maternity');
+  if(!root || root.dataset.wired) return;
+  root.dataset.wired = '1';
+
+  const bindField = (id, key) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('input', () => {
+      const p = activePatient(); if(!p) return;
+      const m = ensureMaternity(p);
+      m[key] = el.value;
+      if(key === 'lmp' && !m.edd){
+        m.edd = eddFromLmp(el.value);
+        const eddEl = document.getElementById('mat-f-edd');
+        if(eddEl) eddEl.value = m.edd;
+      }
+      saveVitalsData();
+      renderMaternityDating(m);
+    });
+  };
+  bindField('mat-f-lmp', 'lmp');
+  bindField('mat-f-edd', 'edd');
+  bindField('mat-f-ga-manual', 'gaManual');
+  bindField('mat-f-gravida', 'gravida');
+  bindField('mat-f-para', 'para');
+  bindField('mat-f-live', 'live');
+  bindField('mat-f-abortion', 'abortion');
+
+  BISHOP_FIELDS.forEach(([key, id]) => {
+    const el = document.getElementById(id);
+    if(!el) return;
+    el.addEventListener('change', () => {
+      const p = activePatient(); if(!p) return;
+      const m = ensureMaternity(p);
+      m[key] = el.value;
+      saveVitalsData();
+      renderBishop(m);
+    });
+  });
+
+  const bpToggleBtn = document.getElementById('mat-bp-toggle-btn');
+  const bpToggleBody = document.getElementById('mat-bp-toggle-body');
+  if(bpToggleBtn && bpToggleBody){
+    bpToggleBtn.addEventListener('click', () => { bpToggleBody.hidden = !bpToggleBody.hidden; });
+  }
+
+  const ctgDrop = document.getElementById('mat-ctg-drop');
+  const ctgFile = document.getElementById('mat-f-ctg-file');
+  if(ctgDrop && ctgFile){
+    ctgDrop.addEventListener('click', () => ctgFile.click());
+    ctgFile.addEventListener('change', () => { handleCtgFiles(ctgFile.files); ctgFile.value = ''; });
+    ctgDrop.addEventListener('dragover', e => { e.preventDefault(); ctgDrop.classList.add('drag'); });
+    ctgDrop.addEventListener('dragleave', () => ctgDrop.classList.remove('drag'));
+    ctgDrop.addEventListener('drop', e => {
+      e.preventDefault(); ctgDrop.classList.remove('drag');
+      if(e.dataTransfer && e.dataTransfer.files) handleCtgFiles(e.dataTransfer.files);
+    });
+  }
+  const ctgGallery = document.getElementById('mat-ctg-gallery');
+  if(ctgGallery){
+    ctgGallery.addEventListener('click', e => {
+      const delBtn = e.target.closest('[data-del-ctg]');
+      if(delBtn){
+        const p = activePatient(); if(!p) return;
+        const m = ensureMaternity(p);
+        const id = delBtn.dataset.delCtg;
+        m.ctgLog = m.ctgLog.filter(c => c.id !== id);
+        saveVitalsData();
+        renderCtgGallery(m);
+        ctgImageDelete(id);
+        return;
+      }
+      const thumb = e.target.closest('[data-lb]');
+      if(thumb) openCtgLightbox(thumb.dataset.lb);
+    });
+  }
+  const lbClose = document.getElementById('mat-lb-close');
+  const lightbox = document.getElementById('mat-lightbox');
+  if(lbClose && lightbox) lbClose.addEventListener('click', () => { lightbox.classList.remove('show'); });
+
+  const notesBtn = document.getElementById('mat-btn-log-notes');
+  if(notesBtn){
+    notesBtn.addEventListener('click', () => {
+      const p = activePatient(); if(!p) return;
+      const m = ensureMaternity(p);
+      const noteEl = document.getElementById('mat-f-notes'), adviceEl = document.getElementById('mat-f-advice');
+      const note = noteEl ? noteEl.value.trim() : '', advice = adviceEl ? adviceEl.value.trim() : '';
+      if(!note && !advice){ showToast('Write a note or advice before adding.'); return; }
+      const timeEl = document.getElementById('mat-f-notes-time');
+      const authorEl = document.getElementById('mat-f-notes-author');
+      const at = timeEl && timeEl.value ? new Date(timeEl.value).toISOString() : new Date().toISOString();
+      m.notesLog.push({ id: genVitalsId('mn'), at, author: authorEl ? authorEl.value.trim() : '', note, advice });
+      saveVitalsData();
+      if(noteEl) noteEl.value = '';
+      if(adviceEl) adviceEl.value = '';
+      if(timeEl) timeEl.value = localDateTimeInputValue(new Date());
+      renderMaternityNotesLog(m);
+      haptic('Light');
+    });
+  }
+  const notesTimeline = document.getElementById('mat-notes-timeline');
+  if(notesTimeline){
+    notesTimeline.addEventListener('click', e => {
+      const delBtn = e.target.closest('[data-del-note]');
+      if(!delBtn) return;
+      const p = activePatient(); if(!p) return;
+      const m = ensureMaternity(p);
+      m.notesLog = m.notesLog.filter(n => n.id !== delBtn.dataset.delNote);
+      saveVitalsData();
+      renderMaternityNotesLog(m);
+    });
+  }
+  const notesSearch = document.getElementById('mat-notes-search');
+  if(notesSearch){
+    notesSearch.addEventListener('input', () => {
+      const p = activePatient(); if(!p) return;
+      renderMaternityNotesLog(ensureMaternity(p));
+    });
+  }
+}
+
+/* ============================================================
+   ICU
+   ============================================================ */
+
+function ensureIcu(p){
+  if(!p.icu) p.icu = {};
+  if(!p.icu.vent) p.icu.vent = {};
+  if(!Array.isArray(p.icu.infusions)) p.icu.infusions = [];
+  if(!Array.isArray(p.icu.lines)) p.icu.lines = [];
+  return p.icu;
+}
+// day 1 = the insertion/procedure day itself, matching common line-day
+// and post-op-day nursing convention.
+function dayNumberFrom(dateStr){
+  const d = parseDateOnly(dateStr); if(!d) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.max(0, Math.round((today - d) / MS_DAY)) + 1;
+}
+
+function renderIcuInfusionRows(icu){
+  const wrap = document.getElementById('icu-infusion-rows');
+  if(!wrap) return;
+  wrap.innerHTML = icu.infusions.map(row =>
+    '<div class="vitals-repeat-row" data-row-id="' + row.id + '">' +
+      '<input type="text" placeholder="Drug" data-icu-inf="drug" value="' + escapeHtml(row.drug||'') + '">' +
+      '<input type="number" placeholder="Rate" step="0.1" data-icu-inf="rate" value="' + escapeHtml(row.rate||'') + '">' +
+      '<input type="text" placeholder="Unit e.g. mL/hr" data-icu-inf="unit" value="' + escapeHtml(row.unit||'') + '">' +
+      '<button type="button" class="vitals-row-delete" data-icu-inf-del="' + row.id + '" aria-label="Remove infusion">&times;</button>' +
+    '</div>'
+  ).join('') || '<p class="vitals-dept-empty">No infusions charted.</p>';
+}
+function renderIcuLineRows(icu){
+  const wrap = document.getElementById('icu-line-rows');
+  if(!wrap) return;
+  wrap.innerHTML = icu.lines.map(row => {
+    const d = dayNumberFrom(row.date);
+    return '<div class="vitals-repeat-row" data-row-id="' + row.id + '">' +
+      '<input type="text" placeholder="Type e.g. central line" data-icu-line="type" value="' + escapeHtml(row.type||'') + '">' +
+      '<input type="text" placeholder="Insertion site" data-icu-line="site" value="' + escapeHtml(row.site||'') + '">' +
+      '<input type="date" data-icu-line="date" value="' + escapeHtml(row.date||'') + '">' +
+      '<span class="vitals-badge-readout">' + (d !== null ? ('Day ' + d) : '—') + '</span>' +
+      '<button type="button" class="vitals-row-delete" data-icu-line-del="' + row.id + '" aria-label="Remove line/drain">&times;</button>' +
+    '</div>';
+  }).join('') || '<p class="vitals-dept-empty">No lines/drains charted.</p>';
+}
+
+function renderIcuSection(p){
+  const icu = ensureIcu(p);
+  const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = (v === undefined || v === null) ? '' : v; };
+  set('icu-vent-mode', icu.vent.mode); set('icu-vent-fio2', icu.vent.fio2);
+  set('icu-vent-peep', icu.vent.peep); set('icu-vent-tv', icu.vent.tv); set('icu-vent-rr', icu.vent.rr);
+  set('icu-rass', icu.rass);
+  renderIcuInfusionRows(icu);
+  renderIcuLineRows(icu);
+}
+
+function setupIcuSection(){
+  const root = document.getElementById('dept-icu');
+  if(!root || root.dataset.wired) return;
+  root.dataset.wired = '1';
+
+  [['icu-vent-mode','mode'],['icu-vent-fio2','fio2'],['icu-vent-peep','peep'],['icu-vent-tv','tv'],['icu-vent-rr','rr']]
+    .forEach(([id, key]) => {
+      const el = document.getElementById(id);
+      if(!el) return;
+      el.addEventListener('change', () => {
+        const p = activePatient(); if(!p) return;
+        ensureIcu(p).vent[key] = el.value;
+        saveVitalsData();
+      });
+    });
+  const rassEl = document.getElementById('icu-rass');
+  if(rassEl){
+    rassEl.addEventListener('change', () => {
+      const p = activePatient(); if(!p) return;
+      ensureIcu(p).rass = rassEl.value;
+      saveVitalsData();
+    });
+  }
+
+  const infAdd = document.getElementById('icu-infusion-add');
+  if(infAdd){
+    infAdd.addEventListener('click', () => {
+      const p = activePatient(); if(!p) return;
+      const icu = ensureIcu(p);
+      icu.infusions.push({ id: genVitalsId('inf'), drug:'', rate:'', unit:'' });
+      saveVitalsData();
+      renderIcuInfusionRows(icu);
+    });
+  }
+  const infRows = document.getElementById('icu-infusion-rows');
+  if(infRows){
+    infRows.addEventListener('change', e => {
+      const field = e.target.dataset.icuInf; if(!field) return;
+      const rowEl = e.target.closest('[data-row-id]'); if(!rowEl) return;
+      const p = activePatient(); if(!p) return;
+      const icu = ensureIcu(p);
+      const row = icu.infusions.find(r => r.id === rowEl.dataset.rowId);
+      if(row){ row[field] = e.target.value; saveVitalsData(); }
+    });
+    infRows.addEventListener('click', e => {
+      const btn = e.target.closest('[data-icu-inf-del]');
+      if(!btn) return;
+      const p = activePatient(); if(!p) return;
+      const icu = ensureIcu(p);
+      icu.infusions = icu.infusions.filter(r => r.id !== btn.dataset.icuInfDel);
+      saveVitalsData();
+      renderIcuInfusionRows(icu);
+    });
+  }
+
+  const lineAdd = document.getElementById('icu-line-add');
+  if(lineAdd){
+    lineAdd.addEventListener('click', () => {
+      const p = activePatient(); if(!p) return;
+      const icu = ensureIcu(p);
+      icu.lines.push({ id: genVitalsId('line'), type:'', site:'', date: toISODate(new Date()) });
+      saveVitalsData();
+      renderIcuLineRows(icu);
+    });
+  }
+  const lineRows = document.getElementById('icu-line-rows');
+  if(lineRows){
+    lineRows.addEventListener('change', e => {
+      const field = e.target.dataset.icuLine; if(!field) return;
+      const rowEl = e.target.closest('[data-row-id]'); if(!rowEl) return;
+      const p = activePatient(); if(!p) return;
+      const icu = ensureIcu(p);
+      const row = icu.lines.find(r => r.id === rowEl.dataset.rowId);
+      if(row){
+        row[field] = e.target.value;
+        saveVitalsData();
+        if(field === 'date') renderIcuLineRows(icu);
+      }
+    });
+    lineRows.addEventListener('click', e => {
+      const btn = e.target.closest('[data-icu-line-del]');
+      if(!btn) return;
+      const p = activePatient(); if(!p) return;
+      const icu = ensureIcu(p);
+      icu.lines = icu.lines.filter(r => r.id !== btn.dataset.icuLineDel);
+      saveVitalsData();
+      renderIcuLineRows(icu);
+    });
+  }
+}
+
+/* ============================================================
+   SURGERY / POST-OP
+   ============================================================ */
+
+function ensureSurgery(p){
+  if(!p.surgery) p.surgery = {};
+  if(!p.surgery.preop) p.surgery.preop = {};
+  if(!Array.isArray(p.surgery.drains)) p.surgery.drains = [];
+  return p.surgery;
+}
+function postOpDayNumber(dateStr){
+  const d = parseDateOnly(dateStr); if(!d) return null;
+  const today = new Date(); today.setHours(0,0,0,0);
+  return Math.round((today - d) / MS_DAY);
+}
+
+function renderSurgeryPostopDay(surg){
+  const badge = document.getElementById('surg-postop-day');
+  if(!badge) return;
+  const d = postOpDayNumber(surg.procedureDate);
+  badge.textContent = d !== null ? ('POD ' + d) : '—';
+}
+function renderSurgeryDrainRows(surg){
+  const wrap = document.getElementById('surg-drain-rows');
+  if(!wrap) return;
+  wrap.innerHTML = surg.drains.map(row =>
+    '<div class="vitals-repeat-row" data-row-id="' + row.id + '">' +
+      '<input type="time" data-surg-drain="time" value="' + escapeHtml(row.time||'') + '">' +
+      '<input type="text" placeholder="Drain name" data-surg-drain="name" value="' + escapeHtml(row.name||'') + '">' +
+      '<input type="number" placeholder="Output mL" data-surg-drain="output" value="' + escapeHtml(row.output||'') + '">' +
+      '<input type="text" placeholder="Character / notes" data-surg-drain="notes" value="' + escapeHtml(row.notes||'') + '">' +
+      '<button type="button" class="vitals-row-delete" data-surg-drain-del="' + row.id + '" aria-label="Remove drain entry">&times;</button>' +
+    '</div>'
+  ).join('') || '<p class="vitals-dept-empty">No drain output logged.</p>';
+}
+
+function renderSurgerySection(p){
+  const surg = ensureSurgery(p);
+  ['consent','siteMarked','npo','allergies'].forEach(key => {
+    const cb = document.querySelector('#surg-preop-checklist input[data-preop="' + key + '"]');
+    const tsEl = document.querySelector('[data-preop-ts="' + key + '"]');
+    const rec = surg.preop[key];
+    if(cb) cb.checked = !!(rec && rec.checked);
+    if(tsEl) tsEl.textContent = (rec && rec.checked && rec.at) ? ('checked ' + fmtVitalsTime(rec.at)) : '';
+  });
+  const nameEl = document.getElementById('surg-proc-name'); if(nameEl) nameEl.value = surg.procedureName || '';
+  const dateEl = document.getElementById('surg-proc-date'); if(dateEl) dateEl.value = surg.procedureDate || '';
+  renderSurgeryPostopDay(surg);
+  renderSurgeryDrainRows(surg);
+}
+
+function setupSurgerySection(){
+  const root = document.getElementById('dept-surgery');
+  if(!root || root.dataset.wired) return;
+  root.dataset.wired = '1';
+
+  root.querySelectorAll('#surg-preop-checklist input[data-preop]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      const p = activePatient(); if(!p) return;
+      const surg = ensureSurgery(p);
+      const key = cb.dataset.preop;
+      const wasChecked = surg.preop[key] && surg.preop[key].checked;
+      if(cb.checked && !wasChecked) surg.preop[key] = { checked: true, at: new Date().toISOString() };
+      else if(!cb.checked) surg.preop[key] = { checked: false, at: surg.preop[key] ? surg.preop[key].at : '' };
+      saveVitalsData();
+      renderSurgerySection(p);
+    });
+  });
+
+  const nameEl = document.getElementById('surg-proc-name');
+  if(nameEl) nameEl.addEventListener('change', () => {
+    const p = activePatient(); if(!p) return;
+    ensureSurgery(p).procedureName = nameEl.value.trim();
+    saveVitalsData();
+  });
+  const dateEl = document.getElementById('surg-proc-date');
+  if(dateEl) dateEl.addEventListener('change', () => {
+    const p = activePatient(); if(!p) return;
+    const surg = ensureSurgery(p);
+    surg.procedureDate = dateEl.value;
+    saveVitalsData();
+    renderSurgeryPostopDay(surg);
+  });
+
+  const drainAdd = document.getElementById('surg-drain-add');
+  if(drainAdd) drainAdd.addEventListener('click', () => {
+    const p = activePatient(); if(!p) return;
+    const surg = ensureSurgery(p);
+    surg.drains.push({ id: genVitalsId('drn'), time:'', name:'', output:'', notes:'' });
+    saveVitalsData();
+    renderSurgeryDrainRows(surg);
+  });
+  const drainRows = document.getElementById('surg-drain-rows');
+  if(drainRows){
+    drainRows.addEventListener('change', e => {
+      const field = e.target.dataset.surgDrain; if(!field) return;
+      const rowEl = e.target.closest('[data-row-id]'); if(!rowEl) return;
+      const p = activePatient(); if(!p) return;
+      const surg = ensureSurgery(p);
+      const row = surg.drains.find(r => r.id === rowEl.dataset.rowId);
+      if(row){ row[field] = e.target.value; saveVitalsData(); }
+    });
+    drainRows.addEventListener('click', e => {
+      const btn = e.target.closest('[data-surg-drain-del]');
+      if(!btn) return;
+      const p = activePatient(); if(!p) return;
+      const surg = ensureSurgery(p);
+      surg.drains = surg.drains.filter(r => r.id !== btn.dataset.surgDrainDel);
+      saveVitalsData();
+      renderSurgeryDrainRows(surg);
+    });
+  }
+}
+
+/* ============================================================
+   PEDIATRICS
+   ============================================================ */
+
+const PEDS_IMMUNIZATIONS = ['BCG','OPV (Polio)','DPT','Hepatitis B','MMR','Varicella'];
+// Reference-only per-dose figures (commonly cited single-dose mg/kg) —
+// deliberately not a full formulary; the disclaimer is load-bearing here.
+const PEDS_DOSING = [
+  { drug: 'Paracetamol (acetaminophen)', mgPerKg: 15, note: 'per dose, PO, typically q4&ndash;6h' },
+  { drug: 'Ibuprofen', mgPerKg: 10, note: 'per dose, PO, typically q6&ndash;8h' },
+  { drug: 'Amoxicillin', mgPerKg: 25, note: 'per dose, PO, typically q12h' }
+];
+
+function ensurePediatrics(p){
+  if(!p.pediatrics) p.pediatrics = {};
+  if(!Array.isArray(p.pediatrics.growth)) p.pediatrics.growth = [];
+  if(!p.pediatrics.immunizations) p.pediatrics.immunizations = {};
+  return p.pediatrics;
+}
+
+function renderPedsDosingNote(peds){
+  const el = document.getElementById('peds-dosing-note');
+  if(!el) return;
+  const wt = num(peds.weightKg);
+  if(wt === null || wt <= 0){
+    el.innerHTML = 'Reference-only weight-based dosing aid — not a prescription. Enter weight above. Always verify against your institution&rsquo;s paediatric dosing formulary.';
+    return;
+  }
+  const lines = PEDS_DOSING.map(d =>
+    '<b>' + escapeHtml(d.drug) + ':</b> ~' + Math.round(wt * d.mgPerKg) + ' mg (' + d.mgPerKg + ' mg/kg, ' + d.note + ')'
+  );
+  el.innerHTML = '<b>Reference only — not a prescription.</b> Always verify against your institution&rsquo;s paediatric dosing formulary before administering.<br>' + lines.join('<br>');
+}
+function renderPedsGrowthRows(peds){
+  const wrap = document.getElementById('peds-growth-rows');
+  if(!wrap) return;
+  wrap.innerHTML = peds.growth.slice().sort((a,b) => (a.date < b.date ? 1 : -1)).map(row =>
+    '<div class="vitals-repeat-row" data-row-id="' + row.id + '">' +
+      '<input type="date" data-peds-growth="date" value="' + escapeHtml(row.date||'') + '">' +
+      '<input type="number" placeholder="Weight kg" step="0.1" data-peds-growth="weight" value="' + escapeHtml(row.weight||'') + '">' +
+      '<input type="number" placeholder="Height cm" step="0.1" data-peds-growth="height" value="' + escapeHtml(row.height||'') + '">' +
+      '<button type="button" class="vitals-row-delete" data-peds-growth-del="' + row.id + '" aria-label="Remove growth entry">&times;</button>' +
+    '</div>'
+  ).join('') || '<p class="vitals-dept-empty">No growth entries logged.</p>';
+}
+function renderPedsImmunizations(peds){
+  const wrap = document.getElementById('peds-immunization-list');
+  if(!wrap) return;
+  wrap.innerHTML = PEDS_IMMUNIZATIONS.map(name => {
+    const rec = peds.immunizations[name] || {};
+    return '<label class="vitals-check-row">' +
+      '<input type="checkbox" data-peds-imm="' + escapeHtml(name) + '"' + (rec.checked ? ' checked' : '') + '>' +
+      '<span>' + escapeHtml(name) + '</span>' +
+      '<input type="date" class="vitals-check-date" data-peds-imm-date="' + escapeHtml(name) + '" value="' + escapeHtml(rec.date||'') + '">' +
+    '</label>';
+  }).join('');
+}
+
+function renderPediatricsSection(p){
+  const peds = ensurePediatrics(p);
+  const wtEl = document.getElementById('peds-weight');
+  if(wtEl) wtEl.value = peds.weightKg || '';
+  renderPedsDosingNote(peds);
+  renderPedsGrowthRows(peds);
+  renderPedsImmunizations(peds);
+}
+
+function setupPediatricsSection(){
+  const root = document.getElementById('dept-pediatrics');
+  if(!root || root.dataset.wired) return;
+  root.dataset.wired = '1';
+
+  const wtEl = document.getElementById('peds-weight');
+  if(wtEl) wtEl.addEventListener('input', () => {
+    const p = activePatient(); if(!p) return;
+    const peds = ensurePediatrics(p);
+    peds.weightKg = wtEl.value;
+    saveVitalsData();
+    renderPedsDosingNote(peds);
+  });
+
+  const growthAdd = document.getElementById('peds-growth-add');
+  if(growthAdd) growthAdd.addEventListener('click', () => {
+    const p = activePatient(); if(!p) return;
+    const peds = ensurePediatrics(p);
+    peds.growth.push({ id: genVitalsId('gr'), date: toISODate(new Date()), weight:'', height:'' });
+    saveVitalsData();
+    renderPedsGrowthRows(peds);
+  });
+  const growthRows = document.getElementById('peds-growth-rows');
+  if(growthRows){
+    growthRows.addEventListener('change', e => {
+      const field = e.target.dataset.pedsGrowth; if(!field) return;
+      const rowEl = e.target.closest('[data-row-id]'); if(!rowEl) return;
+      const p = activePatient(); if(!p) return;
+      const peds = ensurePediatrics(p);
+      const row = peds.growth.find(r => r.id === rowEl.dataset.rowId);
+      if(row){
+        row[field] = e.target.value;
+        saveVitalsData();
+        if(field === 'date') renderPedsGrowthRows(peds);
+      }
+    });
+    growthRows.addEventListener('click', e => {
+      const btn = e.target.closest('[data-peds-growth-del]');
+      if(!btn) return;
+      const p = activePatient(); if(!p) return;
+      const peds = ensurePediatrics(p);
+      peds.growth = peds.growth.filter(r => r.id !== btn.dataset.pedsGrowthDel);
+      saveVitalsData();
+      renderPedsGrowthRows(peds);
+    });
+  }
+
+  const immList = document.getElementById('peds-immunization-list');
+  if(immList){
+    immList.addEventListener('change', e => {
+      const p = activePatient(); if(!p) return;
+      const peds = ensurePediatrics(p);
+      const cbName = e.target.dataset.pedsImm;
+      const dateName = e.target.dataset.pedsImmDate;
+      if(cbName){
+        const rec = peds.immunizations[cbName] || {};
+        rec.checked = e.target.checked;
+        if(rec.checked && !rec.date) rec.date = toISODate(new Date());
+        peds.immunizations[cbName] = rec;
+        saveVitalsData();
+        renderPedsImmunizations(peds);
+      } else if(dateName){
+        const rec = peds.immunizations[dateName] || {};
+        rec.date = e.target.value;
+        peds.immunizations[dateName] = rec;
+        saveVitalsData();
+      }
+    });
+  }
+}
+
 window.initVitals = initVitals;
 })();
 
 /* ============================================================
-   Tab switcher — Vitals | Maternity
-   Same show/hide + lazy-init pattern as Rounds' own switchView():
-   toggles style.display and the [hidden] attribute (Vitals' autosave
-   MutationObserver watches #view-vitals's own [hidden] attribute, so
-   this needs to keep setting it exactly like Rounds did for the
-   autosave-on-tab-switch behavior to keep working here).
+   Tab switcher — a single unified Patients tab now (Vitals and
+   Maternity were merged into one department-aware patient system;
+   the Maternity tab itself is gone). Kept as a named "switcher" with
+   the same [hidden]-toggling shape it always had, since #view-vitals's
+   own [hidden] attribute is still watched elsewhere.
    ============================================================ */
 let wardsVitalsInit = false;
-let wardsMaternityInit = false;
 
 function wardsSwitchView(targetView){
   haptic('Light');
   document.querySelectorAll('#wards-tabbar .wards-tab').forEach(b =>
     b.setAttribute('aria-selected', b.dataset.view === targetView ? 'true' : 'false'));
 
-  ['vitals','maternity'].forEach(v => {
-    const el = document.getElementById('view-' + v);
-    if(!el) return;
-    const show = v === targetView;
-    el.style.display = show ? '' : 'none';
-    el.hidden = !show;
-  });
+  const el = document.getElementById('view-vitals');
+  if(el){ el.style.display = ''; el.hidden = false; }
 
-  if(targetView === 'vitals' && !wardsVitalsInit){
+  if(!wardsVitalsInit){
     wardsVitalsInit = true;
     if(typeof window.initVitals === 'function') window.initVitals();
-  }
-  if(targetView === 'maternity' && !wardsMaternityInit){
-    wardsMaternityInit = true;
-    if(typeof window.initMaternity === 'function') window.initMaternity();
   }
 }
 
@@ -4054,1498 +4885,6 @@ if(document.readyState === 'loading'){
 } else {
   boot();
 }
-</script>
-<script>
-/* =====================================================================
-   Maternity — Doctor Portal (merged from refs/doctorportal-maternity.html)
-   Own IIFE, exactly like the Vitals tab and the landing-page carousel, so
-   its internal names (patients, currentId, els, escapeHtml, toast, num,
-   uid, load, persist, …) never leak into or collide with the rest of the
-   app's script. Does not auto-run on DOMContentLoaded; the host app calls
-   window.initMaternity() lazily the first time the Maternity tab is
-   opened (see switchView() / maternityState in the main script above),
-   the same lazy-init pattern already used for Guidelines/Trials/Vitals. */
-
-(function(){
-  'use strict';
-
-  const LS_KEY = 'mat_portal_patients_v1';
-  const MS_DAY = 86400000;
-
-  /* ---------- CTG image store (IndexedDB) ----------
-     CTG images used to live as base64 data URLs directly inside ctgLog,
-     itself part of each patient record persisted via
-     localStorage.setItem(LS_KEY, JSON.stringify(patients)) — localStorage
-     has a hard ~5-10MB ceiling shared by the WHOLE origin, so a handful of
-     CTG photos could silently fill it and break saves for Vitals,
-     bookmarks and everything else, not just Maternity. Only the image
-     bytes move here; the patients array keeps just the CTG entry's own
-     `id` as a reference. Single object store, keyed by that id, storing
-     the data URL string as the value. Every helper is promise-based and
-     best-effort — a missing/broken IndexedDB (e.g. private browsing) means
-     thumbnails just don't load, it doesn't blow up the rest of the app. */
-  const CTG_DB_NAME = 'mat_ctg_images_v1';
-  const CTG_STORE = 'ctgImages';
-  let ctgDbPromise = null;
-  function ctgDb(){
-    if(ctgDbPromise) return ctgDbPromise;
-    ctgDbPromise = new Promise((resolve, reject) => {
-      if(!window.indexedDB){ reject(new Error('IndexedDB unavailable')); return; }
-      const req = indexedDB.open(CTG_DB_NAME, 1);
-      req.onupgradeneeded = () => { req.result.createObjectStore(CTG_STORE); };
-      req.onsuccess = () => resolve(req.result);
-      req.onerror = () => reject(req.error);
-    });
-    return ctgDbPromise;
-  }
-  function ctgImageSet(id, dataUrl){
-    return ctgDb().then(db => new Promise((resolve, reject) => {
-      const tx = db.transaction(CTG_STORE, 'readwrite');
-      tx.objectStore(CTG_STORE).put(dataUrl, id);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    }));
-  }
-  function ctgImageGet(id){
-    return ctgDb().then(db => new Promise((resolve, reject) => {
-      const tx = db.transaction(CTG_STORE, 'readonly');
-      const req = tx.objectStore(CTG_STORE).get(id);
-      req.onsuccess = () => resolve(req.result || '');
-      req.onerror = () => reject(req.error);
-    }));
-  }
-  function ctgImageDelete(id){
-    return ctgDb().then(db => new Promise((resolve, reject) => {
-      const tx = db.transaction(CTG_STORE, 'readwrite');
-      tx.objectStore(CTG_STORE).delete(id);
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => reject(tx.error);
-    })).catch(() => {}); // best-effort — never let a cleanup failure surface to the user
-  }
-  function ctgImageDeleteMany(ids){
-    if(!ids || !ids.length) return Promise.resolve();
-    return ctgDb().then(db => new Promise((resolve) => {
-      const tx = db.transaction(CTG_STORE, 'readwrite');
-      const store = tx.objectStore(CTG_STORE);
-      ids.forEach(id => store.delete(id));
-      tx.oncomplete = () => resolve();
-      tx.onerror = () => resolve();
-    })).catch(() => {});
-  }
-  // Deletions from the UI (a single CTG trace, or an entire patient) go
-  // through the undo-toast pattern — the actual IndexedDB purge is
-  // deferred until the undo window closes so "Undo" never has to write
-  // image bytes back; see the data-del-ctg handler and deleteCurrent().
-  const pendingCtgImageDeletes = {}; // id -> setTimeout handle
-
-  /* ---------- state ---------- */
-  let patients = load();
-  let currentId = null;   // null => not editing; new patients get an id on save
-  let ctgDataUrl = '';    // staged CTG image awaiting "Add to timeline"
-  let ctgFname = '';       // filename of the staged image
-  let vitalsLog = [];      // serial vitals for the open form
-  let ctgLog = [];         // CTG timeline entries for the open form
-  let notesLog = [];       // serial clinical notes & advice for the open form
-  let unitFilter = 'all';  // roster filter: 'all' | '1'..'4' | '' (unassigned)
-  let bpUnitFilter = 'all';// BP monitor board filter
-  let currentView = 'patients'; // 'patients' | 'bp'
-
-  /* ---------- element refs ---------- */
-  const $ = (id) => document.getElementById(id);
-  const els = {
-    form: $('mat-patient-form'), empty: $('mat-empty-state'),
-    title: $('mat-form-title'), status: $('mat-form-status'),
-    list: $('mat-roster-list'), count: $('mat-roster-count'), search: $('mat-roster-search'),
-    unitFilterBar: $('mat-unit-filter'),
-    btnNew: $('mat-btn-new'), btnDelete: $('mat-btn-delete'), btnPrint: $('mat-btn-print'),
-    // fields
-    name:$('mat-f-name'), ip:$('mat-f-ip'), age:$('mat-f-age'), sex:$('mat-f-sex'),
-    husband:$('mat-f-husband'), ward:$('mat-f-ward'), unit:$('mat-f-unit'),
-    lmp:$('mat-f-lmp'), edd:$('mat-f-edd'), gaManual:$('mat-f-ga-manual'),
-    gravida:$('mat-f-gravida'), para:$('mat-f-para'), live:$('mat-f-live'), abortion:$('mat-f-abortion'),
-    bpSys:$('mat-f-bp-sys'), bpDia:$('mat-f-bp-dia'), pulse:$('mat-f-pulse'), rr:$('mat-f-rr'),
-    temp:$('mat-f-temp'), spo2:$('mat-f-spo2'), weight:$('mat-f-weight'),
-    ctgFile:$('mat-f-ctg-file'), ctgClass:$('mat-f-ctg-class'), ctgBaseline:$('mat-f-ctg-baseline'), ctgNotes:$('mat-f-ctg-notes'),
-    // induction
-    iolMethods:$('mat-iol-methods'), iolIndication:$('mat-f-iol-indication'), iolDatetime:$('mat-f-iol-datetime'),
-    iolStatus:$('mat-f-iol-status'), iolNotes:$('mat-f-iol-notes'),
-    bishopDilation:$('mat-f-bishop-dilation'), bishopEffacement:$('mat-f-bishop-effacement'),
-    bishopStation:$('mat-f-bishop-station'), bishopConsistency:$('mat-f-bishop-consistency'), bishopPosition:$('mat-f-bishop-position'),
-    bishopReadout:$('mat-bishop-readout'),
-    notes:$('mat-f-notes'), advice:$('mat-f-advice'),
-    notesTime:$('mat-f-notes-time'), notesAuthor:$('mat-f-notes-author'), btnLogNotes:$('mat-btn-log-notes'),
-    notesTimeline:$('mat-notes-timeline'), notesEmpty:$('mat-notes-empty'),
-    notesSearch:$('mat-notes-search'), notesNomatch:$('mat-notes-nomatch'),
-    // computed
-    gaReadout:$('mat-ga-readout'), vitalsReadout:$('mat-vitals-readout'), vitalFlags:$('mat-vital-flags'),
-    // serial vitals
-    vitalsTime:$('mat-f-vitals-time'), btnLogVitals:$('mat-btn-log-vitals'),
-    vitalsLogTable:$('mat-vitals-log-table'), vitalsLogBody:$('mat-vitals-log-body'), vitalsLogEmpty:$('mat-vitals-log-empty'),
-    vitalsSparks:$('mat-vitals-sparks'),
-    // ctg preview + timeline
-    ctgDrop:$('mat-ctg-drop'), ctgPreview:$('mat-ctg-preview'), ctgImg:$('mat-ctg-img'),
-    ctgFname:$('mat-ctg-fname'), ctgRemove:$('mat-ctg-remove'),
-    ctgTime:$('mat-f-ctg-time'), btnLogCtg:$('mat-btn-log-ctg'),
-    ctgGallery:$('mat-ctg-gallery'), ctgGalleryEmpty:$('mat-ctg-gallery-empty'), ctgCount:$('mat-ctg-count'),
-    // lightbox
-    lightbox:$('mat-lightbox'), lbImg:$('mat-lb-img'), lbCap:$('mat-lb-cap'), lbClose:$('mat-lb-close'),
-    // views + BP monitor
-    viewNav:$('mat-view-nav'), patientsView:$('mat-patients-view'), bpView:$('mat-bp-view'),
-    bpUnitFilterBar:$('mat-bp-unit-filter'), bpBoardBody:$('mat-bp-board-body'), bpBoardEmpty:$('mat-bp-board-empty'),
-    bpStatus:$('mat-bp-status'),
-    // per-patient BP panel
-    bpPanel:$('mat-bp-panel'), bpPanelEmpty:$('mat-bp-panel-empty'), bpPanelHint:$('mat-bp-panel-hint'),
-    btnCsvPatient:$('mat-btn-csv-patient'),
-    // summary / csv
-    btnSummary:$('mat-btn-summary'), printSummary:$('mat-print-summary'),
-    toast:$('mat-toast')
-  };
-
-  /* ---------- persistence ---------- */
-  function load(){
-    try{ const raw = localStorage.getItem(LS_KEY); return raw ? JSON.parse(raw) : []; }
-    catch(e){ return []; }
-  }
-  function persist(){
-    try{ localStorage.setItem(LS_KEY, JSON.stringify(patients)); }
-    catch(e){ toast('Storage full — try removing large CTG images or use Backup.'); }
-  }
-  function uid(){ return 'p_' + Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-
-  /* ---------- date helpers ---------- */
-  function parseDate(str){
-    if(!str) return null;
-    const d = new Date(str + 'T00:00:00');
-    return isNaN(d.getTime()) ? null : d;
-  }
-  function toISO(d){
-    if(!d) return '';
-    const p = (n)=> String(n).padStart(2,'0');
-    return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate());
-  }
-  function fmtDate(str){
-    const d = parseDate(str); if(!d) return '—';
-    return d.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'});
-  }
-  // value for a datetime-local input representing "now" (local time, no seconds)
-  function nowLocalInput(){
-    const d = new Date();
-    const p = (n)=> String(n).padStart(2,'0');
-    return d.getFullYear() + '-' + p(d.getMonth()+1) + '-' + p(d.getDate()) +
-           'T' + p(d.getHours()) + ':' + p(d.getMinutes());
-  }
-  // pretty-print an ISO timestamp for table/gallery display
-  function fmtStamp(iso){
-    if(!iso) return '—';
-    const d = new Date(iso);
-    if(isNaN(d.getTime())) return '—';
-    return d.toLocaleString(undefined,{day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
-  }
-  // Naegele: EDD = LMP + 280 days.
-  // Uses setDate() rather than adding raw milliseconds — adding 280*MS_DAY
-  // directly can land an hour off (and so a calendar day off) whenever the
-  // span crosses a DST transition, since not every local day is exactly
-  // 24h. setDate() operates on calendar fields and is DST-safe.
-  function eddFromLmp(lmpStr){
-    const d = parseDate(lmpStr); if(!d) return '';
-    const edd = new Date(d.getTime());
-    edd.setDate(edd.getDate() + 280);
-    return toISO(edd);
-  }
-  // GA (in days) as of today, from LMP; else derived from EDD (EDD - 280d = notional LMP)
-  function gaDaysToday(lmpStr, eddStr){
-    let start = parseDate(lmpStr);
-    if(!start){
-      const edd = parseDate(eddStr);
-      if(edd){ start = new Date(edd.getTime()); start.setDate(start.getDate() - 280); }
-    }
-    if(!start) return null;
-    const today = new Date(); today.setHours(0,0,0,0);
-    // Math.round (not floor): a DST transition between start and today makes
-    // the raw ms difference land a hair under/over a whole number of days;
-    // floor would then be off by one, round recovers the correct day count.
-    const diff = Math.round((today - start) / MS_DAY);
-    return diff;
-  }
-  function gaText(days){
-    if(days === null || days < 0 || days > 320) return null;
-    const w = Math.floor(days/7), d = days % 7;
-    return w + 'w ' + d + 'd';
-  }
-
-  /* ---------- gestational-age & EDD live update ---------- */
-  function updateDating(){
-    // keep EDD in sync with LMP unless user typed their own EDD after LMP
-    const gaDays = gaDaysToday(els.lmp.value, els.edd.value);
-    const txt = gaText(gaDays);
-    const edd = parseDate(els.edd.value);
-
-    let html = '';
-    if(els.gaManual.value.trim()){
-      html = '<span class="big">' + escapeHtml(els.gaManual.value.trim()) + '</span><span class="mat-badge muted">manual</span>';
-    } else if(txt){
-      let band = 'ok', lbl = '';
-      if(gaDays < 259) lbl = 'preterm zone <37w', band = gaDays < 245 ? 'warn' : 'ok';
-      else if(gaDays <= 293) lbl = 'term', band = 'ok';
-      else lbl = 'post-term >42w', band = 'crit';
-      html = '<span class="big">' + txt + '</span>';
-      if(edd){
-        const today = new Date(); today.setHours(0,0,0,0);
-        const rem = Math.round((edd - today)/MS_DAY);
-        const remTxt = rem > 0 ? (rem + 'd to EDD') : (rem === 0 ? 'EDD today' : (Math.abs(rem) + 'd past EDD'));
-        html += '<span class="mat-badge ' + (rem < 0 ? 'crit' : 'muted') + '">' + remTxt + '</span>';
-      }
-      if(lbl) html += '<span class="mat-badge ' + band + '">' + lbl + '</span>';
-    } else {
-      html = '<span class="mat-badge muted">enter LMP or EDD</span>';
-    }
-    els.gaReadout.innerHTML = html;
-  }
-
-  function autoEddFromLmp(){
-    // Only auto-fill EDD when it's empty, so a manually set EDD isn't overwritten.
-    if(els.lmp.value && !els.edd.value){
-      els.edd.value = eddFromLmp(els.lmp.value);
-    }
-    updateDating();
-  }
-
-  /* ---------- vitals ---------- */
-  function num(v){ const n = parseFloat(v); return isNaN(n) ? null : n; }
-  // Classify a BP reading. Maternity-aware ACC/AHA-style bands → {band, label, short}.
-  // band maps to the badge classes ok|warn|crit|muted. Returns null if BP incomplete.
-  function bpCategory(sys, dia){
-    const s = num(sys), d = num(dia);
-    if(s === null || d === null) return null;
-    if(s < 90 || d < 60)          return { band:'crit',  label:'Hypotension',        short:'LOW' };
-    if(s >= 160 || d >= 110)      return { band:'crit',  label:'Severe hypertension', short:'SEVERE' };
-    if(s >= 140 || d >= 90)       return { band:'warn',  label:'Hypertension',        short:'HIGH' };
-    if(s >= 120 && d < 80)        return { band:'muted', label:'Elevated',            short:'ELEV' };
-    return { band:'ok', label:'Normal', short:'NORMAL' };
-  }
-  // Latest BP for a saved patient: newest serial reading with a BP, else the form-level BP.
-  function latestBp(p){
-    const log = Array.isArray(p.vitalsLog) ? p.vitalsLog : [];
-    // vitalsLog is stored newest-first
-    for(let i = 0; i < log.length; i++){
-      if(String(log[i].bpSys).trim() !== '' && String(log[i].bpDia).trim() !== ''){
-        return { sys:log[i].bpSys, dia:log[i].bpDia, at:log[i].at };
-      }
-    }
-    if(String(p.bpSys||'').trim() !== '' && String(p.bpDia||'').trim() !== ''){
-      return { sys:p.bpSys, dia:p.bpDia, at:p.updatedAt || p.createdAt || '' };
-    }
-    return null;
-  }
-  // Derive warning flags from a set of vital values. Returns [[band,label],…].
-  function vitalFlagsFor(v){
-    const sys = num(v.bpSys), dia = num(v.bpDia), hr = num(v.pulse),
-          spo2 = num(v.spo2), temp = num(v.temp), rr = num(v.rr);
-    const flags = [];
-    // Reuse bpCategory() itself rather than re-implementing the thresholds —
-    // this used to be a separate, narrower check (only sys<90 counted as
-    // hypotension, missing the dia<60 case bpCategory already covers
-    // elsewhere), so e.g. 95/55 showed as "crit" on the BP monitor board but
-    // "ok/Normal" right here. Checks use `!== null` (not truthiness) so a
-    // genuine reading of 0 — e.g. an unrecordable BP during a code — isn't
-    // silently treated as "no data entered" and skipped.
-    if(sys !== null && dia !== null){
-      const cat = bpCategory(v.bpSys, v.bpDia);
-      if(cat && cat.band === 'crit') flags.push(['crit','BP ' + sys + '/' + dia + ' — ' + cat.label.toLowerCase()]);
-      else if(cat && cat.band === 'warn') flags.push(['warn','BP ' + sys + '/' + dia + ' — raised']);
-      else flags.push(['ok','BP ' + sys + '/' + dia]);
-    }
-    if(hr !== null && sys !== null && sys > 0){
-      const si = hr/sys;
-      if(si >= 1.0) flags.push(['crit','Shock index ' + si.toFixed(2) + ' — critical']);
-      else if(si >= 0.9) flags.push(['warn','Shock index ' + si.toFixed(2) + ' — elevated']);
-    }
-    if(hr !== null){
-      if(hr <= 0) flags.push(['crit','Pulse ' + hr + '/min — check immediately']);
-      else if(hr > 110) flags.push(['warn','Tachycardia ' + hr + '/min']);
-      else if(hr < 50) flags.push(['warn','Bradycardia ' + hr + '/min']);
-    }
-    if(spo2 !== null){
-      if(spo2 < 92) flags.push(['crit','SpO₂ ' + spo2 + '%']);
-      else if(spo2 < 95) flags.push(['warn','SpO₂ ' + spo2 + '%']);
-    }
-    if(temp !== null){
-      if(temp >= 100.4) flags.push(['warn','Febrile ' + temp + '°F']);
-      else if(temp < 95) flags.push(['warn','Hypothermia ' + temp + '°F']);
-    }
-    if(rr !== null && rr > 24) flags.push(['warn','Tachypnoea ' + rr + '/min']);
-    return flags;
-  }
-  function currentVitalValues(){
-    return {
-      bpSys: els.bpSys.value, bpDia: els.bpDia.value, pulse: els.pulse.value,
-      rr: els.rr.value, temp: els.temp.value, spo2: els.spo2.value, weight: els.weight.value
-    };
-  }
-  function updateVitals(){
-    const v = currentVitalValues();
-    const sys = num(v.bpSys), dia = num(v.bpDia), hr = num(v.pulse);
-
-    const parts = [];
-    if(sys !== null && dia !== null) parts.push('MAP <span class="big">' + Math.round((sys + 2*dia)/3) + '</span> mmHg');
-    if(hr !== null && sys !== null && sys > 0) parts.push('Shock index <span class="big">' + (hr/sys).toFixed(2) + '</span>');
-    els.vitalsReadout.innerHTML = parts.length ? parts.join('<span style="color:var(--ink-3)"> · </span>') : '<span class="mat-badge muted">enter vitals</span>';
-
-    const flags = vitalFlagsFor(v);
-    els.vitalFlags.innerHTML = flags.map(f => '<span class="mat-badge ' + f[0] + '">' + f[1] + '</span>').join('');
-  }
-
-  /* ---------- serial clinical notes & advice ---------- */
-  function logNote(){
-    const note = els.notes.value.trim(), advice = els.advice.value.trim();
-    if(!note && !advice){ toast('Write a note or advice before adding.'); return; }
-    const at = els.notesTime.value ? new Date(els.notesTime.value).toISOString() : new Date().toISOString();
-    notesLog.push({ id: uid(), at: at, author: els.notesAuthor.value.trim(), note: note, advice: advice });
-    notesLog.sort((a,b) => (a.at < b.at ? 1 : -1)); // newest first
-    renderNotesLog();
-    els.notes.value = ''; els.advice.value = '';
-    els.notesTime.value = nowLocalInput();
-    toast('Note added.');
-  }
-  // Simple substring filter over a patient's own notes timeline — matches
-  // note text, advice text, or author. Nothing fancier needed for a
-  // per-patient log.
-  function noteMatchesSearch(n, needle){
-    if(!needle) return true;
-    const haystack = [n.note, n.advice, n.author].filter(Boolean).join(' ').toLowerCase();
-    return haystack.includes(needle);
-  }
-  function renderNotesLog(){
-    if(!notesLog.length){
-      els.notesTimeline.innerHTML = '';
-      els.notesEmpty.style.display = '';
-      if(els.notesNomatch) els.notesNomatch.style.display = 'none';
-      return;
-    }
-    els.notesEmpty.style.display = 'none';
-    const needle = els.notesSearch ? els.notesSearch.value.trim().toLowerCase() : '';
-    const shown = notesLog.filter(n => noteMatchesSearch(n, needle));
-    if(!shown.length){
-      els.notesTimeline.innerHTML = '';
-      if(els.notesNomatch) els.notesNomatch.style.display = '';
-      return;
-    }
-    if(els.notesNomatch) els.notesNomatch.style.display = 'none';
-    els.notesTimeline.innerHTML = shown.map(n =>
-      '<div class="mat-note-entry">' +
-        '<div class="nh"><span class="t">' + fmtStamp(n.at) + '</span>' +
-          (n.author ? '<span class="who">· ' + escapeHtml(n.author) + '</span>' : '') +
-          '<button type="button" class="del" data-del-note="' + n.id + '">Remove</button></div>' +
-        (n.note ? '<div class="body">' + escapeHtml(n.note) + '</div>' : '') +
-        (n.advice ? '<div class="adv"><b>Advice:</b> ' + escapeHtml(n.advice) + '</div>' : '') +
-      '</div>'
-    ).join('');
-  }
-
-  /* ---------- serial vitals log ---------- */
-  function logVitals(){
-    const v = currentVitalValues();
-    const hasAny = ['bpSys','bpDia','pulse','rr','temp','spo2','weight'].some(k => String(v[k]).trim() !== '');
-    if(!hasAny){ toast('Enter some vitals above before logging.'); return; }
-    const at = els.vitalsTime.value ? new Date(els.vitalsTime.value).toISOString() : new Date().toISOString();
-    vitalsLog.push(Object.assign({ id: uid(), at: at }, v));
-    vitalsLog.sort((a,b) => (a.at < b.at ? 1 : -1)); // newest first
-    renderVitalsLog();
-    els.vitalsTime.value = nowLocalInput();
-    toast('Reading logged.');
-  }
-  function renderVitalsLog(){
-    if(!vitalsLog.length){
-      els.vitalsLogTable.style.display = 'none';
-      els.vitalsLogEmpty.style.display = '';
-      renderSparklines();
-      renderBpPanel();
-      return;
-    }
-    els.vitalsLogTable.style.display = '';
-    els.vitalsLogEmpty.style.display = 'none';
-    els.vitalsLogBody.innerHTML = vitalsLog.map(r => {
-      const sys = num(r.bpSys), dia = num(r.bpDia);
-      const map = (sys && dia) ? Math.round((sys + 2*dia)/3) : '';
-      const bp = (r.bpSys && r.bpDia) ? (escapeHtml(r.bpSys) + '/' + escapeHtml(r.bpDia)) : '—';
-      const worst = vitalFlagsFor(r).filter(f => f[0] !== 'ok');
-      const flagsHtml = worst.length
-        ? worst.map(f => '<span class="mat-badge ' + f[0] + '">' + f[1] + '</span>').join('')
-        : '<span class="mat-badge ok">normal</span>';
-      const cell = (val, unit) => val !== '' && val != null ? (escapeHtml(val) + (unit||'')) : '—';
-      return '<tr data-log-id="' + r.id + '">' +
-        '<td class="time">' + fmtStamp(r.at) + '</td>' +
-        '<td>' + bp + '</td>' +
-        '<td>' + (map || '—') + '</td>' +
-        '<td>' + cell(r.pulse) + '</td>' +
-        '<td>' + cell(r.rr) + '</td>' +
-        '<td>' + cell(r.temp) + '</td>' +
-        '<td>' + cell(r.spo2, '%') + '</td>' +
-        '<td>' + cell(r.weight) + '</td>' +
-        '<td class="flags">' + flagsHtml + '</td>' +
-        '<td><button type="button" class="del" data-del-vital="' + r.id + '" title="Remove reading">×</button></td>' +
-        '</tr>';
-    }).join('');
-    renderSparklines();
-    renderBpPanel();
-  }
-
-  /* ---------- per-patient BP panel ---------- */
-  // list every logged reading that has a BP, newest first, with its category band
-  function renderBpPanel(){
-    const rows = vitalsLog.filter(r => String(r.bpSys).trim() !== '' && String(r.bpDia).trim() !== '');
-    if(!rows.length){
-      els.bpPanel.innerHTML = '';
-      els.bpPanel.style.display = 'none';
-      els.bpPanelEmpty.style.display = '';
-      els.bpPanelHint.textContent = 'log a reading to categorise';
-      return;
-    }
-    els.bpPanel.style.display = 'flex';
-    els.bpPanelEmpty.style.display = 'none';
-    els.bpPanelHint.textContent = rows.length + (rows.length === 1 ? ' reading' : ' readings');
-    els.bpPanel.innerHTML = rows.map(r => {
-      const cat = bpCategory(r.bpSys, r.bpDia) || { band:'muted', label:'—' };
-      const s = num(r.bpSys), d = num(r.bpDia);
-      const map = (s !== null && d !== null) ? Math.round((s + 2*d)/3) : '';
-      return '<div class="mat-bp-row ' + cat.band + '">' +
-        '<span class="v">' + escapeHtml(r.bpSys) + '/' + escapeHtml(r.bpDia) + '</span>' +
-        '<span class="mat-badge ' + cat.band + '">' + cat.label + '</span>' +
-        (map !== '' ? '<span class="map">MAP ' + map + '</span>' : '') +
-        '<span class="t">' + fmtStamp(r.at) + '</span>' +
-      '</div>';
-    }).join('');
-  }
-
-  /* ---------- vitals sparklines ---------- */
-  // one card per metric with ≥2 numeric readings; line is oldest→newest, coloured by the latest value's severity
-  const SPARK_METRICS = [
-    {key:'bpSys', label:'BP sys', unit:'mmHg', sev:v => (v>=160||v<90)?'crit' : v>=140?'warn':'ok'},
-    {key:'bpDia', label:'BP dia', unit:'mmHg', sev:v => v>=110?'crit' : v>=90?'warn':'ok'},
-    {key:'pulse', label:'Pulse', unit:'/min', sev:v => (v>110||v<50)?'warn':'ok'},
-    {key:'spo2',  label:'SpO₂',  unit:'%',    sev:v => v<92?'crit' : v<95?'warn':'ok'},
-    {key:'temp',  label:'Temp',  unit:'°F',   sev:v => (v>=100.4||v<95)?'warn':'ok'}
-  ];
-  function fmtNum(n){ return Number.isInteger(n) ? String(n) : n.toFixed(1); }
-  function sparkSvg(pts, stroke){
-    const W = 150, H = 38, p = 4;
-    const lo = Math.min.apply(null, pts), hi = Math.max.apply(null, pts);
-    const span = hi - lo;
-    const stepX = (W - 2*p) / (pts.length - 1);
-    const poly = pts.map((v,i) => {
-      const x = p + i*stepX;
-      const y = span ? (p + (H - 2*p) * (1 - (v - lo) / span)) : (H/2);
-      return x.toFixed(1) + ',' + y.toFixed(1);
-    }).join(' ');
-    return '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="none">' +
-      '<polyline points="' + poly + '" fill="none" stroke="' + stroke + '" stroke-width="1.8" ' +
-      'vector-effect="non-scaling-stroke" stroke-linejoin="round" stroke-linecap="round"/></svg>';
-  }
-  function renderSparklines(){
-    const chrono = vitalsLog.slice().reverse(); // stored newest-first → plot oldest-first
-    const cards = SPARK_METRICS.map(m => {
-      const pts = [];
-      chrono.forEach(r => { const n = num(r[m.key]); if(n !== null) pts.push(n); });
-      if(pts.length < 2) return '';
-      const cur = pts[pts.length - 1], prev = pts[pts.length - 2];
-      const band = m.sev(cur);
-      const stroke = band === 'crit' ? 'var(--red)' : band === 'warn' ? 'var(--amber)' : 'var(--accent-2)';
-      const d = cur - prev;
-      const arrow = d > 0 ? '▲ +' : d < 0 ? '▼ −' : '– ';
-      const deltaTxt = d === 0 ? 'no change' : arrow + fmtNum(Math.abs(d));
-      return '<div class="mat-spark">' +
-        '<div class="top"><span class="mat-lbl">' + m.label + '</span>' +
-        '<span class="mat-cur">' + fmtNum(cur) + '<span class="u">' + m.unit + '</span></span></div>' +
-        sparkSvg(pts, stroke) +
-        '<div class="range"><span class="delta ' + band + '">' + deltaTxt + '</span><span>n=' + pts.length + '</span></div>' +
-      '</div>';
-    }).filter(Boolean);
-    els.vitalsSparks.innerHTML = cards.join('');
-    els.vitalsSparks.style.display = cards.length ? 'grid' : 'none';
-  }
-
-  /* ---------- CTG image ---------- */
-  function handleCtgFile(file){
-    if(!file || !/^image\//.test(file.type)){ toast('Please choose an image file.'); return; }
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new Image();
-      img.onload = () => {
-        // downscale to max 1400px on the long edge, JPEG q0.82, to keep localStorage light
-        const maxEdge = 1400;
-        let { width, height } = img;
-        const scale = Math.min(1, maxEdge / Math.max(width, height));
-        width = Math.round(width * scale); height = Math.round(height * scale);
-        const canvas = document.createElement('canvas');
-        canvas.width = width; canvas.height = height;
-        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-        ctgDataUrl = canvas.toDataURL('image/jpeg', 0.82);
-        ctgFname = file.name || 'CTG image';
-        showCtg(ctgFname);
-        if(!els.ctgTime.value) els.ctgTime.value = nowLocalInput();
-      };
-      img.onerror = () => toast('Could not read that image.');
-      img.src = e.target.result;
-    };
-    reader.readAsDataURL(file);
-  }
-  function showCtg(fname){
-    if(ctgDataUrl){
-      els.ctgImg.src = ctgDataUrl;
-      els.ctgFname.textContent = fname || 'CTG image';
-      els.ctgPreview.classList.add('show');
-    } else {
-      els.ctgPreview.classList.remove('show');
-      els.ctgImg.src = '';
-      els.ctgFname.textContent = '';
-    }
-  }
-  function clearCtgStage(){
-    ctgDataUrl = ''; ctgFname = ''; els.ctgFile.value = '';
-    showCtg();
-  }
-
-  // ---------- batch CTG upload ----------
-  // The single-file flow above (handleCtgFile) stages one image for review
-  // before logCtg() commits it. For multiple files selected/dropped at
-  // once, each gets its own timeline entry directly — same compression +
-  // IndexedDB-storage pipeline as the single-file path, just looped, using
-  // whatever classification/baseline/notes are currently in the form
-  // (applied to every image in the batch) rather than reviewing each one.
-  function compressAndCommitCtgFile(file){
-    return new Promise((resolve) => {
-      if(!file || !/^image\//.test(file.type)){ toast('Skipped a non-image file: ' + (file && file.name || 'unknown')); resolve(false); return; }
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const img = new Image();
-        img.onload = () => {
-          const maxEdge = 1400;
-          let { width, height } = img;
-          const scale = Math.min(1, maxEdge / Math.max(width, height));
-          width = Math.round(width * scale); height = Math.round(height * scale);
-          const canvas = document.createElement('canvas');
-          canvas.width = width; canvas.height = height;
-          canvas.getContext('2d').drawImage(img, 0, 0, width, height);
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.82);
-          const at = els.ctgTime.value ? new Date(els.ctgTime.value).toISOString() : new Date().toISOString();
-          const entry = {
-            id: uid(), at: at, fname: file.name || 'CTG image',
-            ctgClass: els.ctgClass.value, baseline: els.ctgBaseline.value, notes: els.ctgNotes.value.trim()
-          };
-          ctgLog.push(entry);
-          ctgImageSet(entry.id, dataUrl).catch(() => { toast('Could not save one of the CTG images (storage error).'); });
-          resolve(true);
-        };
-        img.onerror = () => { toast('Could not read one of the selected images.'); resolve(false); };
-        img.src = e.target.result;
-      };
-      reader.onerror = () => resolve(false);
-      reader.readAsDataURL(file);
-    });
-  }
-  async function handleCtgFiles(fileList){
-    const files = Array.from(fileList || []);
-    if(!files.length) return;
-    if(files.length === 1){ handleCtgFile(files[0]); return; } // unchanged single-file review flow
-    let added = 0;
-    for(const file of files){
-      const ok = await compressAndCommitCtgFile(file);
-      if(ok) added++;
-    }
-    ctgLog.sort((a,b) => (a.at < b.at ? 1 : -1));
-    renderCtgGallery();
-    clearCtgStage();
-    if(added) toast(added + ' CTG image' + (added === 1 ? '' : 's') + ' added to timeline.');
-  }
-
-  /* ---------- CTG timeline ---------- */
-  function logCtg(){
-    if(!ctgDataUrl){ toast('Upload a CTG image first.'); return; }
-    const at = els.ctgTime.value ? new Date(els.ctgTime.value).toISOString() : new Date().toISOString();
-    const entry = {
-      id: uid(), at: at, fname: ctgFname,
-      ctgClass: els.ctgClass.value,
-      baseline: els.ctgBaseline.value,
-      notes: els.ctgNotes.value.trim()
-    };
-    ctgLog.push(entry);
-    ctgLog.sort((a,b) => (a.at < b.at ? 1 : -1)); // newest first
-    // The image bytes go to IndexedDB — only entry.id (never the raw data
-    // URL) ends up in the patients array that persist() writes to
-    // localStorage, so CTG photos can no longer fill the shared origin-wide
-    // localStorage quota. Kick this off *before* renderCtgGallery() (which
-    // reads it straight back by id) so the write transaction is queued
-    // ahead of the read on the same IndexedDB connection/store.
-    const stagedImage = ctgDataUrl;
-    ctgImageSet(entry.id, stagedImage).catch(() => {
-      toast('Could not save that CTG image (storage error).');
-    });
-    renderCtgGallery();
-    // clear the staging area so the next upload is a fresh entry
-    clearCtgStage();
-    els.ctgClass.value = ''; els.ctgBaseline.value = ''; els.ctgNotes.value = '';
-    toast('CTG added to timeline.');
-  }
-  function ctgClassBand(c){
-    if(c === 'Reassuring') return 'ok';
-    if(c === 'Non-reassuring') return 'warn';
-    if(c === 'Abnormal') return 'crit';
-    return 'muted';
-  }
-  // Only ever accept an actual embedded image (what this app itself produces
-  // via canvas.toDataURL in handleCtgFile). Records can also arrive through
-  // "Restore" (an imported JSON backup file), which is not validated beyond
-  // requiring a `name` field — so `image` must be treated as untrusted input,
-  // not just app-generated data.
-  function safeCtgImageSrc(s){
-    return (typeof s === 'string' && /^data:image\//.test(s)) ? s : '';
-  }
-  function renderCtgGallery(){
-    els.ctgCount.textContent = ctgLog.length + (ctgLog.length === 1 ? ' trace' : ' traces');
-    if(!ctgLog.length){
-      els.ctgGallery.innerHTML = '';
-      els.ctgGalleryEmpty.style.display = '';
-      return;
-    }
-    els.ctgGalleryEmpty.style.display = 'none';
-    els.ctgGallery.innerHTML = ctgLog.map(c => {
-      const badge = c.ctgClass ? '<span class="mat-badge ' + ctgClassBand(c.ctgClass) + '">' + escapeHtml(c.ctgClass) + '</span>' : '';
-      const base = c.baseline ? '<span class="mat-badge muted">FHR ' + escapeHtml(c.baseline) + ' bpm</span>' : '';
-      // The image itself now lives in IndexedDB, fetched asynchronously
-      // below by c.id — the thumb starts empty/"loading" and gets its src
-      // filled in once that lookup resolves (still run through
-      // safeCtgImageSrc(), same as before: escaped AND restricted to a real
-      // data:image/ URL, so a tampered backup can't smuggle a javascript:
-      // URL or an onerror= handler through this field either way).
-      return '<div class="mat-ctg-card">' +
-        '<img class="thumb loading" alt="CTG trace" data-lb="' + c.id + '" data-ctg-thumb="' + c.id + '">' +
-        '<div class="meta">' +
-          '<span class="t">' + fmtStamp(c.at) + '</span>' +
-          ((badge || base) ? '<span class="row">' + badge + base + '</span>' : '') +
-          (c.notes ? '<span class="n">' + escapeHtml(c.notes) + '</span>' : '') +
-          '<span class="row"><button type="button" class="del" data-del-ctg="' + c.id + '">Remove</button></span>' +
-        '</div>' +
-      '</div>';
-    }).join('');
-    ctgLog.forEach(c => {
-      ctgImageGet(c.id).then(dataUrl => {
-        const img = els.ctgGallery.querySelector('img[data-ctg-thumb="' + c.id + '"]');
-        if(!img) return; // gallery re-rendered/entry removed before this resolved
-        img.src = safeCtgImageSrc(dataUrl);
-        img.classList.remove('loading');
-      }).catch(() => {});
-    });
-  }
-  let lightboxToken = 0; // guards against a slow IndexedDB fetch clobbering a later lightbox open
-  function openLightbox(id){
-    const c = ctgLog.find(x => x.id === id); if(!c) return;
-    const token = ++lightboxToken;
-    els.lbImg.src = '';
-    els.lbCap.textContent = fmtStamp(c.at) + (c.ctgClass ? ' · ' + c.ctgClass : '') + (c.fname ? ' · ' + c.fname : '');
-    els.lightbox.classList.add('show');
-    ctgImageGet(id).then(dataUrl => {
-      if(token !== lightboxToken) return; // a different trace was opened meanwhile
-      els.lbImg.src = safeCtgImageSrc(dataUrl);
-    }).catch(() => {});
-  }
-  function closeLightbox(){
-    els.lightbox.classList.remove('show');
-    els.lbImg.src = '';
-  }
-
-  /* ---------- induction of labour ---------- */
-  const BISHOP_KEYS = ['bishopDilation','bishopEffacement','bishopStation','bishopConsistency','bishopPosition'];
-  function updateBishop(){
-    // reflect checked state on method chips
-    [].forEach.call(els.iolMethods.querySelectorAll('.mat-chk'), (lbl) => {
-      const cb = lbl.querySelector('input');
-      lbl.classList.toggle('checked', cb.checked);
-    });
-    // sum only components the clinician has scored; needs all 5 for a valid total
-    let sum = 0, rated = 0;
-    BISHOP_KEYS.forEach(k => {
-      const v = els[k].value;
-      if(v !== ''){ sum += parseInt(v, 10); rated++; }
-    });
-    if(rated === 0){
-      els.bishopReadout.innerHTML = '<span class="mat-badge muted">rate cervix above</span>';
-      return;
-    }
-    let html = '<span class="big">' + sum + '</span><span style="color:var(--ink-3)">/13</span>';
-    if(rated < BISHOP_KEYS.length){
-      html += '<span class="mat-badge muted">' + rated + '/5 components</span>';
-    } else {
-      // ≤6 unfavourable → ripening favoured; ≥8 favourable → likely successful induction
-      let band, lbl;
-      if(sum <= 6){ band = 'warn'; lbl = 'unfavourable — ripen'; }
-      else if(sum <= 7){ band = 'muted'; lbl = 'intermediate'; }
-      else { band = 'ok'; lbl = 'favourable'; }
-      html += '<span class="mat-badge ' + band + '">' + lbl + '</span>';
-    }
-    els.bishopReadout.innerHTML = html;
-  }
-  function getIolMethods(){
-    return [].filter.call(els.iolMethods.querySelectorAll('input'), cb => cb.checked)
-             .map(cb => cb.dataset.iol);
-  }
-  function setIolMethods(list){
-    const set = {}; (list || []).forEach(m => set[m] = true);
-    [].forEach.call(els.iolMethods.querySelectorAll('input'), cb => { cb.checked = !!set[cb.dataset.iol]; });
-  }
-
-  /* ---------- form <-> record ---------- */
-  function readForm(){
-    return {
-      name: els.name.value.trim(), ip: els.ip.value.trim(),
-      age: els.age.value.trim(), sex: els.sex.value,
-      husband: els.husband.value.trim(), ward: els.ward.value.trim(), unit: els.unit.value.trim(),
-      lmp: els.lmp.value, edd: els.edd.value, gaManual: els.gaManual.value.trim(),
-      gravida: els.gravida.value.trim(), para: els.para.value.trim(),
-      live: els.live.value.trim(), abortion: els.abortion.value.trim(),
-      bpSys: els.bpSys.value, bpDia: els.bpDia.value, pulse: els.pulse.value, rr: els.rr.value,
-      temp: els.temp.value, spo2: els.spo2.value, weight: els.weight.value,
-      vitalsLog: vitalsLog.slice(),
-      ctgLog: ctgLog.slice(),
-      ctgImage: '', ctgClass: els.ctgClass.value,
-      ctgBaseline: els.ctgBaseline.value, ctgNotes: els.ctgNotes.value.trim(),
-      iolMethods: getIolMethods(),
-      iolIndication: els.iolIndication.value.trim(), iolDatetime: els.iolDatetime.value,
-      iolStatus: els.iolStatus.value, iolNotes: els.iolNotes.value.trim(),
-      bishopDilation: els.bishopDilation.value, bishopEffacement: els.bishopEffacement.value,
-      bishopStation: els.bishopStation.value, bishopConsistency: els.bishopConsistency.value,
-      bishopPosition: els.bishopPosition.value,
-      notes: '', advice: '',
-      notesLog: notesLog.slice()
-    };
-  }
-  function writeForm(r){
-    r = r || {};
-    els.name.value = r.name || ''; els.ip.value = r.ip || '';
-    els.age.value = r.age || ''; els.sex.value = r.sex || 'Female';
-    els.husband.value = r.husband || ''; els.ward.value = r.ward || ''; els.unit.value = r.unit || '';
-    els.lmp.value = r.lmp || ''; els.edd.value = r.edd || ''; els.gaManual.value = r.gaManual || '';
-    els.gravida.value = r.gravida || ''; els.para.value = r.para || '';
-    els.live.value = r.live || ''; els.abortion.value = r.abortion || '';
-    els.bpSys.value = r.bpSys || ''; els.bpDia.value = r.bpDia || '';
-    els.pulse.value = r.pulse || ''; els.rr.value = r.rr || '';
-    els.temp.value = r.temp || ''; els.spo2.value = r.spo2 || ''; els.weight.value = r.weight || '';
-    els.ctgClass.value = r.ctgClass || ''; els.ctgBaseline.value = r.ctgBaseline || '';
-    els.ctgNotes.value = r.ctgNotes || '';
-    els.notes.value = ''; els.advice.value = '';
-    setIolMethods(r.iolMethods);
-    els.iolIndication.value = r.iolIndication || ''; els.iolDatetime.value = r.iolDatetime || '';
-    els.iolStatus.value = r.iolStatus || ''; els.iolNotes.value = r.iolNotes || '';
-    els.bishopDilation.value = r.bishopDilation || ''; els.bishopEffacement.value = r.bishopEffacement || '';
-    els.bishopStation.value = r.bishopStation || ''; els.bishopConsistency.value = r.bishopConsistency || '';
-    els.bishopPosition.value = r.bishopPosition || '';
-
-    // serial logs (clone so edits don't mutate the stored record until save)
-    vitalsLog = Array.isArray(r.vitalsLog) ? r.vitalsLog.map(x => Object.assign({}, x)) : [];
-    ctgLog = Array.isArray(r.ctgLog) ? r.ctgLog.map(x => Object.assign({}, x)) : [];
-    // migrate a legacy single CTG image into the timeline
-    if(!ctgLog.length && r.ctgImage){
-      ctgLog.push({
-
-        id: uid(), at: r.updatedAt || r.createdAt || new Date().toISOString(),
-        image: r.ctgImage, fname: 'CTG image',
-        ctgClass: r.ctgClass || '', baseline: r.ctgBaseline || '', notes: r.ctgNotes || ''
-      });
-    }
-    // migrate any CTG entries still carrying an inline data:image/ URL
-    // (records saved before images moved to IndexedDB, or a restored
-    // full/legacy backup) into the image store, then strip the field so
-    // the next save/autosave persists a reference-only record.
-    ctgLog.forEach(c => {
-      if(c && typeof c.image === 'string' && /^data:image\//.test(c.image)){
-        ctgImageSet(c.id, c.image).catch(() => {});
-        delete c.image;
-      }
-    });
-
-    // serial clinical notes & advice; migrate a legacy single notes field
-    notesLog = Array.isArray(r.notesLog) ? r.notesLog.map(x => Object.assign({}, x)) : [];
-    if(!notesLog.length && r.notes){
-      notesLog.push({
-        id: uid(), at: r.updatedAt || r.createdAt || new Date().toISOString(),
-        author: '', note: r.notes, advice: r.advice || ''
-      });
-    }
-
-    // reset the CTG staging area and default timestamps
-    clearCtgStage();
-    els.vitalsTime.value = nowLocalInput();
-    els.ctgTime.value = nowLocalInput();
-    els.notesTime.value = nowLocalInput();
-    if(els.notesSearch) els.notesSearch.value = ''; // clear any filter left over from the previous patient
-
-    updateDating(); updateVitals(); updateBishop();
-    renderVitalsLog(); renderCtgGallery(); renderNotesLog();
-  }
-
-  /* ---------- views ---------- */
-  function openNew(){
-    currentId = null;
-    els.form.classList.remove('hidden');
-    els.empty.classList.add('hidden');
-    els.btnDelete.classList.add('hidden');
-    els.title.textContent = 'New patient';
-    els.status.textContent = 'Fill in the details below and save.';
-    writeForm({});
-    highlightRoster();
-    els.name.focus();
-    window.scrollTo(0,0);
-  }
-  function openPatient(id){
-    const r = patients.find(p => p.id === id); if(!r) return;
-    currentId = id;
-    els.form.classList.remove('hidden');
-    els.empty.classList.add('hidden');
-    els.btnDelete.classList.remove('hidden');
-    els.title.textContent = r.name || 'Patient';
-    els.status.textContent = 'Updated ' + (r.updatedAt ? new Date(r.updatedAt).toLocaleString() : '—') + (r.ip ? ' · IP ' + r.ip : '');
-    writeForm(r);
-    highlightRoster();
-    window.scrollTo(0,0);
-  }
-  function saveCurrent(){
-    // don't silently lose a CTG image that was uploaded but not added to the timeline
-    if(ctgDataUrl){ logCtg(); }
-    // don't silently lose a note/advice typed but not added to the timeline
-    if(els.notes.value.trim() || els.advice.value.trim()){ logNote(); }
-    const data = readForm();
-    if(!data.name){ toast('Patient name is required.'); els.name.focus(); return; }
-    const now = new Date().toISOString();
-    if(currentId){
-      const idx = patients.findIndex(p => p.id === currentId);
-      if(idx >= 0) patients[idx] = Object.assign({}, patients[idx], data, { updatedAt: now });
-    } else {
-      const rec = Object.assign({ id: uid(), createdAt: now }, data, { updatedAt: now });
-      patients.unshift(rec);
-      currentId = rec.id;
-    }
-    persist();
-    renderRoster();
-    els.btnDelete.classList.remove('hidden');
-    els.title.textContent = data.name;
-    els.status.textContent = 'Saved ' + new Date(now).toLocaleTimeString() + (data.ip ? ' · IP ' + data.ip : '');
-    highlightRoster();
-    toast('Patient saved.');
-  }
-  // Silent autosave of the core patient fields — fires the moment someone
-  // navigates away from the Maternity tab (see the MutationObserver in
-  // setupAutosave()) so typing a patient's details and then switching to
-  // another tab *before* clicking "Save patient" doesn't just discard the
-  // entry: without this, the roster shows nothing was ever saved and
-  // there's no way back to what you just typed. Also flushes a staged CTG
-  // image and/or a typed note/advice draft into their permanent timelines
-  // (same as saveCurrent() already does) — being interrupted mid-entry
-  // shouldn't make those vanish either, they just wouldn't be reachable
-  // again since the textarea/staging area is transient UI state, not
-  // itself persisted.
-  // No-ops if the name field is still empty (nothing worth saving yet).
-  function autosaveIfNeeded(){
-    if(!els.name.value.trim()) return;
-    if(ctgDataUrl){ logCtg(); }
-    if(els.notes.value.trim() || els.advice.value.trim()){ logNote(); }
-    const data = readForm();
-    const now = new Date().toISOString();
-    if(currentId){
-      const idx = patients.findIndex(p => p.id === currentId);
-      if(idx >= 0) patients[idx] = Object.assign({}, patients[idx], data, { updatedAt: now });
-    } else {
-      const rec = Object.assign({ id: uid(), createdAt: now }, data, { updatedAt: now });
-      patients.unshift(rec);
-      currentId = rec.id;
-    }
-    persist();
-    renderRoster();
-    highlightRoster();
-  }
-  // Watches #view-maternity's own [hidden] attribute (toggled by the app's
-  // shared switchView() whenever the user picks a different tab) and
-  // autosaves the instant this tab becomes hidden — i.e. exactly the
-  // "switched tabs mid-entry" moment.
-  //
-  // That alone misses a more common real-world interruption: the app being
-  // backgrounded (Android home button, switching to another app entirely)
-  // WITHOUT switching to a different Rounds tab first — #view-maternity's
-  // [hidden] attribute never changes in that case, so nothing would fire.
-  // visibilitychange (and pagehide as a fallback for cases/timings where
-  // that doesn't land in time before the OS reclaims the WebView) covers
-  // that, but only autosaves if Maternity is actually the tab someone's
-  // looking at — otherwise the form fields may just be stale leftovers
-  // from whichever patient was last open, unrelated to what's on screen.
-  function setupAutosave(){
-    if(!window.MutationObserver) return;
-    const matView = document.getElementById('view-maternity');
-    if(!matView) return;
-    let wasHidden = matView.hidden;
-    new MutationObserver(() => {
-      const isHidden = matView.hidden;
-      if(isHidden && !wasHidden) autosaveIfNeeded();
-      wasHidden = isHidden;
-    }).observe(matView, { attributes: true, attributeFilter: ['hidden'] });
-
-    document.addEventListener('visibilitychange', () => {
-      if(document.hidden && !matView.hidden) autosaveIfNeeded();
-    });
-    window.addEventListener('pagehide', () => {
-      if(!matView.hidden) autosaveIfNeeded();
-    });
-  }
-  function deleteCurrent(){
-    if(!currentId) return;
-    const r = patients.find(p => p.id === currentId);
-    if(!r) return;
-    // Immediate delete + an "Undo" toast instead of a blocking confirm() —
-    // keep the removed record and its roster position in memory for the
-    // few seconds the undo window is open.
-    const removedIdx = patients.findIndex(p => p.id === currentId);
-    const removed = r;
-    const removedId = currentId;
-    const removedCtgIds = Array.isArray(removed.ctgLog) ? removed.ctgLog.map(c => c.id).filter(Boolean) : [];
-    patients = patients.filter(p => p.id !== removedId);
-    persist(); renderRoster();
-    currentId = null;
-    els.form.classList.add('hidden');
-    els.empty.classList.remove('hidden');
-    // Same deferred-purge pattern as the per-trace delete: this patient's
-    // CTG images stay in IndexedDB until the undo window closes, so Undo
-    // doesn't need to write anything back into storage.
-    const ctgPurgeTimer = setTimeout(() => { ctgImageDeleteMany(removedCtgIds); }, 5200);
-    toast('Deleted ' + (removed.name || 'patient') + '.', {
-      label: 'Undo',
-      onClick: () => {
-        clearTimeout(ctgPurgeTimer);
-        const at = Math.min(removedIdx, patients.length);
-        patients.splice(at < 0 ? 0 : at, 0, removed);
-        persist(); renderRoster();
-        openPatient(removedId);
-      }
-    });
-  }
-
-  /* ---------- roster ---------- */
-  // Normalize a patient's unit to '1'..'4', or '' if unassigned/unrecognized.
-  function unitOf(p){
-    const m = String(p.unit || '').match(/[1-4]/);
-    return m ? m[0] : '';
-  }
-  // Compute active risk flags for a saved patient, worst-first. Returns [{band,label}].
-  function patientRiskFlags(p){
-    const flags = [];
-    const bp = latestBp(p);
-    if(bp){
-      const cat = bpCategory(bp.sys, bp.dia);
-      if(cat && cat.band === 'crit') flags.push({ band:'crit', label:'BP ' + cat.short + ' ' + bp.sys + '/' + bp.dia });
-      else if(cat && cat.band === 'warn') flags.push({ band:'warn', label:'BP high ' + bp.sys + '/' + bp.dia });
-    }
-    // latest vitals reading (newest-first) for pulse/spo2
-    const lv = (Array.isArray(p.vitalsLog) && p.vitalsLog[0]) || p;
-    const hr = num(lv.pulse), spo2 = num(lv.spo2), temp = num(lv.temp);
-    if(spo2 !== null && spo2 < 92) flags.push({ band:'crit', label:'SpO₂ ' + spo2 + '%' });
-    else if(spo2 !== null && spo2 < 95) flags.push({ band:'warn', label:'SpO₂ ' + spo2 + '%' });
-    if(hr !== null && hr > 110) flags.push({ band:'warn', label:'HR ' + hr });
-    else if(hr !== null && hr < 50) flags.push({ band:'warn', label:'HR ' + hr });
-    if(temp !== null && temp >= 100.4) flags.push({ band:'warn', label:'Febrile ' + temp + '°F' });
-    // post-dates — threshold (294 days = 42w0d) must match updateDating()'s
-    // own post-term cutoff (gaDays > 293), or a patient can show "post-term"
-    // on their own GA badge a full day before the roster/board alert agrees.
-    const gd = gaDaysToday(p.lmp, p.edd);
-    if(gd !== null && gd > 293) flags.push({ band:'crit', label:'Post-dates >42w' });
-    // unfavourable Bishop when an induction is under way
-    const iolActive = (p.iolMethods && p.iolMethods.length) || p.iolStatus === 'In progress';
-    if(iolActive){
-      const keys = ['bishopDilation','bishopEffacement','bishopStation','bishopConsistency','bishopPosition'];
-      let sum = 0, rated = 0;
-      keys.forEach(k => { if(p[k] !== undefined && p[k] !== ''){ sum += parseInt(p[k],10); rated++; } });
-      if(rated === keys.length && sum <= 6) flags.push({ band:'warn', label:'Bishop ' + sum + ' — unripe' });
-    }
-    // worst first: crit before warn
-    flags.sort((a,b) => (a.band === 'crit' ? 0 : 1) - (b.band === 'crit' ? 0 : 1));
-    return flags;
-  }
-  function rosterItemHtml(p){
-    const ga = gaText(gaDaysToday(p.lmp, p.edd)) || (p.gaManual || '');
-    const sub = [];
-    if(p.ip) sub.push('IP ' + escapeHtml(p.ip));
-    if(p.age) sub.push(escapeHtml(p.age) + 'y');
-    if(p.edd) sub.push('EDD ' + fmtDate(p.edd));
-    const risks = patientRiskFlags(p);
-    const worst = risks.some(f => f.band === 'crit') ? 'crit' : (risks.length ? 'warn' : '');
-    const tags = [];
-    if(p.iolMethods && p.iolMethods.length) tags.push('<span class="mat-ri-tag iol">IOL</span>');
-    const ctgN = (p.ctgLog && p.ctgLog.length) || (p.ctgImage ? 1 : 0);
-    if(ctgN) tags.push('<span class="mat-ri-tag ctg">CTG' + (ctgN > 1 ? ' ×' + ctgN : '') + '</span>');
-    const vN = (p.vitalsLog && p.vitalsLog.length) || 0;
-    if(vN) tags.push('<span class="mat-ri-tag obs">OBS ×' + vN + '</span>');
-    const nN = (p.notesLog && p.notesLog.length) || (p.notes ? 1 : 0);
-    if(nN) tags.push('<span class="mat-ri-tag note">NOTE' + (nN > 1 ? ' ×' + nN : '') + '</span>');
-    // show up to 2 risk chips, worst first
-    const riskChips = risks.slice(0,2).map(f => '<span class="mat-ri-alert ' + f.band + '">' + escapeHtml(f.label) + '</span>').join('');
-    // glyph shape (not just color) marks severity: ▲ for a worst warn, ✕ for a worst crit
-    const alertGlyph = worst === 'crit' ? '✖' : worst === 'warn' ? '▲' : '●';
-    const alertBadge = risks.length
-      ? '<span class="alertn ' + worst + '">' + alertGlyph + ' ' + risks.length + (risks.length === 1 ? ' alert' : ' alerts') + '</span>'
-      : (ga ? '<span class="ga">' + escapeHtml(ga) + '</span>' : '');
-    return '<li class="mat-roster-item' + (p.id === currentId ? ' active' : '') + '" data-id="' + p.id + '">' +
-      '<div class="mat-ri-name"><span>' + escapeHtml(p.name || 'Unnamed') + '</span>' + alertBadge + '</div>' +
-      (sub.length ? '<div class="mat-ri-sub">' + sub.map(s => '<span>' + s + '</span>').join('') + '</div>' : '') +
-      ((tags.length || riskChips) ? '<div class="mat-ri-tags">' + riskChips + tags.join('') + '</div>' : '') +
-      '</li>';
-  }
-  function renderRoster(){
-    const q = els.search.value.trim().toLowerCase();
-    const rows = patients.filter(p => {
-      if(unitFilter !== 'all' && unitOf(p) !== unitFilter) return false;
-      if(!q) return true;
-      return (p.name||'').toLowerCase().includes(q) || (p.ip||'').toLowerCase().includes(q);
-    });
-    const filtering = q || unitFilter !== 'all';
-    els.count.textContent = patients.length + (patients.length === 1 ? ' patient' : ' patients') +
-      (filtering ? ' · ' + rows.length + ' shown' : '');
-    if(rows.length === 0){
-      let msg;
-      if(patients.length === 0) msg = 'No patients yet.<br>Click <b>New patient</b> to begin.';
-      else if(unitFilter !== 'all') msg = 'No patients in ' + (unitFilter ? 'Unit ' + unitFilter : 'the unassigned group') + (q ? ' matching “' + escapeHtml(q) + '”.' : '.');
-      else msg = 'No matches for “' + escapeHtml(q) + '”.';
-      els.list.innerHTML = '<div class="mat-roster-empty">' + msg + '</div>';
-      return;
-    }
-    // group by unit 1–4, with any unassigned/other shown last
-    const groups = ['1','2','3','4',''];
-    els.list.innerHTML = groups.map(u => {
-      const inGroup = rows.filter(p => unitOf(p) === u);
-      if(!inGroup.length) return '';
-      const header = '<li class="mat-roster-group">' + (u ? 'Unit ' + u : 'Unassigned') +
-        '<span class="mat-rg-count">' + inGroup.length + '</span></li>';
-      return header + inGroup.map(rosterItemHtml).join('');
-    }).join('');
-  }
-  function highlightRoster(){
-    [].forEach.call(els.list.children, (li) => {
-      if(li.dataset) li.classList.toggle('active', li.dataset.id === currentId);
-    });
-  }
-
-  /* ---------- view switching (Patients | BP monitor) ---------- */
-  function showView(v){
-    currentView = (v === 'bp') ? 'bp' : 'patients';
-    els.patientsView.classList.toggle('hidden', currentView !== 'patients');
-    els.bpView.classList.toggle('hidden', currentView !== 'bp');
-    [].forEach.call(els.viewNav.children, (b) =>
-      b.classList.toggle('active', b.getAttribute('data-view') === currentView));
-    if(currentView === 'bp') renderBpBoard();
-  }
-
-  /* ---------- BP monitor board (ward-wide) ---------- */
-  // relative "time ago" from an ISO timestamp
-  function timeAgo(iso){
-    if(!iso) return '—';
-    const t = new Date(iso).getTime();
-    if(isNaN(t)) return '—';
-    const mins = Math.round((new Date().getTime() - t) / 60000);
-    if(mins < 1) return 'just now';
-    if(mins < 60) return mins + 'm ago';
-    const h = Math.round(mins/60);
-    if(h < 24) return h + 'h ago';
-    return Math.round(h/24) + 'd ago';
-  }
-  const BP_RANK = { crit:0, warn:1, muted:2, ok:3 };
-  function renderBpBoard(){
-    const rows = patients.filter(p => bpUnitFilter === 'all' || unitOf(p) === bpUnitFilter)
-      .map(p => ({ p: p, bp: latestBp(p) }))
-      .map(x => ({ p:x.p, bp:x.bp, cat: x.bp ? bpCategory(x.bp.sys, x.bp.dia) : null }));
-    // worst-first; patients with no reading sink to the bottom
-    rows.sort((a,b) => {
-      const ra = a.cat ? BP_RANK[a.cat.band] : 9, rb = b.cat ? BP_RANK[b.cat.band] : 9;
-      if(ra !== rb) return ra - rb;
-      return (a.p.name||'').localeCompare(b.p.name||'');
-    });
-    const nAlert = rows.filter(x => x.cat && (x.cat.band === 'crit' || x.cat.band === 'warn')).length;
-    els.bpStatus.textContent = rows.length
-      ? (rows.length + (rows.length === 1 ? ' patient' : ' patients') + ' · ' + nAlert + ' flagged')
-      : 'No patients to show.';
-    if(!rows.length){
-      els.bpBoardBody.innerHTML = '';
-      els.bpBoardEmpty.classList.remove('hidden');
-      return;
-    }
-    els.bpBoardEmpty.classList.add('hidden');
-    els.bpBoardBody.innerHTML = rows.map(x => {
-      const p = x.p, u = unitOf(p);
-      const bpTxt = x.bp ? (escapeHtml(x.bp.sys) + '/' + escapeHtml(x.bp.dia)) : '—';
-      const s = x.bp ? num(x.bp.sys) : null, d = x.bp ? num(x.bp.dia) : null;
-      const map = (s !== null && d !== null) ? Math.round((s + 2*d)/3) : '—';
-      const catHtml = x.cat
-        ? '<span class="mat-badge ' + x.cat.band + '">' + x.cat.label + '</span>'
-        : '<span class="mat-badge muted">no reading</span>';
-      return '<tr data-id="' + p.id + '">' +
-        '<td class="pt">' + escapeHtml(p.name || 'Unnamed') + '</td>' +
-        '<td>' + (u ? '<span class="mat-u-chip">U' + u + '</span>' : '<span class="mat-u-chip">—</span>') + '</td>' +
-        '<td class="mat-bp">' + bpTxt + '</td>' +
-        '<td>' + map + '</td>' +
-        '<td>' + catHtml + '</td>' +
-        '<td>' + (x.bp ? timeAgo(x.bp.at) : '—') + '</td>' +
-      '</tr>';
-    }).join('');
-  }
-
-  /* ---------- backup / restore ---------- */
-  async function exportAll(){
-    if(patients.length === 0){ toast('No patients to back up.'); return; }
-    // CTG images live in IndexedDB now, not in the patients array — inline
-    // them back in here so the exported file stays a fully self-contained
-    // backup (IndexedDB itself never leaves this device otherwise).
-    // importFile() reverses this: it writes any inline image back into
-    // IndexedDB and restores the reference-only shape.
-    const withImages = await Promise.all(patients.map(async (p) => {
-      if(!Array.isArray(p.ctgLog) || !p.ctgLog.length) return p;
-      const ctgLog = await Promise.all(p.ctgLog.map(async (c) => {
-        const image = await ctgImageGet(c.id).catch(() => '');
-        return Object.assign({}, c, { image: image || '' });
-      }));
-      return Object.assign({}, p, { ctgLog: ctgLog });
-    }));
-    const blob = new Blob([JSON.stringify(withImages, null, 2)], {type:'application/json'});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    const stamp = new Date().toISOString().slice(0,10);
-    a.href = url; a.download = 'rounds-maternity-backup-' + stamp + '.json';
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-    toast('Backup downloaded (' + patients.length + ' patients).');
-  }
-  function importFile(file){
-    const reader = new FileReader();
-    reader.onload = async (e) => {
-      try{
-        const data = JSON.parse(e.target.result);
-        if(!Array.isArray(data)) throw new Error('bad format');
-        let added = 0;
-        const byId = {}; patients.forEach(p => byId[p.id] = true);
-        for(const r of data){
-          if(r && r.name){
-            if(!r.id || byId[r.id]) r.id = uid();
-            // Restore the reference-only shape: any CTG entry still
-            // carrying an inline data:image/ URL (an exportAll() backup, or
-            // an older/full backup from before images moved to IndexedDB)
-            // gets its image written back into IndexedDB, keeping only the
-            // entry's id in the record that persist() writes to localStorage.
-            if(Array.isArray(r.ctgLog)){
-              for(const c of r.ctgLog){
-                if(c && typeof c.image === 'string' && /^data:image\//.test(c.image)){
-                  await ctgImageSet(c.id, c.image).catch(() => {});
-                  delete c.image;
-                }
-              }
-            }
-            patients.push(r); byId[r.id] = true; added++;
-          }
-        }
-        persist(); renderRoster();
-        toast('Restored ' + added + ' patient' + (added===1?'':'s') + '.');
-      }catch(err){ toast('Could not read that backup file.'); }
-    };
-    reader.readAsText(file);
-  }
-
-  /* ---------- CSV export ---------- */
-  function csvCell(v){
-    const s = (v === null || v === undefined) ? '' : String(v);
-    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
-  }
-  function downloadText(name, mime, text){
-    const blob = new Blob([text], {type:mime});
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = name;
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
-  }
-  function exportRosterCsv(){
-    if(patients.length === 0){ toast('No patients to export.'); return; }
-    const head = ['Name','Husband','IP','Age','Ward','Unit','LMP','EDD','GA','Gravida','Para','Live','Abortion',
-                  'Latest BP','MAP','BP category','SpO2','Pulse','Updated'];
-    const lines = [head.map(csvCell).join(',')];
-    patients.forEach(p => {
-      const bp = latestBp(p);
-      const cat = bp ? bpCategory(bp.sys, bp.dia) : null;
-      const s = bp ? num(bp.sys) : null, d = bp ? num(bp.dia) : null;
-      const map = (s !== null && d !== null) ? Math.round((s + 2*d)/3) : '';
-      const lv = (Array.isArray(p.vitalsLog) && p.vitalsLog[0]) || p;
-      const ga = gaText(gaDaysToday(p.lmp, p.edd)) || p.gaManual || '';
-      lines.push([
-        p.name, p.husband, p.ip, p.age, p.ward, (unitOf(p) ? 'Unit ' + unitOf(p) : ''),
-        p.lmp, p.edd, ga, p.gravida, p.para, p.live, p.abortion,
-        bp ? (bp.sys + '/' + bp.dia) : '', map, cat ? cat.label : '',
-        lv.spo2 || '', lv.pulse || '',
-        p.updatedAt ? new Date(p.updatedAt).toLocaleString() : ''
-      ].map(csvCell).join(','));
-    });
-    downloadText('rounds-roster-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv', lines.join('\n'));
-    toast('Roster CSV downloaded (' + patients.length + ').');
-  }
-  function exportPatientVitalsCsv(){
-    if(!vitalsLog.length){ toast('No serial readings to export.'); return; }
-    const head = ['Recorded','BP','MAP','BP category','Pulse','RR','Temp','SpO2','Weight'];
-    const lines = [head.map(csvCell).join(',')];
-    // oldest-first for a readable timeline
-    vitalsLog.slice().reverse().forEach(r => {
-      const s = num(r.bpSys), d = num(r.bpDia);
-      const map = (s !== null && d !== null) ? Math.round((s + 2*d)/3) : '';
-      const cat = bpCategory(r.bpSys, r.bpDia);
-      lines.push([
-        r.at ? new Date(r.at).toLocaleString() : '',
-        (r.bpSys && r.bpDia) ? (r.bpSys + '/' + r.bpDia) : '',
-        map, cat ? cat.label : '', r.pulse, r.rr, r.temp, r.spo2, r.weight
-      ].map(csvCell).join(','));
-    });
-    const who = (els.name.value.trim() || 'patient').replace(/[^\w-]+/g,'_');
-    downloadText('vitals-' + who + '-' + new Date().toISOString().slice(0,10) + '.csv', 'text/csv', lines.join('\n'));
-    toast('Vitals CSV downloaded (' + vitalsLog.length + ').');
-  }
-
-  /* ---------- print summary sheet ---------- */
-  function printSummary(){
-    if(!currentId && !els.name.value.trim()){ toast('Open or fill a patient first.'); return; }
-    const data = readForm();
-    const bpNow = bpCategory(data.bpSys, data.bpDia) ||
-      (vitalsLog[0] ? bpCategory(vitalsLog[0].bpSys, vitalsLog[0].bpDia) : null);
-    const ga = els.gaReadout.textContent.replace(/\s+/g,' ').trim();
-    const gpla = [data.gravida && 'G' + data.gravida, data.para && 'P' + data.para,
-                  data.live && 'L' + data.live, data.abortion && 'A' + data.abortion].filter(Boolean).join(' ');
-    const item = (k, v) => v ? '<div class="mat-ps-item"><span class="k">' + k + '</span><span class="v">' + escapeHtml(v) + '</span></div>' : '';
-    const secGrid = (title, items) => { const b = items.filter(Boolean).join(''); return b ? '<div class="mat-ps-sec"><h2>' + title + '</h2><div class="mat-ps-grid">' + b + '</div></div>' : ''; };
-
-    let vitalsItems = [
-      item('Blood pressure', (data.bpSys && data.bpDia) ? data.bpSys + '/' + data.bpDia + (bpNow ? ' (' + bpNow.label + ')' : '') : ''),
-      item('Pulse', data.pulse && data.pulse + ' /min'),
-      item('SpO₂', data.spo2 && data.spo2 + ' %'),
-      item('Temp', data.temp && data.temp + ' °F'),
-      item('Resp. rate', data.rr && data.rr + ' /min'),
-      item('Weight', data.weight && data.weight + ' kg')
-    ];
-    const iolItems = [
-      item('Method(s)', (data.iolMethods||[]).join(', ')),
-      item('Indication', data.iolIndication),
-      item('Status', data.iolStatus),
-      item('Started', data.iolDatetime ? fmtStamp(new Date(data.iolDatetime).toISOString()) : '')
-    ];
-    // recent notes (up to 3, newest first)
-    const notesHtml = notesLog.slice(0,3).map(n =>
-      '<div class="mat-ps-note"><b>' + fmtStamp(n.at) + (n.author ? ' · ' + escapeHtml(n.author) : '') + '</b><br>' +
-      escapeHtml(n.note || '') + (n.advice ? '\nAdvice: ' + escapeHtml(n.advice) : '') + '</div>'
-    ).join('');
-
-    const html =
-      '<h1>' + escapeHtml(data.name || 'Patient') + '</h1>' +
-      '<div class="mat-ps-sub">Handover summary · generated ' + new Date().toLocaleString() + '</div>' +
-      secGrid('Identity', [
-        item('IP no.', data.ip), item('Age', data.age && data.age + ' yrs'),
-        item('Husband / NOK', data.husband), item('Ward', data.ward),
-        item('Unit', unitOf({unit:data.unit}) ? 'Unit ' + unitOf({unit:data.unit}) : data.unit)
-      ]) +
-      secGrid('Obstetric', [
-        item('LMP', data.lmp && fmtDate(data.lmp)), item('EDD', data.edd && fmtDate(data.edd)),
-        item('Gestational age', ga && ga.replace(/manual|term|preterm.*|post-term.*|.*to EDD|.*past EDD/gi,'').trim() || ga),
-        item('GPLA', gpla)
-      ]) +
-      secGrid('Latest vitals', vitalsItems) +
-      (iolItems.filter(Boolean).length ? secGrid('Induction of labour', iolItems) : '') +
-      (notesHtml ? '<div class="mat-ps-sec"><h2>Recent notes</h2>' + notesHtml + '</div>' : '');
-
-    els.printSummary.innerHTML = html;
-    document.body.classList.add('mat-print-summary');
-    const cleanup = () => { document.body.classList.remove('mat-print-summary'); window.removeEventListener('afterprint', cleanup); };
-    window.addEventListener('afterprint', cleanup);
-    window.print();
-    // safety net if afterprint doesn't fire
-    setTimeout(cleanup, 1500);
-  }
-
-  /* ---------- misc ---------- */
-  function escapeHtml(s){ return String(s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
-  let toastTimer;
-  // `action`, when given, is {label, onClick} — renders as a small button
-  // appended to the toast (used for "Undo" after an immediate delete) and
-  // keeps the toast up longer so there's a real chance to click it.
-  function toast(msg, action){
-    els.toast.textContent = msg;
-    if(action && action.label && typeof action.onClick === 'function'){
-      const btn = document.createElement('button');
-      btn.type = 'button';
-      btn.className = 'mat-toast-undo';
-      btn.textContent = action.label;
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        clearTimeout(toastTimer);
-        els.toast.classList.remove('show');
-        action.onClick();
-      });
-      els.toast.appendChild(btn);
-    }
-    els.toast.classList.add('show');
-    clearTimeout(toastTimer);
-    toastTimer = setTimeout(() => els.toast.classList.remove('show'), action ? 5000 : 2600);
-  }
-
-  /* ---------- wiring ---------- */
-  function wire(){
-    els.btnNew.addEventListener('click', openNew);
-    els.form.addEventListener('submit', (e)=>{ e.preventDefault(); saveCurrent(); });
-    els.btnDelete.addEventListener('click', deleteCurrent);
-    els.btnPrint.addEventListener('click', ()=> window.print());
-
-    els.list.addEventListener('click', (e)=>{
-      const li = e.target.closest('.mat-roster-item'); if(li) openPatient(li.dataset.id);
-    });
-    els.search.addEventListener('input', renderRoster);
-    els.unitFilterBar.addEventListener('click', (e)=>{
-      const chip = e.target.closest('.mat-uf-chip'); if(!chip) return;
-      unitFilter = chip.getAttribute('data-unit');
-      [].forEach.call(els.unitFilterBar.children, c => c.classList.toggle('active', c === chip));
-      renderRoster();
-    });
-
-    // view nav + BP monitor board
-    els.viewNav.addEventListener('click', (e)=>{
-      const b = e.target.closest('[data-view]'); if(!b) return;
-      showView(b.getAttribute('data-view'));
-    });
-    els.bpUnitFilterBar.addEventListener('click', (e)=>{
-      const chip = e.target.closest('.mat-uf-chip'); if(!chip) return;
-      bpUnitFilter = chip.getAttribute('data-unit');
-      [].forEach.call(els.bpUnitFilterBar.children, c => c.classList.toggle('active', c === chip));
-      renderBpBoard();
-    });
-    els.bpBoardBody.addEventListener('click', (e)=>{
-      const tr = e.target.closest('tr[data-id]'); if(!tr) return;
-      showView('patients');
-      openPatient(tr.getAttribute('data-id'));
-    });
-
-    // dating
-    els.lmp.addEventListener('change', autoEddFromLmp);
-    els.edd.addEventListener('change', updateDating);
-    els.gaManual.addEventListener('input', updateDating);
-
-    // vitals
-    ['bpSys','bpDia','pulse','rr','temp','spo2'].forEach(k => els[k].addEventListener('input', updateVitals));
-    els.btnLogVitals.addEventListener('click', logVitals);
-    els.vitalsLogBody.addEventListener('click', (e)=>{
-      const b = e.target.closest('[data-del-vital]'); if(!b) return;
-      const id = b.getAttribute('data-del-vital');
-      const idx = vitalsLog.findIndex(r => r.id === id);
-      if(idx < 0) return;
-      const removed = vitalsLog[idx];
-      vitalsLog = vitalsLog.filter(r => r.id !== id);
-      renderVitalsLog();
-      toast('Reading removed.', {
-        label: 'Undo',
-        onClick: () => {
-          vitalsLog.splice(Math.min(idx, vitalsLog.length), 0, removed);
-          renderVitalsLog();
-        }
-      });
-    });
-
-    // clinical notes & advice
-    els.btnLogNotes.addEventListener('click', logNote);
-    if(els.notesSearch) els.notesSearch.addEventListener('input', renderNotesLog);
-    els.notesTimeline.addEventListener('click', (e)=>{
-      const b = e.target.closest('[data-del-note]'); if(!b) return;
-      const id = b.getAttribute('data-del-note');
-      const idx = notesLog.findIndex(n => n.id === id);
-      if(idx < 0) return;
-      const removed = notesLog[idx];
-      notesLog = notesLog.filter(n => n.id !== id);
-      renderNotesLog();
-      toast('Note removed.', {
-        label: 'Undo',
-        onClick: () => {
-          notesLog.splice(Math.min(idx, notesLog.length), 0, removed);
-          renderNotesLog();
-        }
-      });
-    });
-
-    // induction
-    els.iolMethods.addEventListener('change', updateBishop);
-    BISHOP_KEYS.forEach(k => els[k].addEventListener('change', updateBishop));
-
-    // CTG
-    els.ctgDrop.addEventListener('click', ()=> els.ctgFile.click());
-    els.ctgFile.addEventListener('change', (e)=> handleCtgFiles(e.target.files));
-    els.ctgRemove.addEventListener('click', ()=>{ clearCtgStage(); toast('Staged image discarded.'); });
-    els.btnLogCtg.addEventListener('click', logCtg);
-    els.ctgGallery.addEventListener('click', (e)=>{
-      const del = e.target.closest('[data-del-ctg]');
-      if(del){
-        const id = del.getAttribute('data-del-ctg');
-        const idx = ctgLog.findIndex(c => c.id === id);
-        if(idx < 0) return;
-        const removed = ctgLog[idx];
-        ctgLog = ctgLog.filter(c => c.id !== id);
-        renderCtgGallery();
-        // Defer the actual IndexedDB image purge until the undo window
-        // closes — the entry's bytes stay put in the meantime, so Undo can
-        // restore the entry without having to write image data anywhere.
-        if(pendingCtgImageDeletes[id]) clearTimeout(pendingCtgImageDeletes[id]);
-        pendingCtgImageDeletes[id] = setTimeout(() => {
-          ctgImageDelete(id);
-          delete pendingCtgImageDeletes[id];
-        }, 5200);
-        toast('CTG trace removed.', {
-          label: 'Undo',
-          onClick: () => {
-            if(pendingCtgImageDeletes[id]){ clearTimeout(pendingCtgImageDeletes[id]); delete pendingCtgImageDeletes[id]; }
-            ctgLog.splice(Math.min(idx, ctgLog.length), 0, removed);
-            renderCtgGallery();
-          }
-        });
-        return;
-      }
-      const thumb = e.target.closest('[data-lb]');
-      if(thumb) openLightbox(thumb.getAttribute('data-lb'));
-    });
-    els.lbClose.addEventListener('click', closeLightbox);
-    els.lightbox.addEventListener('click', (e)=>{ if(e.target === els.lightbox) closeLightbox(); });
-    document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && els.lightbox.classList.contains('show')) closeLightbox(); });
-    ['dragenter','dragover'].forEach(ev => els.ctgDrop.addEventListener(ev, (e)=>{ e.preventDefault(); els.ctgDrop.classList.add('drag'); }));
-    ['dragleave','drop'].forEach(ev => els.ctgDrop.addEventListener(ev, (e)=>{ e.preventDefault(); els.ctgDrop.classList.remove('drag'); }));
-    els.ctgDrop.addEventListener('drop', (e)=>{ if(e.dataTransfer.files.length) handleCtgFiles(e.dataTransfer.files); });
-
-    // header
-    $('mat-btn-export').addEventListener('click', exportAll);
-    $('mat-btn-csv').addEventListener('click', exportRosterCsv);
-    els.btnCsvPatient.addEventListener('click', exportPatientVitalsCsv);
-    els.btnSummary.addEventListener('click', printSummary);
-    $('mat-btn-import').addEventListener('click', ()=> $('mat-import-file').click());
-    $('mat-import-file').addEventListener('change', (e)=>{ if(e.target.files[0]) importFile(e.target.files[0]); e.target.value=''; });
-
-    // Ctrl/Cmd+S saves when the form is open
-    document.addEventListener('keydown', (e)=>{
-      if((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's' && !els.form.classList.contains('hidden')){
-        e.preventDefault(); saveCurrent();
-      }
-    });
-  }
-
-  /* ---------- init ----------
-     No DOMContentLoaded auto-run and no own theme handling here: this tab
-     is lazily started by the host app's switchView()/initMaternity() the
-     first time someone opens the Maternity tab (its markup already exists
-     in the document by then either way), and it inherits the app's real
-     theme system (html[data-theme]) instead of keeping a second one. */
-  function init(){
-    wire();
-    renderRoster();
-    setupAutosave();
-  }
-  window.initMaternity = init;
-})();
-
 </script>
 </body>
 </html>
