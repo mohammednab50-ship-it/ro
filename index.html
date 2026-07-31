@@ -750,6 +750,26 @@ details.guideline-updates[open] > summary .section-chevron{transform:rotate(180d
 .syndrome-drug-links{margin-top:6px;font-family:var(--ff-sans);font-size:12px;line-height:1.9;}
 .syndrome-drug-links-label{color:var(--ink-faint);margin-right:4px;}
 .syndrome-drug-links .rx-link-chip{padding:3px 10px;font-size:11.5px;}
+.cmp-table-wrap{overflow-x:auto;margin-top:var(--space-6);}
+.cmp-table{width:100%;border-collapse:collapse;font-family:var(--ff-sans);font-size:13px;min-width:520px;}
+.cmp-table th,.cmp-table td{padding:10px 14px;border:1px solid var(--line-soft);vertical-align:top;text-align:left;line-height:1.5;}
+.cmp-table th{background:var(--surface-raised);font-weight:700;font-size:12px;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink-soft);}
+.cmp-table td:first-child, .cmp-table th:first-child{position:sticky;left:0;background:var(--surface);font-weight:600;color:var(--ink-faint);white-space:nowrap;}
+.cmp-table th:first-child{background:var(--surface-raised);}
+.cmp-empty{color:var(--ink-faint);font-family:var(--ff-sans);font-size:13.5px;padding:20px 0;}
+.formulary-controls{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-bottom:var(--space-5);}
+.formulary-controls input[type="search"]{flex:1;min-width:180px;border:1px solid var(--line-soft);background:var(--surface-raised);border-radius:var(--r-pill);padding:9px 16px;font-family:var(--ff-sans);font-size:13.5px;color:var(--ink);}
+.formulary-onlytoggle{display:inline-flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:13px;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
+.formulary-onlytoggle input{accent-color:var(--evidence);width:16px;height:16px;cursor:pointer;}
+.formulary-list{list-style:none;margin:0;padding:0;}
+.formulary-item{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line-soft);}
+.formulary-item:first-child{border-top:none;}
+.formulary-item.is-dimmed{opacity:0.4;}
+.formulary-item-info{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.formulary-item-name{font-family:var(--ff-serif);font-size:15px;font-weight:600;color:var(--ink);}
+.formulary-item-brand{font-family:var(--ff-sans);font-size:12px;color:var(--ink-faint);}
+.formulary-item-toggle{display:inline-flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;flex-shrink:0;}
+.formulary-item-toggle input{accent-color:var(--fresh);width:18px;height:18px;cursor:pointer;}
 .ix-chips{list-style:none;margin:var(--space-5) 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
 .ix-chip{display:inline-flex;align-items:center;gap:8px;background:var(--evidence-bg);border:1px solid var(--evidence);color:var(--evidence-dark);border-radius:var(--r-pill);padding:6px 8px 6px 14px;font-family:var(--ff-sans);font-size:13px;font-weight:600;}
 .ix-chip button{border:none;background:none;color:var(--evidence-dark);cursor:pointer;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:15px;line-height:1;transition:background var(--dur-fast) var(--ease-out);}
@@ -2121,6 +2141,8 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <button type="button" class="syndrome-toggle-btn" data-sub="label" aria-pressed="true">Label lookup</button>
       <button type="button" class="syndrome-toggle-btn" data-sub="calc" aria-pressed="false">Dosage calculator</button>
       <button type="button" class="syndrome-toggle-btn" data-sub="interactions" aria-pressed="false">Interaction checker</button>
+      <button type="button" class="syndrome-toggle-btn" data-sub="compare" aria-pressed="false">Compare</button>
+      <button type="button" class="syndrome-toggle-btn" data-sub="formulary" aria-pressed="false">My formulary</button>
       <button type="button" class="syndrome-toggle-btn" data-sub="approvals" aria-pressed="false">Approvals</button>
     </div>
 
@@ -2312,6 +2334,40 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
         </div>
       </div>
       <div class="ix-results" id="ix-results" aria-live="polite"></div>
+    </section>
+
+    <section id="drug-sub-compare" class="drug-sub" hidden>
+      <p class="drug-generic" style="margin-bottom:20px;font-style:normal;font-family:var(--ff-sans);font-size:13px;max-width:64ch;">Pick up to 4 drugs from this app's dosing reference to see their key fields side by side. Covers only what's in that reference &mdash; not a full label comparison.</p>
+      <div class="ix-panel">
+        <div class="ix-field">
+          <label for="cmp-search">Add a drug <span style="font-family:var(--ff-mono);font-weight:400;color:var(--ink-faint);">generic or brand</span></label>
+          <div class="ix-addrow">
+            <input id="cmp-search" type="search" list="cmp-datalist" autocomplete="off" placeholder="Type a drug and press Add, e.g. lisinopril, metformin…">
+            <datalist id="cmp-datalist"></datalist>
+            <button id="cmp-add" class="btn-look-up" type="button">Add</button>
+          </div>
+          <p class="rx-search-note" id="cmp-note"></p>
+        </div>
+        <ul class="ix-chips" id="cmp-chips" aria-label="Drugs being compared"></ul>
+        <div class="ix-actions">
+          <button id="cmp-clear" class="ix-clear-btn" type="button" hidden>Clear all</button>
+        </div>
+      </div>
+      <div class="cmp-table-wrap" id="cmp-results" aria-live="polite"></div>
+    </section>
+
+    <section id="drug-sub-formulary" class="drug-sub" hidden>
+      <p class="drug-generic" style="margin-bottom:20px;font-style:normal;font-family:var(--ff-sans);font-size:13px;max-width:64ch;">Mark which drugs from this app's dosing reference are actually stocked at your institution. Saved on this device only. Not stocked ≠ unsafe or unavailable elsewhere &mdash; it's just a personal filter.</p>
+      <div class="formulary-controls">
+        <label for="formulary-search" class="sr-only" style="position:absolute;left:-9999px;">Search formulary</label>
+        <input id="formulary-search" type="search" placeholder="Filter by name…" autocomplete="off">
+        <label class="formulary-onlytoggle">
+          <input type="checkbox" id="formulary-only">
+          <span>Show only my formulary</span>
+        </label>
+        <span class="count" id="formulary-count" aria-live="polite"></span>
+      </div>
+      <ul class="formulary-list" id="formulary-list" aria-live="polite"></ul>
     </section>
 
     <section id="drug-sub-approvals" class="drug-sub" hidden>
@@ -8815,11 +8871,13 @@ function setupDrugSubnav(){
     btn.onclick = () => {
       const sub = btn.dataset.sub;
       btns.forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
-      ['label','calc','interactions','approvals'].forEach(s => {
+      ['label','calc','interactions','compare','formulary','approvals'].forEach(s => {
         const el = document.getElementById('drug-sub-' + s);
         if(el) el.hidden = s !== sub;
       });
       if(sub === 'approvals' && !approvalsState.init){ initApprovals(); }
+      if(sub === 'compare' && !compareState.init){ initCompareDrugs(); }
+      if(sub === 'formulary' && !formularyState.init){ initFormulary(); }
     };
   });
 }
@@ -9768,6 +9826,166 @@ function setupInteractions(){
   document.querySelectorAll('.ix-suggest button').forEach(b => {
     b.addEventListener('click', () => addDrug(b.dataset.ix));
   });
+
+  render();
+}
+
+/* ============================================================
+   Formulary — personal "is this drug stocked here" flags,
+   saved to localStorage only. Filters/dims the compare and
+   dosing-calc drug lists elsewhere.
+   ============================================================ */
+const FORMULARY_KEY = 'rounds_formulary_v1';
+let formularyState = { init:false, query:'', onlyMine:false };
+
+function getFormulary(){
+  try{ return JSON.parse(localStorage.getItem(FORMULARY_KEY) || '{}'); }catch(e){ return {}; }
+}
+function setFormularyFlag(id, on){
+  const f = getFormulary();
+  if(on) f[id] = true; else delete f[id];
+  try{ localStorage.setItem(FORMULARY_KEY, JSON.stringify(f)); }catch(e){}
+}
+function isInFormulary(id){ return !!getFormulary()[id]; }
+
+function initFormulary(){
+  formularyState.init = true;
+  const search = document.getElementById('formulary-search');
+  const onlyBox = document.getElementById('formulary-only');
+  if(search) search.oninput = () => { formularyState.query = search.value.trim().toLowerCase(); renderFormularyList(); };
+  if(onlyBox) onlyBox.onchange = () => { formularyState.onlyMine = onlyBox.checked; renderFormularyList(); };
+  renderFormularyList();
+}
+
+function renderFormularyList(){
+  const wrap = document.getElementById('formulary-list');
+  const countEl = document.getElementById('formulary-count');
+  if(!wrap) return;
+  const q = formularyState.query || '';
+  const formulary = getFormulary();
+  let sorted = RX_DRUGS.slice().sort((a,b) => a.generic.localeCompare(b.generic));
+  if(q) sorted = sorted.filter(d => d.generic.toLowerCase().includes(q) || d.brand.toLowerCase().includes(q));
+  const stockedCount = RX_DRUGS.filter(d => formulary[d.id]).length;
+  if(countEl) countEl.textContent = `${stockedCount} of ${RX_DRUGS.length} marked stocked`;
+  const visible = formularyState.onlyMine ? sorted.filter(d => formulary[d.id]) : sorted;
+  if(!visible.length){
+    wrap.innerHTML = `<li class="cmp-empty">${formularyState.onlyMine ? 'No drugs marked as stocked yet.' : `No drugs match “${escapeHtml(q)}”.`}</li>`;
+    return;
+  }
+  wrap.innerHTML = visible.map(d => {
+    const on = !!formulary[d.id];
+    return `<li class="formulary-item${(!formularyState.onlyMine && !on) ? ' is-dimmed' : ''}">
+      <span class="formulary-item-info">
+        <span class="formulary-item-name">${escapeHtml(d.generic)}</span>
+        <span class="formulary-item-brand">${escapeHtml(d.brand)}</span>
+      </span>
+      <label class="formulary-item-toggle">
+        <input type="checkbox" data-drug="${escapeHtml(d.id)}" ${on ? 'checked' : ''}>
+        <span>${on ? 'Stocked' : 'Not stocked'}</span>
+      </label>
+    </li>`;
+  }).join('');
+  wrap.querySelectorAll('input[type="checkbox"][data-drug]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      setFormularyFlag(cb.dataset.drug, cb.checked);
+      renderFormularyList();
+    });
+  });
+}
+
+/* ============================================================
+   Compare drugs — side-by-side view of RX_DRUGS fields.
+   ============================================================ */
+let compareState = { init:false };
+const CMP_MAX = 4;
+
+function initCompareDrugs(){
+  compareState.init = true;
+  const searchEl = document.getElementById('cmp-search');
+  const dataList = document.getElementById('cmp-datalist');
+  const addBtn   = document.getElementById('cmp-add');
+  const noteEl   = document.getElementById('cmp-note');
+  const chipsEl  = document.getElementById('cmp-chips');
+  const clearBtn = document.getElementById('cmp-clear');
+  const resultsEl= document.getElementById('cmp-results');
+  if(!searchEl || !chipsEl || !resultsEl) return;
+
+  const norm = s => (s || '').toLowerCase().trim();
+  const selected = [];
+
+  const sorted = RX_DRUGS.slice().sort((a,b) => a.generic.localeCompare(b.generic));
+  if(dataList){
+    sorted.forEach(dr => {
+      const g = document.createElement('option'); g.value = dr.generic; g.label = dr.brand; dataList.appendChild(g);
+      if(dr.brand && norm(dr.brand) !== norm(dr.generic)){
+        const b = document.createElement('option'); b.value = dr.brand; b.label = dr.generic; dataList.appendChild(b);
+      }
+    });
+  }
+
+  function findDrug(q){
+    const n = norm(q);
+    if(!n) return null;
+    return RX_DRUGS.find(d => norm(d.generic) === n || norm(d.brand) === n)
+        || RX_DRUGS.find(d => norm(d.generic).startsWith(n) || norm(d.brand).startsWith(n))
+        || RX_DRUGS.find(d => norm(d.generic).includes(n) || norm(d.brand).includes(n));
+  }
+  function setNote(msg, kind){ if(noteEl){ noteEl.textContent = msg || ''; noteEl.className = 'rx-search-note' + (kind ? ' ' + kind : ''); } }
+
+  function addDrug(q){
+    const dr = findDrug(q);
+    if(!dr){ setNote(`No match for “${String(q).trim()}” in the reference list.`, 'miss'); return; }
+    if(selected.indexOf(dr.id) !== -1){ setNote(`${dr.generic} is already added.`, 'hit'); return; }
+    if(selected.length >= CMP_MAX){ setNote(`You can compare up to ${CMP_MAX} drugs at once.`, 'miss'); return; }
+    selected.push(dr.id);
+    setNote(`Added ${dr.generic}.`, 'hit');
+    searchEl.value = '';
+    render();
+  }
+  function removeDrug(id){ const i = selected.indexOf(id); if(i !== -1){ selected.splice(i,1); render(); } }
+
+  function classesFor(id){
+    return Object.keys(IX_CLASSES).filter(cls => ixInClass(id, cls));
+  }
+
+  function regimenSummary(dr){
+    return dr.regimens.map(r => {
+      const doseStr = r.fixed ? `${r.fixed[0]}${r.fixed[1] && r.fixed[1] !== r.fixed[0] ? '–' + r.fixed[1] : ''} ${r.unit}` : (r.perKg ? `${r.perKg[0]}${r.perKg[1] !== r.perKg[0] ? '–' + r.perKg[1] : ''} ${r.unit}/kg` : '');
+      return `<div class="cmp-regimen"><strong>${escapeHtml(r.label)}:</strong> ${escapeHtml(doseStr)}${r.freq ? ` × ${r.freq}/day` : ''}</div>`;
+    }).join('');
+  }
+
+  function render(){
+    chipsEl.innerHTML = selected.map(id => {
+      const dr = RX_DRUGS.find(d => d.id === id);
+      return `<li class="ix-chip" data-drug="${id}">${escapeHtml(dr.generic)}<button type="button" aria-label="Remove ${escapeHtml(dr.generic)}" data-remove="${id}">&times;</button></li>`;
+    }).join('');
+    chipsEl.querySelectorAll('button[data-remove]').forEach(b => b.addEventListener('click', () => removeDrug(b.dataset.remove)));
+    clearBtn.hidden = selected.length === 0;
+
+    if(selected.length < 2){
+      resultsEl.innerHTML = `<p class="cmp-empty">Add at least two drugs to compare.</p>`;
+      return;
+    }
+    const drugs = selected.map(id => RX_DRUGS.find(d => d.id === id));
+    const rows = [
+      { label:'Brand', get:d => d.brand },
+      { label:'Reference source', get:d => d.ref },
+      { label:'Indications / regimens', get:d => regimenSummary(d) },
+      { label:'Renal adjustment', get:d => d.renalFlagCrCl ? `Needed if CrCl &lt; ${d.renalFlagCrCl} mL/min${d.renalAdjust ? ' — ' + escapeHtml(d.renalAdjust) : ''}` : 'No flagged threshold in this reference' },
+      { label:'Drug-class membership', get:d => { const cls = classesFor(d.id); return cls.length ? cls.map(c => escapeHtml(c.replace(/_/g,' '))).join(', ') : '—'; } },
+      { label:'Interactions in this app', get:d => { const hits = IX_RULES.filter(r => (r.a.id === d.id || r.b.id === d.id) || (r.a.cls && ixInClass(d.id, r.a.cls)) || (r.b.cls && ixInClass(d.id, r.b.cls))); return hits.length ? `${hits.length} rule(s) reference this drug or its class — see the Interaction checker` : 'None matched'; } },
+      { label:'In my formulary', get:d => isInFormulary(d.id) ? 'Stocked' : 'Not marked' },
+      { label:'Related conditions', get:d => { const links = drugLinksFor(d.id); return links.length ? links.map(l => escapeHtml(l.condition)).join(', ') : '—'; } }
+    ];
+    const head = `<tr><th>Field</th>${drugs.map(d => `<th>${escapeHtml(d.generic)}</th>`).join('')}</tr>`;
+    const body = rows.map(r => `<tr><td>${escapeHtml(r.label)}</td>${drugs.map(d => `<td>${r.get(d)}</td>`).join('')}</tr>`).join('');
+    resultsEl.innerHTML = `<table class="cmp-table">${head}${body}</table><p class="rx-ref">Fields shown are limited to what's captured in this app's dosing/interaction reference — not a full label comparison. Verify against the label before acting on anything here.</p>`;
+  }
+
+  addBtn.addEventListener('click', () => addDrug(searchEl.value));
+  searchEl.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); addDrug(searchEl.value); } });
+  clearBtn && clearBtn.addEventListener('click', () => { selected.length = 0; setNote(''); render(); });
 
   render();
 }
