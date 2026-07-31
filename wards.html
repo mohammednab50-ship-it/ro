@@ -1619,6 +1619,7 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-sanity-banner{margin:0 0 var(--space-4);padding:12px 14px;border:1px solid var(--caution-line);border-radius:var(--r-sm);background:var(--caution-bg);}
 .vitals-sanity-msg{font-family:var(--ff-sans);font-size:13px;color:var(--ink);margin:0 0 10px;line-height:1.5;}
 .vitals-sanity-actions{display:flex;gap:8px;}
+.vitals-dup-warning{padding:10px 12px;border:1px solid var(--caution-line);border-radius:var(--r-sm);background:var(--caution-bg);}
 .vitals-field-checkbox{flex-direction:row;align-items:center;gap:8px;justify-content:flex-start;}
 .vitals-field-checkbox label{order:1;}
 .vitals-field-checkbox input{width:auto;min-height:0;flex:none;order:0;}
@@ -1631,6 +1632,11 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .iso-badge.iso-droplet{background:var(--evidence-bg);color:var(--evidence-dark);}
 .iso-badge.iso-airborne{background:var(--caution-bg);color:var(--caution);}
 
+/* ---- "not seen recently" sweep ---- */
+.vitals-overdue-banner{display:block;width:100%;text-align:left;font-family:var(--ff-sans);font-size:12.5px;font-weight:700;color:var(--caution);
+  padding:10px 12px;margin:0 0 12px;border:1px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-sm);cursor:pointer;}
+.chapter-li.is-overdue .chapter-btn .chapter-num{color:var(--caution);}
+.overdue-dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--caution);margin-left:6px;flex-shrink:0;}
 
 /* Department-specific charting sections (ICU / Surgery / Pediatrics) —
    General reuses the vitals-panel look, kept plain/lightweight since
@@ -2315,9 +2321,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 <div class="layout" id="view-vitals" role="tabpanel" aria-labelledby="tab-vitals">
   <nav class="chapters" aria-label="Patients">
     <p class="chapters-eyebrow">PATIENTS</p>
+    <button type="button" class="vitals-overdue-banner" id="vitals-overdue-banner" hidden></button>
     <label class="vitals-mine-filter">
       <input type="checkbox" id="vitals-mine-filter-toggle">
       My patients this shift only
+    </label>
+    <label class="vitals-mine-filter">
+      <input type="checkbox" id="vitals-overdue-filter-toggle">
+      Not seen recently only
     </label>
     <ol class="chapter-list" id="patient-list"></ol>
     <button type="button" class="vitals-add-patient-btn" id="vitals-add-patient-btn">+ Add patient</button>
@@ -2347,6 +2358,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       <div class="vitals-field" id="vitals-new-age-field" hidden>
         <label for="vitals-new-age">Age <span>years (pediatrics)</span></label>
         <input id="vitals-new-age" type="number" min="0" max="17" step="0.1" inputmode="decimal" placeholder="e.g. 4">
+      </div>
+      <div class="vitals-dup-warning" id="vitals-dup-warning" hidden>
+        <p class="vitals-sanity-msg" id="vitals-dup-warning-msg"></p>
       </div>
       <div class="vitals-add-actions">
         <button type="button" class="vitals-btn-primary" id="vitals-save-patient-btn">Add patient</button>
@@ -3196,6 +3210,7 @@ function initVitals(){
   setupVitalsBaselinesForm();
   setupVitalsLogSearch();
   setupVitalsMineFilterToggle();
+  setupVitalsOverdueFilterToggle();
   setupVitalsNews2Preview();
   setupAllergiesForm();
   setupIsolationSelect();
@@ -3214,15 +3229,63 @@ function initVitals(){
 // mark a subset of the roster as theirs for the shift and narrow the
 // sidebar to just those.
 let vitalsMineFilterActive = false;
+let vitalsOverdueFilterActive = false;
+
+// "Who haven't I seen" sweep — how many hours without a logged reading
+// before a patient counts as overdue, per department. ICU patients are
+// meant to be checked far more often than a stable general-ward patient;
+// this is a coarse personal-reminder heuristic, not a charting-frequency
+// policy from any institution.
+const VITALS_UNSEEN_THRESHOLD_HOURS = { general: 8, icu: 2, surgery: 4, pediatrics: 4, maternity: 4 };
+
+function unseenThresholdHours(dept){
+  return VITALS_UNSEEN_THRESHOLD_HOURS[dept] || VITALS_UNSEEN_THRESHOLD_HOURS.general;
+}
+
+function lastVitalsReadingTime(p){
+  const log = vitalsState.logs[p.id] || [];
+  if(!log.length) return null;
+  return log.reduce((latest, e) => {
+    const t = new Date(e.ts).getTime();
+    return isNaN(t) ? latest : Math.max(latest, t);
+  }, 0) || null;
+}
+
+// Overdue since either the last logged reading, or since the patient was
+// added if nothing's been logged for them yet.
+function isVitalsPatientOverdue(p, now){
+  const thresholdMs = unseenThresholdHours(p.department) * 3600 * 1000;
+  const lastSeen = lastVitalsReadingTime(p);
+  const since = lastSeen !== null ? lastSeen : new Date(p.createdAt || 0).getTime();
+  if(isNaN(since) || !since) return false;
+  return (now - since) > thresholdMs;
+}
 
 function renderPatientList(){
   const list = document.getElementById('patient-list');
   if(!list) return;
   list.innerHTML = '';
-  const patients = vitalsMineFilterActive ? vitalsState.patients.filter(p => p.mine) : vitalsState.patients;
+  const now = Date.now();
+  let patients = vitalsMineFilterActive ? vitalsState.patients.filter(p => p.mine) : vitalsState.patients;
+  const overdueCount = vitalsState.patients.filter(p => isVitalsPatientOverdue(p, now)).length;
+  if(vitalsOverdueFilterActive) patients = patients.filter(p => isVitalsPatientOverdue(p, now));
+
+  const overdueBanner = document.getElementById('vitals-overdue-banner');
+  if(overdueBanner){
+    if(overdueCount > 0){
+      overdueBanner.hidden = false;
+      overdueBanner.textContent = overdueCount === 1
+        ? '1 patient not seen recently — tap to filter'
+        : `${overdueCount} patients not seen recently — tap to filter`;
+    }else{
+      overdueBanner.hidden = true;
+    }
+  }
+
   patients.forEach(p => {
     const li = document.createElement('li');
-    li.className = 'chapter-li' + (p.id === vitalsState.activePatientId ? ' active' : '');
+    const overdue = isVitalsPatientOverdue(p, now);
+    li.className = 'chapter-li' + (p.id === vitalsState.activePatientId ? ' active' : '') + (overdue ? ' is-overdue' : '');
     if(p.id === vitalsState.activePatientId) li.setAttribute('aria-current', 'page');
     const btn = document.createElement('button');
     btn.type = 'button';
@@ -3231,7 +3294,8 @@ function renderPatientList(){
     const readingCount = (vitalsState.logs[p.id] || []).length;
     const badge = readingCount ? `<span class="chapter-new" aria-label="${readingCount} readings">${readingCount}</span>` : '';
     const isoBadge = isolationBadgeHtml(p.isolation);
-    btn.innerHTML = `<span class="chapter-num">${escapeHtml(p.bed || '—')}</span><span class="chapter-name">${isoBadge}${escapeHtml(p.name || 'Unnamed')}</span>${badge}`;
+    const overdueDot = overdue ? `<span class="overdue-dot" title="Not seen in over ${unseenThresholdHours(p.department)}h"></span>` : '';
+    btn.innerHTML = `<span class="chapter-num">${escapeHtml(p.bed || '—')}</span><span class="chapter-name">${isoBadge}${escapeHtml(p.name || 'Unnamed')}${overdueDot}</span>${badge}`;
     li.appendChild(btn);
     const mineBtn = document.createElement('button');
     mineBtn.type = 'button';
@@ -3249,7 +3313,31 @@ function renderPatientList(){
     li.className = 'chapter-li-empty';
     li.textContent = 'No patients marked as yours this shift yet.';
     list.appendChild(li);
+  }else if(vitalsOverdueFilterActive && !patients.length){
+    const li = document.createElement('li');
+    li.className = 'chapter-li-empty';
+    li.textContent = 'No overdue patients right now.';
+    list.appendChild(li);
   }
+}
+
+function setupVitalsOverdueFilterToggle(){
+  const toggle = document.getElementById('vitals-overdue-filter-toggle');
+  const banner = document.getElementById('vitals-overdue-banner');
+  if(banner && !banner.dataset.wired){
+    banner.dataset.wired = '1';
+    banner.addEventListener('click', () => {
+      vitalsOverdueFilterActive = true;
+      if(toggle) toggle.checked = true;
+      renderPatientList();
+    });
+  }
+  if(!toggle || toggle.dataset.wired) return;
+  toggle.dataset.wired = '1';
+  toggle.addEventListener('change', () => {
+    vitalsOverdueFilterActive = toggle.checked;
+    renderPatientList();
+  });
 }
 
 function setupPatientList(){
@@ -3293,6 +3381,46 @@ function setupVitalsMineFilterToggle(){
 
 /* ---- add / remove patient ---- */
 
+// Simple case/whitespace-insensitive Levenshtein distance — "close enough"
+// name matching for the duplicate-patient guard below (catches things like
+// a missing initial or a typo, not just exact re-typed names).
+function levenshteinDistance(a, b){
+  a = a.toLowerCase(); b = b.toLowerCase();
+  const m = a.length, n = b.length;
+  if(!m) return n;
+  if(!n) return m;
+  const row = new Array(n + 1);
+  for(let j = 0; j <= n; j++) row[j] = j;
+  for(let i = 1; i <= m; i++){
+    let prev = row[0];
+    row[0] = i;
+    for(let j = 1; j <= n; j++){
+      const tmp = row[j];
+      row[j] = a[i - 1] === b[j - 1] ? prev : 1 + Math.min(prev, row[j], row[j - 1]);
+      prev = tmp;
+    }
+  }
+  return row[n];
+}
+
+// Warn-not-block duplicate guard: an exact MRN match, or the same bed with
+// a closely-matching name, are the two cheap signals worth flagging before
+// someone accidentally charts a second record for a patient who's already
+// on the roster.
+function findPossibleDuplicatePatient(name, bed, mrn){
+  const nName = (name || '').trim().toLowerCase();
+  const nBed = (bed || '').trim().toLowerCase();
+  const nMrn = (mrn || '').trim().toLowerCase();
+  return vitalsState.patients.find(p => {
+    if(nMrn && (p.mrn || '').trim().toLowerCase() === nMrn) return true;
+    const pBed = (p.bed || '').trim().toLowerCase();
+    if(!nBed || nBed === '—' || pBed !== nBed) return false;
+    const pName = (p.name || '').trim().toLowerCase();
+    if(!nName || !pName) return true; // same bed, at least one side unnamed — still worth a nudge
+    return nName === pName || levenshteinDistance(nName, pName) <= 2;
+  }) || null;
+}
+
 function setupAddPatientForm(){
   const openBtn = document.getElementById('vitals-add-patient-btn');
   const form = document.getElementById('vitals-add-form');
@@ -3304,8 +3432,22 @@ function setupAddPatientForm(){
   const deptInput = document.getElementById('vitals-new-dept');
   const ageField = document.getElementById('vitals-new-age-field');
   const ageInput = document.getElementById('vitals-new-age');
+  const dupWarning = document.getElementById('vitals-dup-warning');
+  const dupWarningMsg = document.getElementById('vitals-dup-warning-msg');
   if(!openBtn || !form || openBtn.dataset.wired) return;
   openBtn.dataset.wired = '1';
+
+  // Duplicate-patient guard: never hard-blocks, just requires one extra
+  // confirming click once we've flagged a likely-existing match — reset
+  // the moment any identifying field changes so a stale confirmation can't
+  // silently wave through an edited, genuinely-different patient.
+  let dupConfirmed = false;
+  const resetDupWarning = () => {
+    dupConfirmed = false;
+    if(dupWarning) dupWarning.hidden = true;
+    saveBtn.textContent = 'Add patient';
+  };
+  [nameInput, bedInput, mrnInput].forEach(inp => inp.addEventListener('input', resetDupWarning));
 
   const close = () => {
     form.hidden = true;
@@ -3313,6 +3455,7 @@ function setupAddPatientForm(){
     if(deptInput) deptInput.value = 'general';
     if(ageInput) ageInput.value = '';
     if(ageField) ageField.hidden = true;
+    resetDupWarning();
   };
   openBtn.addEventListener('click', () => {
     form.hidden = !form.hidden;
@@ -3331,6 +3474,22 @@ function setupAddPatientForm(){
     const mrn = mrnInput.value.trim();
     const department = (deptInput && deptInput.value) || 'general';
     if(!name && !bed){ nameInput.focus(); return; }
+
+    if(!dupConfirmed){
+      const dup = findPossibleDuplicatePatient(name, bed, mrn);
+      if(dup){
+        dupConfirmed = true;
+        saveBtn.textContent = 'Add anyway';
+        if(dupWarning && dupWarningMsg){
+          dupWarningMsg.innerHTML = `&#9888; This looks like it might be the same as <b>${escapeHtml(dup.name || 'Unnamed')}</b> ` +
+            `(bed ${escapeHtml(dup.bed || '—')}${dup.mrn ? ', MRN ' + escapeHtml(dup.mrn) : ''}), already on the roster — ` +
+            `use the existing patient instead of adding a duplicate, or press Add anyway if this is genuinely a different patient.`;
+          dupWarning.hidden = false;
+        }
+        return;
+      }
+    }
+
     const patient = { id: genVitalsId('pt'), name: name || 'Unnamed', bed: bed || '—', mrn: mrn || '', department, createdAt: new Date().toISOString() };
     if(department === 'pediatrics' && ageInput && ageInput.value.trim() !== ''){
       patient.pediatrics = { ageYears: parseFloat(ageInput.value) };
