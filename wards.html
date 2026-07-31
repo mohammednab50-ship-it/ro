@@ -3488,7 +3488,7 @@ function showToast(msg, kind, action){
   }
   el.className = 'app-toast' + (kind ? ' toast-' + kind : '') + ' show';
   if(toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, action ? 5000 : 2200);
+  toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, action ? 7000 : 2200);
 }
 
 
@@ -4431,10 +4431,24 @@ const DEPT_LABELS = { general: 'GENERAL', icu: 'ICU', surgery: 'SURGERY / POST-O
 function deleteVitalsRow(patientId, entryId){
   const log = vitalsState.logs[patientId];
   if(!log) return;
+  const removedIdx = log.findIndex(e => e.id === entryId);
+  if(removedIdx === -1) return;
+  const removedEntry = log[removedIdx];
   vitalsState.logs[patientId] = log.filter(e => e.id !== entryId);
   saveVitalsData();
   renderPatientList();
   renderVitalsMain();
+  showToast('Reading deleted.', null, {
+    label: 'Undo',
+    onClick: () => {
+      const curLog = vitalsState.logs[patientId] || (vitalsState.logs[patientId] = []);
+      const at = Math.min(removedIdx, curLog.length);
+      curLog.splice(at < 0 ? 0 : at, 0, removedEntry);
+      saveVitalsData();
+      renderPatientList();
+      renderVitalsMain();
+    }
+  });
 }
 
 // Global (general-ward adult) default thresholds — the base fallback
