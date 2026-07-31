@@ -1178,6 +1178,16 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .global-search-item:hover{background:rgba(255,255,255,0.06);}
 .global-search-item .gs-sub{display:block;font-size:11.5px;color:var(--shell-ink-soft);margin-top:2px;}
 .global-search-empty{padding:16px 4px;color:var(--shell-ink-soft);font-family:var(--ff-sans);font-size:13px;text-align:center;}
+.uc-grid{display:flex;flex-direction:column;gap:16px;}
+.uc-row{display:flex;flex-direction:column;gap:6px;}
+.uc-label{font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--shell-ink-soft);}
+.uc-pair{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.uc-pair input, .uc-select{border:1px solid var(--shell-line);background:rgba(255,255,255,0.05);color:var(--shell-ink);border-radius:var(--r-sm);padding:9px 10px;font-family:var(--ff-sans);font-size:13.5px;width:88px;min-width:0;}
+.uc-select{width:auto;max-width:100%;cursor:pointer;}
+.uc-pair input:focus, .uc-select:focus{outline:none;border-color:var(--evidence);}
+.uc-unit{font-family:var(--ff-mono);font-size:11px;color:var(--shell-ink-soft);white-space:nowrap;}
+.uc-eq{color:var(--shell-ink-soft);font-weight:600;}
+@media (max-width:520px){.uc-pair input{width:76px;}}
 
 /* =====================================================================
    Responsive — tablet & phone tuning (additive overrides)
@@ -2003,6 +2013,79 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== Quick unit converter — a handful of common clinical conversions ===== -->
+<div class="rename-overlay" id="unit-converter-modal" role="dialog" aria-modal="true" aria-labelledby="unit-converter-title" hidden>
+  <div class="rename-card settings-card global-search-card" role="document">
+    <button type="button" class="onb-close" id="unit-converter-close" aria-label="Close unit converter">&times;</button>
+    <p class="onb-eyebrow">QUICK CONVERT</p>
+    <h2 class="onb-title serif" id="unit-converter-title">Unit converter</h2>
+    <p class="settings-sub" style="display:block;margin:6px 0 16px;">A handful of common clinical conversions, computed locally. Not a substitute for clinical judgment — double-check anything used for a dose or a chart entry.</p>
+    <div class="uc-grid">
+      <div class="uc-row">
+        <label class="uc-label" for="uc-kg">Weight</label>
+        <div class="uc-pair">
+          <input id="uc-kg" type="number" inputmode="decimal" step="any" placeholder="kg">
+          <span class="uc-unit">kg</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-lb" type="number" inputmode="decimal" step="any" placeholder="lb">
+          <span class="uc-unit">lb</span>
+        </div>
+      </div>
+      <div class="uc-row">
+        <label class="uc-label" for="uc-c">Temperature</label>
+        <div class="uc-pair">
+          <input id="uc-c" type="number" inputmode="decimal" step="any" placeholder="°C">
+          <span class="uc-unit">°C</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-f" type="number" inputmode="decimal" step="any" placeholder="°F">
+          <span class="uc-unit">°F</span>
+        </div>
+      </div>
+      <div class="uc-row">
+        <label class="uc-label" for="uc-ml">Volume</label>
+        <div class="uc-pair">
+          <input id="uc-ml" type="number" inputmode="decimal" step="any" placeholder="mL">
+          <span class="uc-unit">mL</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-floz" type="number" inputmode="decimal" step="any" placeholder="fl oz">
+          <span class="uc-unit">fl oz (US)</span>
+        </div>
+      </div>
+      <div class="uc-row">
+        <label class="uc-label" for="uc-mg">Mass</label>
+        <div class="uc-pair">
+          <input id="uc-mcg" type="number" inputmode="decimal" step="any" placeholder="mcg">
+          <span class="uc-unit">mcg</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-mg" type="number" inputmode="decimal" step="any" placeholder="mg">
+          <span class="uc-unit">mg</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-g" type="number" inputmode="decimal" step="any" placeholder="g">
+          <span class="uc-unit">g</span>
+        </div>
+      </div>
+      <div class="uc-row uc-row-electrolyte">
+        <label class="uc-label" for="uc-electrolyte">Electrolyte</label>
+        <div class="uc-pair">
+          <select id="uc-electrolyte" class="uc-select">
+            <option value="23">Sodium (Na⁺, 23 g/mol)</option>
+            <option value="39.1">Potassium (K⁺, 39.1 g/mol)</option>
+            <option value="40.08">Calcium (Ca²⁺, 40.08 g/mol)</option>
+            <option value="24.3">Magnesium (Mg²⁺, 24.3 g/mol)</option>
+            <option value="31">Phosphorus (as P, 31 g/mol)</option>
+          </select>
+          <input id="uc-elec-mg" type="number" inputmode="decimal" step="any" placeholder="mg">
+          <span class="uc-unit">mg</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-elec-mmol" type="number" inputmode="decimal" step="any" placeholder="mmol">
+          <span class="uc-unit">mmol</span>
+        </div>
+        <p class="settings-sub" style="display:block;margin-top:4px;">mmol only — for mEq of a divalent ion (Ca²⁺, Mg²⁺), double the mmol value.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="header-inner">
     <a class="brand" href="#" aria-label="Rounds — home">
@@ -2021,6 +2104,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <input id="search-input" type="search" placeholder='Search topics, drugs, or trials…' autocomplete="off" spellcheck="false">
       <button id="search-btn" class="btn-search" type="button">Search</button>
       <button id="search-everywhere-btn" class="btn-search-everywhere" type="button" title="Search everywhere — Literature, Drugs, Conditions, Advances, Trials at once">Everywhere</button>
+      <button id="unit-converter-btn" class="btn-search-everywhere" type="button" title="Quick unit converter — kg/lb, °C/°F, mL/fl oz, mg/mmol">Convert</button>
     </form>
     <div class="header-actions">
     <span id="welcome-greeting" class="welcome-greeting" hidden></span>
@@ -10358,6 +10442,7 @@ function init(){
   restoreLastTab();
   setupKeyboardShortcuts();
   setupGlobalSearch();
+  setupUnitConverter();
 }
 
 function restoreLastSpecialty(){
@@ -11105,6 +11190,79 @@ function setupGlobalSearch(){
     const inp = document.getElementById('search-input');
     openGlobalSearch(inp ? inp.value : '');
   };
+}
+
+/* ============================================================
+   Quick unit converter — toolbar modal, bidirectional linked
+   inputs. Client-side only, a handful of common conversions.
+   ============================================================ */
+function ucBindLinear(aId, bId, aToB){
+  const a = document.getElementById(aId), b = document.getElementById(bId);
+  if(!a || !b) return;
+  a.addEventListener('input', () => {
+    const v = parseFloat(a.value);
+    b.value = isFinite(v) ? String(Math.round(aToB(v) * 10000) / 10000) : '';
+  });
+  b.addEventListener('input', () => {
+    const v = parseFloat(b.value);
+    a.value = isFinite(v) ? String(Math.round((v / aToB(1)) * 10000) / 10000) : '';
+  });
+}
+function setupUnitConverter(){
+  const btn = document.getElementById('unit-converter-btn');
+  const modal = document.getElementById('unit-converter-modal');
+  if(!btn || !modal) return;
+
+  ucBindLinear('uc-kg', 'uc-lb', kg => kg * 2.20462);
+  ucBindLinear('uc-ml', 'uc-floz', ml => ml / 29.5735);
+  ucBindLinear('uc-mg', 'uc-g', mg => mg / 1000);
+  ucBindLinear('uc-mcg', 'uc-mg', mcg => mcg / 1000);
+
+  const cEl = document.getElementById('uc-c'), fEl = document.getElementById('uc-f');
+  if(cEl && fEl){
+    cEl.addEventListener('input', () => {
+      const v = parseFloat(cEl.value);
+      fEl.value = isFinite(v) ? String(Math.round((v * 9/5 + 32) * 100) / 100) : '';
+    });
+    fEl.addEventListener('input', () => {
+      const v = parseFloat(fEl.value);
+      cEl.value = isFinite(v) ? String(Math.round(((v - 32) * 5/9) * 100) / 100) : '';
+    });
+  }
+
+  const elecSel = document.getElementById('uc-electrolyte');
+  const mgEl = document.getElementById('uc-elec-mg'), mmolEl = document.getElementById('uc-elec-mmol');
+  if(elecSel && mgEl && mmolEl){
+    const molarMass = () => parseFloat(elecSel.value) || 1;
+    mgEl.addEventListener('input', () => {
+      const v = parseFloat(mgEl.value);
+      mmolEl.value = isFinite(v) ? String(Math.round((v / molarMass()) * 10000) / 10000) : '';
+    });
+    mmolEl.addEventListener('input', () => {
+      const v = parseFloat(mmolEl.value);
+      mgEl.value = isFinite(v) ? String(Math.round((v * molarMass()) * 10000) / 10000) : '';
+    });
+    elecSel.addEventListener('change', () => {
+      if(mgEl.value){ mgEl.dispatchEvent(new Event('input')); }
+      else if(mmolEl.value){ mmolEl.dispatchEvent(new Event('input')); }
+    });
+  }
+
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  btn.onclick = () => {
+    haptic('Light');
+    modal.hidden = false;
+    document.addEventListener('keydown', onKey);
+    const first = document.getElementById('uc-kg');
+    if(first) setTimeout(() => first.focus(), 30);
+  };
+  const closeBtn = document.getElementById('unit-converter-close');
+  if(closeBtn) closeBtn.onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
 }
 
 function setupKeyboardShortcuts(){
