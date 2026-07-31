@@ -6579,7 +6579,7 @@ function showToast(msg, kind, action){
   }
   el.className = 'app-toast' + (kind ? ' toast-' + kind : '') + ' show';
   if(toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, action ? 5000 : 2200);
+  toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, action ? 7000 : 2200);
 }
 
 /* Build a formatted citation string for an article. */
@@ -6751,12 +6751,33 @@ function setBookmarks(obj){ localStorage.setItem(BOOKMARK_KEY, JSON.stringify(ob
 function isBookmarked(pmid){ return !!getBookmarks()[pmid]; }
 function toggleBookmark(article){
   const bm = getBookmarks();
-  let added;
-  if(bm[article.pmid]){ delete bm[article.pmid]; added = false; removeBookmarkNote(article.pmid); }
+  let added, removedArticle, removedNote;
+  if(bm[article.pmid]){
+    removedArticle = bm[article.pmid];
+    removedNote = getBookmarkNote(article.pmid);
+    delete bm[article.pmid];
+    added = false;
+    removeBookmarkNote(article.pmid);
+  }
   else { bm[article.pmid] = article; added = true; }
   haptic('Medium');
   setBookmarks(bm);
-  showToast(added ? 'Saved to your list' : 'Removed from saved', 'ok');
+  if(added){
+    showToast('Saved to your list', 'ok');
+  }else{
+    showToast('Removed from saved.', null, {
+      label: 'Undo',
+      onClick: () => {
+        const bm2 = getBookmarks();
+        bm2[removedArticle.pmid] = removedArticle;
+        setBookmarks(bm2);
+        if(removedNote) setBookmarkNote(removedArticle.pmid, removedNote);
+        if(state.viewingBookmarks) renderBookmarksView();
+        else render();
+        renderChapters();
+      }
+    });
+  }
   if(state.viewingBookmarks) renderBookmarksView();
   else render();
   renderChapters();
