@@ -744,6 +744,12 @@ details.guideline-updates[open] > summary .section-chevron{transform:rotate(180d
 .ix-suggest{display:flex;flex-wrap:wrap;gap:8px;margin:var(--space-4) 0 0;}
 .ix-suggest button{border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);font-family:var(--ff-mono);font-size:11.5px;letter-spacing:var(--tracking-wide);padding:6px 13px;border-radius:var(--r-pill);cursor:pointer;transition:all var(--dur-fast) var(--ease-out);}
 .ix-suggest button:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);transform:translateY(-1px);}
+.rx-linkrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 var(--space-3);}
+.rx-link-chip{font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--evidence-dark);background:var(--evidence-bg);border:1px solid var(--evidence);border-radius:var(--r-pill);padding:5px 12px;cursor:pointer;transition:background var(--dur-fast) var(--ease-out);}
+.rx-link-chip:hover{background:var(--evidence);color:#fff;}
+.syndrome-drug-links{margin-top:6px;font-family:var(--ff-sans);font-size:12px;line-height:1.9;}
+.syndrome-drug-links-label{color:var(--ink-faint);margin-right:4px;}
+.syndrome-drug-links .rx-link-chip{padding:3px 10px;font-size:11.5px;}
 .ix-chips{list-style:none;margin:var(--space-5) 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
 .ix-chip{display:inline-flex;align-items:center;gap:8px;background:var(--evidence-bg);border:1px solid var(--evidence);color:var(--evidence-dark);border-radius:var(--r-pill);padding:6px 8px 6px 14px;font-family:var(--ff-sans);font-size:13px;font-weight:600;}
 .ix-chip button{border:none;background:none;color:var(--evidence-dark);cursor:pointer;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:15px;line-height:1;transition:background var(--dur-fast) var(--ease-out);}
@@ -2137,7 +2143,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </section>
 
     <section id="drug-sub-calc" class="drug-sub" hidden>
-      <p class="drug-generic" style="margin-bottom:24px;font-style:normal;font-family:var(--ff-sans);font-size:13px;max-width:64ch;">Drug-based dosing. Pick an agent and regimen, enter patient weight, and the calculator applies that drug's per-kg dose to give you a recommended dose, per-dose split, daily cap, and renal note. These are aids, not prescriptions &mdash; verify every result against the label and your institution's protocols.</p>
+      <p class="drug-generic" style="margin-bottom:24px;font-style:normal;font-family:var(--ff-sans);font-size:13px;max-width:64ch;">Drug-based dosing. Pick an agent and regimen, enter patient weight and (optionally) estimated renal function, and the calculator applies that drug's per-kg dose and renal-adjustment threshold to give you a recommended dose, per-dose split, daily cap, and renal guidance for drugs with a renal-adjusted regimen. These are aids, not prescriptions &mdash; verify every result, especially renal-adjusted doses, against the label and your institution's protocols/pharmacy.</p>
 
       <div class="rx-panel">
         <div class="rx-field" style="margin-bottom:var(--space-5);">
@@ -2170,6 +2176,10 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
           <div class="rx-field">
             <label for="rx-weight">Patient weight <span style="font-family:var(--ff-mono);font-weight:400;color:var(--ink-faint);">kg</span></label>
             <input id="rx-weight" type="number" inputmode="decimal" min="0" step="any" placeholder="70">
+          </div>
+          <div class="rx-field">
+            <label for="rx-crcl">Estimated renal function <span style="font-family:var(--ff-mono);font-weight:400;color:var(--ink-faint);">CrCl/eGFR, mL/min</span></label>
+            <input id="rx-crcl" type="number" inputmode="decimal" min="0" step="any" placeholder="optional, e.g. 45">
           </div>
         </div>
         <div class="rx-out" id="rx-out" aria-live="polite"></div>
@@ -7657,9 +7667,17 @@ function initSyndromes(){
 
 function syndromeRowHtml(s){
   const src = `https://medlineplus.gov/search/?query=${encodeURIComponent(s.name)}`;
+  const links = conditionLinksFor(s.name);
+  const drugLinksHtml = links.length ? `<div class="syndrome-drug-links">${links.map(l => {
+    const chips = l.drugs.map(id => {
+      const dr = RX_DRUGS.find(d => d.id === id);
+      return dr ? `<button type="button" class="rx-link-chip" data-drug="${escapeHtml(id)}" title="${escapeHtml(l.relation)}">${escapeHtml(dr.generic)}</button>` : '';
+    }).join('');
+    return `<span class="syndrome-drug-links-label">${escapeHtml(l.relation)}:</span> ${chips}`;
+  }).join('<br>')}</div>` : '';
   return `<li class="syndrome-row" data-condition="${escapeHtml(s.name)}">
     <span class="syndrome-name">${escapeHtml(s.name)}</span>
-    <span class="syndrome-desc">${escapeHtml(s.desc)}</span>
+    <span class="syndrome-desc">${escapeHtml(s.desc)}${drugLinksHtml}</span>
     <span class="syndrome-actions">
       <button type="button" class="syndrome-evidence-btn" aria-expanded="false">Recent research <span class="chev" aria-hidden="true">▾</span></button>
       <a class="syndrome-src" href="${src}" target="_blank" rel="noopener">Look up →</a>
@@ -7722,6 +7740,8 @@ function setupConditionEvidence(){
   if(!view || view.dataset.evidenceWired) return;
   view.dataset.evidenceWired = '1';
   view.addEventListener('click', e => {
+    const drugChip = e.target.closest('.rx-link-chip[data-drug]');
+    if(drugChip){ jumpToRxDrugCalc(drugChip.dataset.drug); return; }
     const btn = e.target.closest('.syndrome-evidence-btn');
     if(!btn) return;
     const row = btn.closest('.syndrome-row');
@@ -8834,21 +8854,21 @@ const RX_DRUGS = [
     ]
   },
   {
-    id:'enoxaparin', brand:'Lovenox', generic:'Enoxaparin', ref:'FDA label', renalFlagCrCl:30,
+    id:'enoxaparin', brand:'Lovenox', generic:'Enoxaparin', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: reduce to 1 mg/kg SC once daily (treatment) or 30 mg SC once daily (prophylaxis), instead of the usual q12h/40 mg dosing.',
     regimens:[
       { id:'treat', label:'Treatment (VTE)', perKg:[1,1], basis:'dose', freq:2, unit:'mg', note:'1 mg/kg SC q12h. Renal (CrCl <30): 1 mg/kg q24h.' },
       { id:'prophy', label:'Prophylaxis', fixed:[40], freq:1, unit:'mg', note:'40 mg SC once daily (fixed). Renal (CrCl <30): 30 mg q24h.' }
     ]
   },
   {
-    id:'gentamicin', brand:'Garamycin', generic:'Gentamicin', ref:'FDA label', renalFlagCrCl:60,
+    id:'gentamicin', brand:'Garamycin', generic:'Gentamicin', ref:'FDA label', renalFlagCrCl:60, renalAdjust:'CrCl <60: extend the dosing interval (e.g. q36–48h) and dose by trough/peak levels; consider a pharmacokinetic dosing consult.',
     regimens:[
       { id:'od', label:'Extended-interval (adult)', perKg:[5,7], basis:'dose', freq:1, unit:'mg', note:'5–7 mg/kg q24h, adjust by levels & renal function.' },
       { id:'peds', label:'Conventional (peds)', perKg:[2,2.5], basis:'dose', freq:3, unit:'mg', note:'2–2.5 mg/kg q8h. Monitor levels.' }
     ]
   },
   {
-    id:'vancomycin', brand:'Vancocin', generic:'Vancomycin', ref:'ASHP/IDSA 2020', renalFlagCrCl:50,
+    id:'vancomycin', brand:'Vancocin', generic:'Vancomycin', ref:'ASHP/IDSA 2020', renalFlagCrCl:50, renalAdjust:'CrCl <50: extend the dosing interval and target AUC-guided levels; consider a pharmacokinetic dosing consult.',
     regimens:[
       { id:'iv', label:'IV, serious infection', perKg:[15,20], basis:'dose', freq:2, maxDose:2000, unit:'mg', note:'15–20 mg/kg q8–12h (actual body weight). Target AUC-guided; max ~2 g/dose.' }
     ]
@@ -8932,21 +8952,21 @@ const RX_DRUGS = [
     ]
   },
   {
-    id:'cotrimoxazole', brand:'Bactrim', generic:'Trimethoprim-sulfamethoxazole', ref:'FDA label', renalFlagCrCl:30,
+    id:'cotrimoxazole', brand:'Bactrim', generic:'Trimethoprim-sulfamethoxazole', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl 15–30: reduce the dose by 50%. CrCl <15 (not on dialysis): avoid.',
     regimens:[
       { id:'peds', label:'Infection (peds, TMP component)', perKg:[8,12], basis:'day', freq:2, unit:'mg', note:'8–12 mg/kg/day of TMP divided q12h.' },
       { id:'adult', label:'Adult, DS tab', fixed:[160,160], freq:2, unit:'mg', note:'1 DS tab (160 mg TMP) q12h (fixed).' }
     ]
   },
   {
-    id:'ciprofloxacin', brand:'Cipro', generic:'Ciprofloxacin', ref:'FDA label', renalFlagCrCl:30,
+    id:'ciprofloxacin', brand:'Cipro', generic:'Ciprofloxacin', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: reduce the dose or extend the interval (commonly by ~50%).',
     regimens:[
       { id:'adult-po', label:'Adult PO', fixed:[500,750], freq:2, unit:'mg', note:'500–750 mg PO q12h (fixed).' },
       { id:'adult-iv', label:'Adult IV', fixed:[400,400], freq:2, unit:'mg', note:'400 mg IV q8–12h (fixed).' }
     ]
   },
   {
-    id:'levofloxacin', brand:'Levaquin', generic:'Levofloxacin', ref:'FDA label', renalFlagCrCl:50,
+    id:'levofloxacin', brand:'Levaquin', generic:'Levofloxacin', ref:'FDA label', renalFlagCrCl:50, renalAdjust:'CrCl <50: reduce the dose and/or extend the interval per the label\'s renal dosing table.',
     regimens:[
       { id:'adult', label:'Adult', fixed:[500,750], freq:1, unit:'mg', note:'500–750 mg once daily (fixed).' }
     ]
@@ -9021,7 +9041,7 @@ const RX_DRUGS = [
     ]
   },
   {
-    id:'ranitidine-alt', brand:'Pepcid', generic:'Famotidine', ref:'FDA label', renalFlagCrCl:50,
+    id:'ranitidine-alt', brand:'Pepcid', generic:'Famotidine', ref:'FDA label', renalFlagCrCl:50, renalAdjust:'CrCl <50: reduce the dose or extend the interval (e.g. from q24h to q36–48h).',
     regimens:[
       { id:'peds', label:'GERD (peds)', perKg:[0.5,1], basis:'day', freq:2, maxDose:40, unit:'mg', note:'0.5–1 mg/kg/day divided BID, max 40 mg/dose.' },
       { id:'adult', label:'Adult', fixed:[20,40], freq:2, unit:'mg', note:'20–40 mg BID (fixed).' }
@@ -9079,7 +9099,7 @@ const RX_DRUGS = [
     ]
   },
 
-  { id:'metformin', brand:'Glucophage', generic:'Metformin', ref:'FDA label', renalFlagCrCl:30,
+  { id:'metformin', brand:'Glucophage', generic:'Metformin', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl 30–45: cap at 1000 mg/day and avoid starting new therapy. CrCl <30: contraindicated — do not use.',
     regimens:[
       { id:'adult', label:'Type 2 diabetes (adult)', fixed:[500,1000], freq:2, hardMaxDay:2550, unit:'mg', note:'Start 500 mg BID, titrate. Max 2550 mg/day. Hold if CrCl <30 or contrast.' }
     ] },
@@ -9117,7 +9137,7 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Hypertension (adult)', fixed:[12.5,50], freq:1, unit:'mg', note:'12.5–50 mg once daily. Monitor Na⁺/K⁺.' } ] },
   { id:'spironolactone', brand:'Aldactone', generic:'Spironolactone', ref:'FDA label',
     regimens:[ { id:'adult', label:'Adult', fixed:[25,100], freq:1, unit:'mg', note:'25–100 mg/day. Monitor K⁺ (hyperkalemia risk).' } ] },
-  { id:'digoxin', brand:'Lanoxin', generic:'Digoxin', ref:'FDA label', renalFlagCrCl:50,
+  { id:'digoxin', brand:'Lanoxin', generic:'Digoxin', ref:'FDA label', renalFlagCrCl:50, renalAdjust:'CrCl <50: reduce the maintenance dose (commonly by ~30–50%) and check a level before further titration.',
     regimens:[ { id:'adult', label:'Rate control / HF (adult)', fixed:[0.125,0.25], freq:1, unit:'mg', note:'0.125–0.25 mg once daily. Narrow therapeutic index — monitor levels.' } ] },
   { id:'amiodarone', brand:'Cordarone', generic:'Amiodarone', ref:'FDA label',
     regimens:[ { id:'adult', label:'Maintenance (adult)', fixed:[100,400], freq:1, unit:'mg', note:'Load then 100–400 mg/day. Many interactions (CYP/QT).' } ] },
@@ -9129,9 +9149,9 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Anticoagulation (adult)', fixed:[2,10], freq:1, unit:'mg', note:'Individualize to INR target. Many food/drug interactions.' } ] },
   { id:'apixaban', brand:'Eliquis', generic:'Apixaban', ref:'FDA label',
     regimens:[ { id:'afib', label:'AF stroke prevention', fixed:[2.5,5], freq:2, unit:'mg', note:'5 mg BID; 2.5 mg BID if ≥2 of age≥80, wt≤60 kg, Cr≥1.5.' } ] },
-  { id:'rivaroxaban', brand:'Xarelto', generic:'Rivaroxaban', ref:'FDA label', renalFlagCrCl:30,
+  { id:'rivaroxaban', brand:'Xarelto', generic:'Rivaroxaban', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl 15–50: reduce the dose per indication (e.g. 15 mg once daily for AF stroke prevention). CrCl <15: avoid.',
     regimens:[ { id:'afib', label:'AF stroke prevention', fixed:[15,20], freq:1, unit:'mg', note:'20 mg daily with food; 15 mg if CrCl 15–50.' } ] },
-  { id:'dabigatran', brand:'Pradaxa', generic:'Dabigatran', ref:'FDA label', renalFlagCrCl:30,
+  { id:'dabigatran', brand:'Pradaxa', generic:'Dabigatran', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl 15–30: reduce to 75 mg BID. CrCl <15 or on dialysis: avoid.',
     regimens:[ { id:'afib', label:'AF stroke prevention', fixed:[110,150], freq:2, unit:'mg', note:'150 mg BID; 110 mg BID if high bleed risk.' } ] },
   { id:'atorvastatin', brand:'Lipitor', generic:'Atorvastatin', ref:'FDA label',
     regimens:[ { id:'adult', label:'Dyslipidemia (adult)', fixed:[10,80], freq:1, unit:'mg', note:'10–80 mg once daily.' } ] },
@@ -9145,7 +9165,7 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Type 2 diabetes (adult)', fixed:[1,8], freq:1, unit:'mg', note:'1–8 mg once daily with breakfast.' } ] },
   { id:'glipizide', brand:'Glucotrol', generic:'Glipizide', ref:'FDA label',
     regimens:[ { id:'adult', label:'Type 2 diabetes (adult)', fixed:[5,40], freq:1, unit:'mg', note:'5–40 mg/day. Hypoglycemia risk.' } ] },
-  { id:'sitagliptin', brand:'Januvia', generic:'Sitagliptin', ref:'FDA label', renalFlagCrCl:45,
+  { id:'sitagliptin', brand:'Januvia', generic:'Sitagliptin', ref:'FDA label', renalFlagCrCl:45, renalAdjust:'CrCl 30–45: reduce to 50 mg once daily. CrCl <30: reduce to 25 mg once daily.',
     regimens:[ { id:'adult', label:'Type 2 diabetes (adult)', fixed:[100,100], freq:1, unit:'mg', note:'100 mg once daily; reduce in renal impairment.' } ] },
   { id:'empagliflozin', brand:'Jardiance', generic:'Empagliflozin', ref:'FDA label',
     regimens:[ { id:'adult', label:'Type 2 diabetes / HF (adult)', fixed:[10,25], freq:1, unit:'mg', note:'10–25 mg once daily in the morning.' } ] },
@@ -9185,9 +9205,9 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Psychosis (adult)', fixed:[5,20], freq:1, unit:'mg', note:'5–20 mg once daily. Metabolic monitoring.' } ] },
   { id:'haloperidol', brand:'Haldol', generic:'Haloperidol', ref:'FDA label',
     regimens:[ { id:'adult', label:'Agitation (adult)', fixed:[0.5,5], freq:3, unit:'mg', note:'0.5–5 mg PO/IM. QT prolongation; EPS.' } ] },
-  { id:'gabapentin', brand:'Neurontin', generic:'Gabapentin', ref:'FDA label', renalFlagCrCl:60,
+  { id:'gabapentin', brand:'Neurontin', generic:'Gabapentin', ref:'FDA label', renalFlagCrCl:60, renalAdjust:'CrCl 30–59: reduce the total daily dose by roughly half; reduce further and extend the interval as CrCl falls.',
     regimens:[ { id:'adult', label:'Neuropathic pain (adult)', fixed:[300,1200], freq:3, hardMaxDay:3600, unit:'mg', note:'Titrate 300 mg → up to 3600 mg/day divided. Renal adjust.' } ] },
-  { id:'pregabalin', brand:'Lyrica', generic:'Pregabalin', ref:'FDA label', renalFlagCrCl:60,
+  { id:'pregabalin', brand:'Lyrica', generic:'Pregabalin', ref:'FDA label', renalFlagCrCl:60, renalAdjust:'CrCl 30–60: reduce the total daily dose by roughly half; reduce further at lower CrCl.',
     regimens:[ { id:'adult', label:'Neuropathic pain (adult)', fixed:[75,300], freq:2, hardMaxDay:600, unit:'mg', note:'75–300 mg BID. Renal adjust.' } ] },
   { id:'phenytoin', brand:'Dilantin', generic:'Phenytoin', ref:'FDA label',
     regimens:[ { id:'load', label:'Loading dose (IV)', perKg:[15,20], basis:'dose', freq:1, unit:'mg', note:'15–20 mg/kg IV load (≤50 mg/min). Narrow index; monitor levels.' } ] },
@@ -9215,13 +9235,13 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Adult', perKg:[10,13], basis:'day', freq:2, unit:'mg', note:'~10 mg/kg/day. Narrow index; monitor levels; many interactions.' } ] },
   { id:'fluconazole', brand:'Diflucan', generic:'Fluconazole', ref:'FDA label', renalFlagCrCl:50,
     regimens:[ { id:'adult', label:'Candidiasis (adult)', fixed:[100,400], freq:1, unit:'mg', note:'Load 200–400 mg then 100–400 mg daily. CYP inhibitor; QT.' } ] },
-  { id:'acyclovir', brand:'Zovirax', generic:'Acyclovir', ref:'FDA label', renalFlagCrCl:50,
+  { id:'acyclovir', brand:'Zovirax', generic:'Acyclovir', ref:'FDA label', renalFlagCrCl:50, renalAdjust:'CrCl <50: extend the dosing interval per the label\'s renal dosing table; ensure adequate hydration.',
     regimens:[ { id:'peds', label:'HSV (peds, IV)', perKg:[10,20], basis:'dose', freq:3, unit:'mg', note:'10–20 mg/kg/dose IV q8h. Maintain hydration; renal adjust.' } ] },
-  { id:'oseltamivir', brand:'Tamiflu', generic:'Oseltamivir', ref:'FDA label', renalFlagCrCl:60,
+  { id:'oseltamivir', brand:'Tamiflu', generic:'Oseltamivir', ref:'FDA label', renalFlagCrCl:60, renalAdjust:'CrCl 30–60: reduce to 30 mg BID (from 75 mg BID); reduce further at lower CrCl.',
     regimens:[ { id:'adult', label:'Influenza (adult)', fixed:[75,75], freq:2, unit:'mg', note:'75 mg BID × 5 days. Renal adjust.' } ] },
   { id:'doxycycline', brand:'Vibramycin', generic:'Doxycycline', ref:'FDA label',
     regimens:[ { id:'adult', label:'Adult', fixed:[100,100], freq:2, unit:'mg', note:'100 mg BID. Avoid in young children/pregnancy.' } ] },
-  { id:'nitrofurantoin', brand:'Macrobid', generic:'Nitrofurantoin', ref:'FDA label', renalFlagCrCl:30,
+  { id:'nitrofurantoin', brand:'Macrobid', generic:'Nitrofurantoin', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: avoid — inadequate urinary concentration and higher toxicity risk.',
     regimens:[ { id:'adult', label:'UTI (adult)', fixed:[100,100], freq:2, unit:'mg', note:'100 mg BID × 5 days. Avoid if CrCl <30.' } ] },
   { id:'hydralazine', brand:'Apresoline', generic:'Hydralazine', ref:'FDA label',
     regimens:[ { id:'adult', label:'Hypertension (adult)', fixed:[10,50], freq:4, unit:'mg', note:'10–50 mg QID. IV for hypertensive emergency.' } ] },
@@ -9287,11 +9307,11 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Adult', fixed:[50], freq:3, hardMaxDay:150, unit:'mg', note:'50 mg q8h. Max 150 mg/day.' } ] },
   { id:'celecoxib', brand:'Celebrex', generic:'Celecoxib', ref:'FDA label',
     regimens:[ { id:'adult', label:'Adult', fixed:[100,200], freq:2, hardMaxDay:400, unit:'mg', note:'100–200 mg q12h.' } ] },
-  { id:'colchicine', brand:'Colcrys', generic:'Colchicine', ref:'FDA label', renalFlagCrCl:30,
+  { id:'colchicine', brand:'Colcrys', generic:'Colchicine', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: reduce the dose and avoid repeat dosing within 14 days; also avoid with strong CYP3A4/P-gp inhibitors.',
     regimens:[ { id:'gout', label:'Acute gout (adult)', fixed:[500], freq:2, hardMaxDay:1500, unit:'mcg', note:'0.5 mg q12h. Reduce with CYP3A4/P-gp inhibitors & renal impairment.' } ] },
-  { id:'allopurinol', brand:'Zyloprim', generic:'Allopurinol', ref:'FDA label', renalFlagCrCl:30,
+  { id:'allopurinol', brand:'Zyloprim', generic:'Allopurinol', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: start at a lower dose (e.g. 50–100 mg/day) and titrate slowly to urate target.',
     regimens:[ { id:'gout', label:'Gout prophylaxis', fixed:[100,300], freq:1, unit:'mg', note:'Start 100 mg daily, titrate to urate target. Reduce in renal impairment.' } ] },
-  { id:'baclofen', brand:'Lioresal', generic:'Baclofen', ref:'FDA label', renalFlagCrCl:30,
+  { id:'baclofen', brand:'Lioresal', generic:'Baclofen', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: reduce the starting dose and titrate cautiously — risk of accumulation and toxicity.',
     regimens:[ { id:'adult', label:'Spasticity (adult)', fixed:[5,10], freq:3, unit:'mg', note:'Start 5 mg q8h, titrate. Renal dose adjustment needed.' } ] },
   { id:'tranexamic', brand:'Cyklokapron', generic:'Tranexamic acid', ref:'FDA label',
     regimens:[
@@ -9412,6 +9432,67 @@ const RX_DRUGS = [
   { id:'loratadine', brand:'Claritin', generic:'Loratadine', ref:'FDA label',
     regimens:[ { id:'allergy', label:'Allergy (adult)', fixed:[10], freq:1, unit:'mg', note:'10 mg once daily.' } ] }
 ];
+
+/* ============================================================
+   Drug ↔ Condition cross-reference — curated pairs linking RX_DRUGS
+   ids to SYNDROMES condition names already present in this app.
+   Only pairs with a clear causative/treatment relationship. Not
+   exhaustive — many real associations aren't captured here.
+   ============================================================ */
+const CONDITION_DRUG_LINKS = [
+  { condition:'Serotonin syndrome', relation:'Causative agents (serotonergic drugs)',
+    drugs:['sertraline','fluoxetine','escitalopram','citalopram','venlafaxine','duloxetine','mirtazapine','amitriptyline','tramadol','ondansetron','linezolid','fentanyl','methadone'] },
+  { condition:'Neuroleptic malignant syndrome', relation:'Causative agents (antipsychotics)',
+    drugs:['haloperidol','quetiapine','risperidone','olanzapine','prochlorperazine'] },
+  { condition:'Long QT syndrome', relation:'QT-prolonging drugs to review/avoid',
+    drugs:['amiodarone','citalopram','escitalopram','haloperidol','ondansetron','fluconazole','levofloxacin','ciprofloxacin','azithromycin','clarithromycin','erythromycin','quetiapine','methadone','prochlorperazine'] },
+  { condition:'SIADH', relation:'Drugs that can precipitate SIADH',
+    drugs:['citalopram','escitalopram','sertraline','fluoxetine','venlafaxine','duloxetine','carbamazepine','hydrochlorothiazide'] },
+  { condition:'Tumor lysis syndrome', relation:'Prevention/treatment',
+    drugs:['allopurinol'] },
+  { condition:'Stevens-Johnson syndrome', relation:'High-risk causative drugs',
+    drugs:['allopurinol','carbamazepine','phenytoin','cotrimoxazole'] },
+  { condition:'Toxic epidermal necrolysis', relation:'High-risk causative drugs',
+    drugs:['allopurinol','carbamazepine','phenytoin','cotrimoxazole'] },
+  { condition:'Reye syndrome', relation:'Causative agent — avoid in febrile children/teens with viral illness',
+    drugs:['aspirin'] },
+  { condition:'Metabolic syndrome', relation:'Drugs used to manage components',
+    drugs:['metformin','atorvastatin','rosuvastatin','simvastatin','lisinopril','losartan'] },
+  { condition:'Compartment syndrome', relation:'Anticoagulants that raise bleeding/compartment risk',
+    drugs:['enoxaparin','heparin','warfarin','rivaroxaban','dabigatran'] }
+];
+function conditionLinksFor(name){ return CONDITION_DRUG_LINKS.filter(l => l.condition === name); }
+function drugLinksFor(drugId){ return CONDITION_DRUG_LINKS.filter(l => l.drugs.indexOf(drugId) !== -1); }
+
+function jumpToRxDrugCalc(drugId){
+  switchView('drug');
+  const nav = document.getElementById('drug-subnav');
+  const btn = nav && nav.querySelector('.syndrome-toggle-btn[data-sub="calc"]');
+  if(btn) btn.click();
+  const dr = RX_DRUGS.find(d => d.id === drugId);
+  const search = document.getElementById('rx-search');
+  if(search && dr){
+    search.value = dr.generic;
+    search.dispatchEvent(new Event('input'));
+  }
+  recordRecentlyViewed('drug', dr ? dr.generic : drugId);
+}
+function jumpToCondition(name){
+  switchView('syndromes');
+  const search = document.getElementById('syndrome-search');
+  if(search){
+    search.value = name;
+    syndromesState.query = name.toLowerCase();
+    renderSyndromeGroups();
+  }
+  recordRecentlyViewed('condition', name);
+}
+function conditionLinksHtml(drugId){
+  const links = drugLinksFor(drugId);
+  if(!links.length) return '';
+  const chips = links.map(l => `<button type="button" class="rx-link-chip" data-condition="${escapeHtml(l.condition)}" title="${escapeHtml(l.relation)}">${escapeHtml(l.condition)}</button>`).join('');
+  return `<p class="rx-meta"><strong>Related conditions in this app:</strong></p><p class="rx-linkrow">${chips}</p>`;
+}
 
 /* ============================================================
    Drug interaction checker — curated pairs + class rules
@@ -9695,6 +9776,7 @@ function setupDrugDosing(){
   const drugSel = document.getElementById('rx-drug');
   const regSel  = document.getElementById('rx-regimen');
   const wEl      = document.getElementById('rx-weight');
+  const crclEl   = document.getElementById('rx-crcl');
   const out      = document.getElementById('rx-out');
   const searchEl = document.getElementById('rx-search');
   const dataList = document.getElementById('rx-datalist');
@@ -9878,9 +9960,19 @@ function setupDrugDosing(){
     }
 
     if(dr.renalFlagCrCl){
-      body += `<p class="rx-meta" style="color:var(--fresh);"><strong>Renal:</strong> dose adjustment needed if CrCl &lt; ${dr.renalFlagCrCl} mL/min — see the CrCl tool below.</p>`;
+      const crcl = parseFloat(crclEl && crclEl.value);
+      if(crcl > 0){
+        if(crcl < dr.renalFlagCrCl){
+          body += `<p class="rx-flag"><strong>Renal adjustment needed</strong> — entered CrCl/eGFR ${fmt(crcl,0)} mL/min is below this drug's ${dr.renalFlagCrCl} mL/min threshold. ${escapeHtml(dr.renalAdjust || 'Reduce dose and/or extend the interval per the label and institutional protocol.')}</p>`;
+        } else {
+          body += `<p class="rx-meta" style="color:var(--fresh);"><strong>Renal:</strong> entered CrCl/eGFR ${fmt(crcl,0)} mL/min is at or above the ${dr.renalFlagCrCl} mL/min adjustment threshold — standard dosing above applies. Re-check if renal function changes.</p>`;
+        }
+      } else {
+        body += `<p class="rx-meta" style="color:var(--fresh);"><strong>Renal:</strong> dose adjustment needed if CrCl &lt; ${dr.renalFlagCrCl} mL/min. Enter the patient's CrCl/eGFR above, or use the Creatinine clearance tool below, to see specific guidance.</p>`;
+      }
     }
 
+    body += conditionLinksHtml(dr.id);
     body += `<p class="rx-ref">Reference: ${dr.ref} · educational aid — verify against the label.</p>`;
     out.innerHTML = head + body;
   }
@@ -9888,12 +9980,17 @@ function setupDrugDosing(){
   drugSel.addEventListener('change', () => { setNote(''); fillRegimens(); compute(); });
   regSel.addEventListener('change', compute);
   wEl.addEventListener('input', compute);
+  if(crclEl) crclEl.addEventListener('input', compute);
   if(searchEl){
     searchEl.addEventListener('input', handleSearch);
-    searchEl.addEventListener('change', handleSearch);
   }
   if(customDose) customDose.addEventListener('input', compute);
   if(customFreq) customFreq.addEventListener('input', compute);
+  out.addEventListener('mousedown', e => { if(e.target.closest('.rx-link-chip')) e.preventDefault(); });
+  out.addEventListener('click', e => {
+    const chip = e.target.closest('.rx-link-chip');
+    if(chip) jumpToCondition(chip.dataset.condition);
+  });
 
   fillRegimens();
   compute();
