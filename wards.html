@@ -2413,6 +2413,20 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:700;cursor:pointer;}
 .wards-demo-banner button:hover{background:rgba(255,255,255,.22);}
 
+/* ---- QR display / scan modals — plain fixed overlay, same visual
+   weight as the CTG lightbox but its own simple markup since the
+   content (canvas / video) is different. ---- */
+.wards-qr-modal{position:fixed;inset:0;z-index:400;display:none;place-items:center;background:rgba(6,8,12,.72);padding:20px;}
+.wards-qr-modal.show{display:grid;}
+.wards-qr-card{position:relative;max-width:340px;width:100%;background:var(--surface);border-radius:var(--r-md);padding:24px 22px 20px;text-align:center;box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,.3));}
+.wards-qr-card h3{margin:0 0 14px;font-family:var(--ff-display);font-size:18px;color:var(--ink);}
+.wards-qr-card canvas{background:#fff;border-radius:8px;display:block;margin:0 auto;}
+.wards-qr-card video{width:100%;max-height:280px;border-radius:8px;background:#000;object-fit:cover;}
+.wards-qr-value{font-family:var(--ff-mono);font-size:13px;color:var(--ink-soft);margin:12px 0 6px;word-break:break-all;}
+.wards-qr-disclaimer{font-family:var(--ff-sans);font-size:11.5px;color:var(--ink-faint);line-height:1.5;margin:0;}
+.wards-qr-card .mat-lb-close{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--ink-faint);font-size:22px;cursor:pointer;line-height:1;}
+.wards-qr-card .mat-lb-close:hover{color:var(--ink);}
+
 .wards-tabbar{
   display:flex; gap:6px; padding:10px 28px; max-width:1280px; margin:0 auto;
   border-bottom:1px solid var(--line);
@@ -2538,6 +2552,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <button type="button" class="vitals-btn-outline vitals-sbar-all-btn" id="vitals-sbar-all-btn" title="Generate one combined SBAR handover for every patient marked as yours this shift">SBAR &mdash; my patients this shift</button>
     <ol class="chapter-list" id="patient-list"></ol>
     <button type="button" class="vitals-add-patient-btn" id="vitals-add-patient-btn">+ Add patient</button>
+    <button type="button" class="vitals-add-patient-btn vitals-btn-outline" id="vitals-scan-patient-btn" hidden>&#128247; Scan patient ID</button>
     <div class="vitals-add-form" id="vitals-add-form" hidden>
       <div class="vitals-field">
         <label for="vitals-new-name">Name / initials</label>
@@ -2623,6 +2638,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             </select>
             <input id="vitals-interval-custom" type="number" min="1" step="1" placeholder="min" hidden style="width:70px;">
           </label>
+          <button type="button" class="vitals-btn-outline" id="vitals-show-qr-btn" title="Show a QR code encoding this patient's MRN/ID — a personal charting convenience, not a replacement for your hospital's official wristband/ID system">ID QR</button>
           <button type="button" class="vitals-btn-outline" id="vitals-allergies-btn" title="Set this patient's known allergies">Allergies</button>
           <button type="button" class="vitals-btn-outline" id="vitals-baselines-btn" title="Set this patient's own normal-range overrides">Baselines</button>
           <button type="button" class="vitals-btn-outline" id="vitals-sbar-btn" title="Generate a Situation-Background-Assessment-Recommendation handover summary">SBAR handover</button>
@@ -3171,6 +3187,26 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 
 <div id="vitals-print-summary"></div>
 
+<div class="wards-qr-modal" id="wards-qr-modal" hidden>
+  <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-qr-title">
+    <button type="button" class="mat-lb-close" id="wards-qr-close" aria-label="Close">&times;</button>
+    <h3 id="wards-qr-title">Patient ID QR</h3>
+    <canvas id="wards-qr-canvas" width="200" height="200"></canvas>
+    <p class="wards-qr-value" id="wards-qr-value"></p>
+    <p class="wards-qr-disclaimer">Personal charting convenience only — not a replacement for your hospital's official wristband/ID system. Print or screenshot for your own quick lookup.</p>
+  </div>
+</div>
+
+<div class="wards-qr-modal" id="wards-scan-modal" hidden>
+  <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-scan-title">
+    <button type="button" class="mat-lb-close" id="wards-scan-close" aria-label="Close">&times;</button>
+    <h3 id="wards-scan-title">Scan patient ID</h3>
+    <video id="wards-scan-video" playsinline muted></video>
+    <p class="wards-qr-value" id="wards-scan-status">Point the camera at a patient ID QR code.</p>
+    <p class="wards-qr-disclaimer">Reads a QR/barcode you generated from this app's own "ID QR" screen — not any official hospital wristband system.</p>
+  </div>
+</div>
+
 <div class="mat-lightbox" id="mat-lightbox">
   <button class="mat-lb-close" id="mat-lb-close" aria-label="Close">&times;</button>
   <button type="button" class="mat-lb-grid-toggle" id="mat-lb-grid-toggle" aria-pressed="false" title="Toggle readability gridlines over the CTG trace">Grid</button>
@@ -3627,6 +3663,357 @@ function escapeHtml(s){
 
 
 
+/* Minimal QR code encoder (byte mode, EC level L, versions 1-10) —
+   adapted from the well-known compact public-domain/MIT reference
+   algorithm (Kazuhiko Arase's qrcode-generator). No external deps. */
+const QrGen = (function(){
+  const PAD0 = 0xEC, PAD1 = 0x11;
+
+  const EXP_TABLE = new Array(256);
+  const LOG_TABLE = new Array(256);
+  for(let i = 0; i < 8; i++) EXP_TABLE[i] = 1 << i;
+  for(let i = 8; i < 256; i++){
+    EXP_TABLE[i] = EXP_TABLE[i-4] ^ EXP_TABLE[i-5] ^ EXP_TABLE[i-6] ^ EXP_TABLE[i-8];
+  }
+  for(let i = 0; i < 255; i++) LOG_TABLE[EXP_TABLE[i]] = i;
+
+  function glog(n){ if(n < 1) throw new Error('glog(' + n + ')'); return LOG_TABLE[n]; }
+  function gexp(n){ while(n < 0) n += 255; while(n >= 256) n -= 255; return EXP_TABLE[n]; }
+
+  function Poly(num, shift){
+    let offset = 0;
+    while(offset < num.length && num[offset] === 0) offset++;
+    this.num = new Array(num.length - offset + shift);
+    for(let i = 0; i < num.length - offset; i++) this.num[i] = num[i + offset];
+    for(let i = 0; i < shift; i++) this.num[num.length - offset + i] = 0;
+  }
+  Poly.prototype.get = function(i){ return this.num[i]; };
+  Poly.prototype.getLength = function(){ return this.num.length; };
+  Poly.prototype.multiply = function(e){
+    const num = new Array(this.getLength() + e.getLength() - 1).fill(0);
+    for(let i = 0; i < this.getLength(); i++){
+      for(let j = 0; j < e.getLength(); j++){
+        num[i + j] ^= gexp(glog(this.get(i)) + glog(e.get(j)));
+      }
+    }
+    return new Poly(num, 0);
+  };
+  Poly.prototype.mod = function(e){
+    if(this.getLength() - e.getLength() < 0) return this;
+    const ratio = glog(this.get(0)) - glog(e.get(0));
+    const num = this.num.slice();
+    for(let i = 0; i < e.getLength(); i++) num[i] ^= gexp(glog(e.get(i)) + ratio);
+    return new Poly(num, 0).mod(e);
+  };
+
+  function errorCorrectPoly(errorCorrectLength){
+    let a = new Poly([1], 0);
+    for(let i = 0; i < errorCorrectLength; i++) a = a.multiply(new Poly([1, gexp(i)], 0));
+    return a;
+  }
+
+  // [version]: [[blockCount, totalCount, dataCount], ...] for EC level L
+  const RS_BLOCK_L = {
+    1:[[1,26,19]], 2:[[1,44,34]], 3:[[1,70,55]], 4:[[1,100,80]], 5:[[1,134,108]],
+    6:[[2,86,68]], 7:[[2,98,78]], 8:[[2,121,97]], 9:[[2,146,116]], 10:[[2,86,68],[2,87,69]]
+  };
+  const ALIGNMENT_POS = {
+    1:[], 2:[6,18], 3:[6,22], 4:[6,26], 5:[6,30], 6:[6,34],
+    7:[6,22,38], 8:[6,24,42], 9:[6,26,46], 10:[6,28,50]
+  };
+  const G15 = 0b10100110111, G15_MASK = 0b101010000010100;
+  const G18 = 0b1111100100101;
+
+  function bchDigit(data){
+    let digit = 0;
+    while(data !== 0){ digit++; data >>>= 1; }
+    return digit;
+  }
+  function bchFormat(data){
+    let d = data << 10;
+    while(bchDigit(d) - bchDigit(G15) >= 0) d ^= (G15 << (bchDigit(d) - bchDigit(G15)));
+    return ((data << 10) | d) ^ G15_MASK;
+  }
+  function bchVersion(data){
+    let d = data << 12;
+    while(bchDigit(d) - bchDigit(G18) >= 0) d ^= (G18 << (bchDigit(d) - bchDigit(G18)));
+    return (data << 12) | d;
+  }
+
+  function BitBuffer(){ this.buffer = []; this.length = 0; }
+  BitBuffer.prototype.get = function(index){
+    return ((this.buffer[Math.floor(index / 8)] >>> (7 - index % 8)) & 1) === 1;
+  };
+  BitBuffer.prototype.put = function(num, length){
+    for(let i = 0; i < length; i++) this.putBit(((num >>> (length - i - 1)) & 1) === 1);
+  };
+  BitBuffer.prototype.putBit = function(bit){
+    const idx = Math.floor(this.length / 8);
+    if(this.buffer.length <= idx) this.buffer.push(0);
+    if(bit) this.buffer[idx] |= (0x80 >>> (this.length % 8));
+    this.length++;
+  };
+
+  function utf8Bytes(str){
+    return Array.from(new TextEncoder().encode(str));
+  }
+
+  function chooseVersion(dataLen){
+    for(let v = 1; v <= 10; v++){
+      const blocks = RS_BLOCK_L[v];
+      let totalData = 0;
+      blocks.forEach(b => totalData += b[2]);
+      // 4 bits mode + 8/16 bits length (byte mode: 8 bits for v1-9, 16 for v10+)
+      const lenBits = v <= 9 ? 8 : 16;
+      const headerBits = 4 + lenBits;
+      const capacityBits = totalData * 8;
+      if(dataLen * 8 + headerBits + 4 <= capacityBits) return v;
+    }
+    return null;
+  }
+
+  function createData(version, dataBytes){
+    const buffer = new BitBuffer();
+    buffer.put(4, 4); // byte mode
+    const lenBits = version <= 9 ? 8 : 16;
+    buffer.put(dataBytes.length, lenBits);
+    dataBytes.forEach(b => buffer.put(b, 8));
+
+    const blocks = RS_BLOCK_L[version];
+    let totalDataCount = 0;
+    blocks.forEach(b => totalDataCount += b[2]);
+    const maxBits = totalDataCount * 8;
+    if(buffer.length + 4 <= maxBits) buffer.put(0, 4);
+    while(buffer.length % 8 !== 0) buffer.putBit(false);
+    while(true){
+      if(buffer.length >= maxBits) break;
+      buffer.put(PAD0, 8);
+      if(buffer.length >= maxBits) break;
+      buffer.put(PAD1, 8);
+    }
+    return createBytes(buffer, blocks);
+  }
+
+  function createBytes(buffer, rsBlocks){
+    let offset = 0;
+    const maxDcCount = Math.max(...rsBlocks.map(b => b[2]));
+    const maxEcCount = Math.max(...rsBlocks.map(b => b[1] - b[2]));
+    const dcdata = [];
+    const ecdata = [];
+    rsBlocks.forEach(block => {
+      const [count, totalCount, dataCount] = block;
+      for(let ci = 0; ci < count; ci++){
+        const dc = new Array(dataCount);
+        for(let i = 0; i < dataCount; i++) dc[i] = 0xff & buffer.buffer[i + offset];
+        offset += dataCount;
+        const rsPoly = errorCorrectPoly(totalCount - dataCount);
+        const rawPoly = new Poly(dc, rsPoly.getLength() - 1);
+        const modPoly = rawPoly.mod(rsPoly);
+        const ec = new Array(rsPoly.getLength() - 1);
+        for(let i = 0; i < ec.length; i++){
+          const modIndex = i + modPoly.getLength() - ec.length;
+          ec[i] = (modIndex >= 0) ? modPoly.get(modIndex) : 0;
+        }
+        dcdata.push(dc);
+        ecdata.push(ec);
+      }
+    });
+    const totalCodeCount = rsBlocks.reduce((s, b) => s + b[1], 0);
+    const data = new Array(totalCodeCount);
+    let index = 0;
+    for(let i = 0; i < maxDcCount; i++){
+      dcdata.forEach(dc => { if(i < dc.length) data[index++] = dc[i]; });
+    }
+    for(let i = 0; i < maxEcCount; i++){
+      ecdata.forEach(ec => { if(i < ec.length) data[index++] = ec[i]; });
+    }
+    return data;
+  }
+
+  function maskFunc(pattern, i, j){
+    switch(pattern){
+      case 0: return (i + j) % 2 === 0;
+      case 1: return i % 2 === 0;
+      case 2: return j % 3 === 0;
+      case 3: return (i + j) % 3 === 0;
+      case 4: return (Math.floor(i / 2) + Math.floor(j / 3)) % 2 === 0;
+      case 5: return (i * j) % 2 + (i * j) % 3 === 0;
+      case 6: return ((i * j) % 2 + (i * j) % 3) % 2 === 0;
+      case 7: return ((i * j) % 3 + (i + j) % 2) % 2 === 0;
+    }
+    return false;
+  }
+
+  function lostPoint(modules){
+    const n = modules.length;
+    let lost = 0;
+    for(let row = 0; row < n; row++){
+      for(let col = 0; col < n; col++){
+        let sameCount = 0;
+        const dark = modules[row][col];
+        for(let r = -1; r <= 1; r++){
+          if(row + r < 0 || row + r >= n) continue;
+          for(let c = -1; c <= 1; c++){
+            if(col + c < 0 || col + c >= n) continue;
+            if(r === 0 && c === 0) continue;
+            if(dark === modules[row + r][col + c]) sameCount++;
+          }
+        }
+        if(sameCount > 5) lost += (3 + sameCount - 5);
+      }
+    }
+    for(let row = 0; row < n - 1; row++){
+      for(let col = 0; col < n - 1; col++){
+        let count = 0;
+        if(modules[row][col]) count++;
+        if(modules[row+1][col]) count++;
+        if(modules[row][col+1]) count++;
+        if(modules[row+1][col+1]) count++;
+        if(count === 0 || count === 4) lost += 3;
+      }
+    }
+    for(let row = 0; row < n; row++){
+      for(let col = 0; col < n - 6; col++){
+        if(modules[row][col] && !modules[row][col+1] && modules[row][col+2] &&
+           modules[row][col+3] && modules[row][col+4] && !modules[row][col+5] && modules[row][col+6]){
+          lost += 40;
+        }
+      }
+    }
+    for(let col = 0; col < n; col++){
+      for(let row = 0; row < n - 6; row++){
+        if(modules[row][col] && !modules[row+1][col] && modules[row+2][col] &&
+           modules[row+3][col] && modules[row+4][col] && !modules[row+5][col] && modules[row+6][col]){
+          lost += 40;
+        }
+      }
+    }
+    let darkCount = 0;
+    for(let row = 0; row < n; row++) for(let col = 0; col < n; col++) if(modules[row][col]) darkCount++;
+    const ratio = Math.abs(100 * darkCount / (n * n) - 50) / 5;
+    lost += ratio * 10;
+    return lost;
+  }
+
+  function generate(text){
+    const dataBytes = utf8Bytes(text);
+    const version = chooseVersion(dataBytes.length);
+    if(!version) return null;
+    const data = createData(version, dataBytes);
+
+    let best = null, bestPattern = 0, bestLost = Infinity;
+    for(let pattern = 0; pattern < 8; pattern++){
+      const built = buildWithMask(version, data, pattern);
+      const lost = lostPoint(built.modules);
+      if(lost < bestLost){ bestLost = lost; best = built.modules; bestPattern = pattern; }
+    }
+    return { modules: best, size: best.length, version, maskPattern: bestPattern };
+  }
+
+  function buildWithMask(version, data, maskPattern){
+    const moduleCount = version * 4 + 17;
+    const modules = Array.from({length: moduleCount}, () => new Array(moduleCount).fill(null));
+    const isFunction = Array.from({length: moduleCount}, () => new Array(moduleCount).fill(false));
+
+    function setFinder(row, col){
+      for(let r = -1; r <= 7; r++){
+        if(row + r <= -1 || moduleCount <= row + r) continue;
+        for(let c = -1; c <= 7; c++){
+          if(col + c <= -1 || moduleCount <= col + c) continue;
+          const dark = (0 <= r && r <= 6 && (c === 0 || c === 6)) ||
+                       (0 <= c && c <= 6 && (r === 0 || r === 6)) ||
+                       (2 <= r && r <= 4 && 2 <= c && c <= 4);
+          modules[row + r][col + c] = dark;
+          isFunction[row + r][col + c] = true;
+        }
+      }
+    }
+    setFinder(0, 0);
+    setFinder(moduleCount - 7, 0);
+    setFinder(0, moduleCount - 7);
+
+    for(let r = 8; r < moduleCount - 8; r++){ modules[r][6] = (r % 2 === 0); isFunction[r][6] = true; }
+    for(let c = 8; c < moduleCount - 8; c++){ modules[6][c] = (c % 2 === 0); isFunction[6][c] = true; }
+
+    const pos = ALIGNMENT_POS[version];
+    pos.forEach(row => {
+      pos.forEach(col => {
+        if(isFunction[row][col]) return;
+        for(let r = -2; r <= 2; r++){
+          for(let c = -2; c <= 2; c++){
+            const dark = (r === -2 || r === 2 || c === -2 || c === 2 || (r === 0 && c === 0));
+            modules[row + r][col + c] = dark;
+            isFunction[row + r][col + c] = true;
+          }
+        }
+      });
+    });
+
+    for(let i = 0; i < 9; i++){
+      if(!isFunction[8][i]){ modules[8][i] = false; isFunction[8][i] = true; }
+      if(!isFunction[i][8]){ modules[i][8] = false; isFunction[i][8] = true; }
+    }
+    for(let i = 0; i < 8; i++){
+      if(!isFunction[moduleCount-1-i][8]){ modules[moduleCount-1-i][8] = false; isFunction[moduleCount-1-i][8] = true; }
+      if(!isFunction[8][moduleCount-1-i]){ modules[8][moduleCount-1-i] = false; isFunction[8][moduleCount-1-i] = true; }
+    }
+    modules[moduleCount - 8][8] = true;
+    isFunction[moduleCount - 8][8] = true;
+
+    if(version >= 7){
+      const bits = bchVersion(version);
+      for(let i = 0; i < 18; i++){
+        const dark = ((bits >>> i) & 1) === 1;
+        const r1 = Math.floor(i / 3), c1 = i % 3 + moduleCount - 8 - 3;
+        modules[r1][c1] = dark; isFunction[r1][c1] = true;
+        modules[c1][r1] = dark; isFunction[c1][r1] = true;
+      }
+    }
+
+    // data with mask applied
+    let inc = -1, row = moduleCount - 1, bitIndex = 7, byteIndex = 0;
+    for(let col = moduleCount - 1; col > 0; col -= 2){
+      if(col === 6) col--;
+      while(true){
+        for(let c = 0; c < 2; c++){
+          const cc = col - c;
+          if(!isFunction[row][cc]){
+            let dark = false;
+            if(byteIndex < data.length) dark = ((data[byteIndex] >>> bitIndex) & 1) === 1;
+            if(maskFunc(maskPattern, row, cc)) dark = !dark;
+            modules[row][cc] = dark;
+            bitIndex--;
+            if(bitIndex === -1){ byteIndex++; bitIndex = 7; }
+          }
+        }
+        row += inc;
+        if(row < 0 || moduleCount <= row){ row -= inc; inc = -inc; break; }
+      }
+    }
+
+    // format info
+    const ecBits = 0b01; // L
+    const formatData = (ecBits << 3) | maskPattern;
+    const bch = bchFormat(formatData);
+    for(let i = 0; i < 15; i++){
+      const dark = ((bch >>> i) & 1) === 1;
+      if(i < 6) modules[i][8] = dark;
+      else if(i < 8) modules[i + 1][8] = dark;
+      else modules[moduleCount - 15 + i][8] = dark;
+    }
+    for(let i = 0; i < 15; i++){
+      const dark = ((bch >>> i) & 1) === 1;
+      if(i < 8) modules[8][moduleCount - i - 1] = dark;
+      else if(i < 9) modules[8][15 - i - 1 + 1] = dark;
+      else modules[8][15 - i - 1] = dark;
+    }
+
+    return { modules, moduleCount };
+  }
+
+  return { generate };
+})();
+
 /* ============================================================
    Vitals — serial vitals flowsheet
    ------------------------------------------------------------
@@ -3829,6 +4216,8 @@ function initVitals(){
   setupNotePhotoInput('v-notes-photo', 'v-notes-photo-label', 'v-notes-photo-name');
   setupNotePhotoInput('mat-f-notes-photo', 'mat-f-notes-photo-label', 'mat-f-notes-photo-name');
   setupVitalsNotePhotoView();
+  setupPatientQr();
+  setupPatientScan();
   renderPatientList();
   if(getDefaultVitalsView() === 'board' && vitalsState.patients.length){
     setVitalsBoardActive(true);
@@ -4420,6 +4809,133 @@ function setupVitalsNotePhotoView(){
     const entry = activeLog().find(x => x.id === id);
     openNotePhotoLightbox(id, entry ? fmtVitalsTime(entry.ts) + ' — attached photo' : 'Attached photo');
   });
+}
+
+/* ============================================================
+   Patient ID QR — generate + display (own minimal encoder above,
+   see QrGen) and, separately, scan-to-lookup via BarcodeDetector.
+   Both are personal charting conveniences, not a hospital wristband
+   replacement — see the disclaimers in the modal markup.
+   ============================================================ */
+function renderQrToCanvas(canvas, text){
+  const result = QrGen.generate(text);
+  if(!result){ return false; }
+  const { modules, size } = result;
+  const quiet = 4;
+  const scale = Math.max(2, Math.floor(canvas.width / (size + quiet * 2)));
+  const px = size + quiet * 2;
+  canvas.width = px * scale;
+  canvas.height = px * scale;
+  const ctx = canvas.getContext('2d');
+  ctx.fillStyle = '#fff';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#000';
+  for(let r = 0; r < size; r++){
+    for(let c = 0; c < size; c++){
+      if(modules[r][c]) ctx.fillRect((c + quiet) * scale, (r + quiet) * scale, scale, scale);
+    }
+  }
+  return true;
+}
+function patientQrValue(p){
+  return p.mrn ? p.mrn : p.id;
+}
+function setupPatientQr(){
+  const btn = document.getElementById('vitals-show-qr-btn');
+  const modal = document.getElementById('wards-qr-modal');
+  const closeBtn = document.getElementById('wards-qr-close');
+  if(!btn || !modal || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => {
+    const p = activePatient(); if(!p) return;
+    const value = patientQrValue(p);
+    const canvas = document.getElementById('wards-qr-canvas');
+    const valueEl = document.getElementById('wards-qr-value');
+    if(canvas) renderQrToCanvas(canvas, value);
+    if(valueEl) valueEl.textContent = (p.mrn ? 'MRN ' : 'ID ') + value;
+    modal.classList.add('show');
+    haptic('Light');
+  });
+  const close = () => modal.classList.remove('show');
+  if(closeBtn) closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', e => { if(e.target === modal) close(); });
+}
+
+let wardsScanStream = null;
+function stopWardsScan(){
+  if(wardsScanStream){
+    wardsScanStream.getTracks().forEach(t => t.stop());
+    wardsScanStream = null;
+  }
+}
+function setupPatientScan(){
+  const scanBtn = document.getElementById('vitals-scan-patient-btn');
+  const modal = document.getElementById('wards-scan-modal');
+  const closeBtn = document.getElementById('wards-scan-close');
+  const video = document.getElementById('wards-scan-video');
+  const statusEl = document.getElementById('wards-scan-status');
+  if(!scanBtn || !modal) return;
+
+  const supported = (typeof window.BarcodeDetector === 'function') &&
+    (typeof navigator.mediaDevices !== 'undefined') && (typeof navigator.mediaDevices.getUserMedia === 'function');
+  scanBtn.hidden = !supported;
+  if(!supported || scanBtn.dataset.wired) return;
+  scanBtn.dataset.wired = '1';
+
+  const close = () => {
+    modal.classList.remove('show');
+    stopWardsScan();
+  };
+  if(closeBtn) closeBtn.addEventListener('click', close);
+  modal.addEventListener('click', e => { if(e.target === modal) close(); });
+
+  scanBtn.addEventListener('click', async () => {
+    modal.classList.add('show');
+    if(statusEl) statusEl.textContent = 'Point the camera at a patient ID QR code.';
+    try{
+      wardsScanStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+      if(video){ video.srcObject = wardsScanStream; await video.play(); }
+      const detector = new window.BarcodeDetector({ formats: ['qr_code'] });
+      let stopped = false;
+      const tick = async () => {
+        if(stopped || !wardsScanStream) return;
+        try{
+          const codes = await detector.detect(video);
+          if(codes && codes[0] && codes[0].rawValue){
+            stopped = true;
+            handleScannedValue(codes[0].rawValue.trim());
+            close();
+            return;
+          }
+        }catch(e){}
+        requestAnimationFrame(tick);
+      };
+      requestAnimationFrame(tick);
+    }catch(e){
+      if(statusEl) statusEl.textContent = 'Could not access the camera — check permissions.';
+    }
+  });
+}
+function handleScannedValue(value){
+  if(!value) return;
+  const match = vitalsState.patients.find(p => (p.mrn && p.mrn.toLowerCase() === value.toLowerCase()) || p.id === value);
+  if(match){
+    vitalsState.activePatientId = match.id;
+    renderPatientList();
+    renderVitalsMain();
+    haptic('Medium');
+    showToast('Found ' + (match.name || 'patient') + ' — opened their chart', 'ok');
+    return;
+  }
+  const openBtn = document.getElementById('vitals-add-patient-btn');
+  const form = document.getElementById('vitals-add-form');
+  const mrnInput = document.getElementById('vitals-new-mrn');
+  const nameInput = document.getElementById('vitals-new-name');
+  if(form && form.hidden && openBtn) openBtn.click();
+  if(mrnInput) mrnInput.value = value;
+  if(nameInput) setTimeout(() => nameInput.focus(), 30);
+  haptic('Light');
+  showToast('No patient with that ID — add-patient form pre-filled with it', null);
 }
 
 function finalizeVitalsEntrySave(p, entry){
@@ -6932,6 +7448,7 @@ window.renderVitalsTable = renderVitalsTable;
 window.enterWardsDemoMode = enterWardsDemoMode;
 window.exitWardsDemoMode = exitWardsDemoMode;
 window.isWardsDemoMode = () => wardsDemoMode;
+window.handleScannedValue = handleScannedValue;
 })();
 
 /* ============================================================
