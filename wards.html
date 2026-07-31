@@ -1670,6 +1670,16 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .voice-mic-btn svg{width:14px;height:14px;}
 @keyframes voiceMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(224,69,60,.5);}50%{box-shadow:0 0 0 6px rgba(224,69,60,0);}}
 
+/* ---- note photo attachment — reuses the CTG image storage/compression
+   pattern for a general per-note photo (wound, rash, chart snippet). ---- */
+.note-photo-row{margin-top:6px;}
+.note-photo-btn{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:1px dashed var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink-soft);font-family:var(--ff-sans);font-size:12px;cursor:pointer;}
+.note-photo-btn:hover{border-color:var(--ink-soft);}
+.note-photo-btn.has-photo{border-style:solid;color:var(--ink);}
+.note-photo-name{color:var(--ink-faint);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.note-photo-thumb{display:inline-block;width:44px;height:44px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid var(--line);vertical-align:middle;margin-top:4px;}
+.note-photo-view-btn{margin-left:6px;border:none;background:none;cursor:pointer;font-size:13px;padding:0;vertical-align:middle;}
+
 /* ---- reading-interval override ---- */
 .vitals-isolation-select-wrap input[type="number"]{border:1px solid var(--line);border-radius:var(--r-pill);padding:7px 9px;font-family:var(--ff-sans);font-size:12.5px;background:var(--surface);color:var(--ink-soft);}
 
@@ -2794,6 +2804,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div class="vitals-field vitals-notes-field">
           <label for="v-notes">Notes</label>
           <textarea id="v-notes" rows="2" maxlength="280" placeholder="Optional — e.g. position change, agitation, intervention given"></textarea>
+          <div class="note-photo-row">
+            <label class="note-photo-btn" for="v-notes-photo" id="v-notes-photo-label">📷 Attach photo<span class="note-photo-name" id="v-notes-photo-name"></span></label>
+            <input type="file" accept="image/*" id="v-notes-photo" class="hidden">
+          </div>
         </div>
         <button type="submit" class="vitals-btn-primary vitals-submit-btn">+ Add reading</button>
       </form>
@@ -3000,6 +3014,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <div class="mat-field mat-col-span-2">
               <label class="mat-lbl" for="mat-f-notes">Note</label>
               <textarea id="mat-f-notes" placeholder="Presenting complaint, examination, plan&hellip;" style="min-height:90px"></textarea>
+              <div class="note-photo-row">
+                <label class="note-photo-btn" for="mat-f-notes-photo" id="mat-f-notes-photo-label">📷 Attach photo<span class="note-photo-name" id="mat-f-notes-photo-name"></span></label>
+                <input type="file" accept="image/*" id="mat-f-notes-photo" class="hidden">
+              </div>
             </div>
             <div class="mat-field mat-col-span-2">
               <label class="mat-lbl" for="mat-f-advice">Advice given</label>
@@ -3706,6 +3724,9 @@ function initVitals(){
   setupMarSection();
   setupSbarButtons();
   setupVoiceInputForNotesFields();
+  setupNotePhotoInput('v-notes-photo', 'v-notes-photo-label', 'v-notes-photo-name');
+  setupNotePhotoInput('mat-f-notes-photo', 'mat-f-notes-photo-label', 'mat-f-notes-photo-name');
+  setupVitalsNotePhotoView();
   renderPatientList();
   if(getDefaultVitalsView() === 'board' && vitalsState.patients.length){
     setVitalsBoardActive(true);
@@ -4286,17 +4307,43 @@ function showVitalsSanityBanner(issues){
   banner.hidden = false;
 }
 
+function setupVitalsNotePhotoView(){
+  const body = document.getElementById('vitals-table-body');
+  if(!body || body.dataset.photoWired) return;
+  body.dataset.photoWired = '1';
+  body.addEventListener('click', e => {
+    const btn = e.target.closest('[data-view-note-photo]');
+    if(!btn) return;
+    const id = btn.dataset.viewNotePhoto;
+    const entry = activeLog().find(x => x.id === id);
+    openNotePhotoLightbox(id, entry ? fmtVitalsTime(entry.ts) + ' — attached photo' : 'Attached photo');
+  });
+}
+
 function finalizeVitalsEntrySave(p, entry){
   if(!vitalsState.logs[p.id]) vitalsState.logs[p.id] = [];
+  const photoInput = document.getElementById('v-notes-photo');
+  const photoFile = photoInput && photoInput.files && photoInput.files[0];
   vitalsState.logs[p.id].push(entry);
   saveVitalsData();
   haptic('Light');
   clearVitalsEntryFormFields();
+  clearNotePhotoInput('v-notes-photo', 'v-notes-photo-label', 'v-notes-photo-name');
   hideVitalsSanityBanner();
   prefillVitalsTimestamp();
   updateNews2Preview();
   renderPatientList();
   renderVitalsMain();
+  if(photoFile){
+    compressCtgFile(photoFile).then(dataUrl => {
+      if(!dataUrl) return;
+      return notePhotoSet(entry.id, dataUrl);
+    }).then(() => {
+      entry.hasPhoto = true;
+      saveVitalsData();
+      renderVitalsTable();
+    }).catch(() => showToast('Could not save the attached photo (storage error).'));
+  }
 }
 
 function setupVitalsEntryForm(){
@@ -4955,7 +5002,7 @@ function renderVitalsTable(){
       <td>${escapeHtml(entry.gcs || '—')}</td>
       <td>${escapeHtml(entry.uop || '—')}</td>
       ${n2Cell}
-      <td class="vitals-td-notes">${escapeHtml(entry.notes || '')}</td>
+      <td class="vitals-td-notes">${escapeHtml(entry.notes || '')}${entry.hasPhoto ? `<button type="button" class="note-photo-view-btn" data-view-note-photo="${entry.id}" title="View attached photo">📷</button>` : ''}</td>
       <td><button type="button" class="vitals-row-delete" aria-label="Delete this reading" data-entry-id="${entry.id}">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button></td>`;
@@ -5995,6 +6042,7 @@ function renderMaternityNotesLog(m){
     '<div class="mat-note-entry">' +
       '<div class="nh"><span class="t">' + escapeHtml(fmtVitalsTime(n.at)) + '</span>' + shiftBandTagHtml(n.at) +
         (n.author ? '<span class="who">· ' + escapeHtml(n.author) + '</span>' : '') +
+        (n.hasPhoto ? '<button type="button" class="note-photo-view-btn" data-view-note-photo="' + n.id + '" title="View attached photo">📷</button>' : '') +
         '<button type="button" class="del" data-del-note="' + n.id + '">Remove</button></div>' +
       (n.note ? '<div class="body">' + escapeHtml(n.note) + '</div>' : '') +
       (n.advice ? '<div class="adv"><b>Advice:</b> ' + escapeHtml(n.advice) + '</div>' : '') +
@@ -6059,6 +6107,80 @@ function ctgImageDelete(id){
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   })).catch(() => {});
+}
+
+/* ---------- General note photo store — same IndexedDB pattern as the
+   CTG image store above, but a separate DB/store so a wound/rash photo
+   attached to an ordinary vitals or progress note never gets mixed up
+   with CTG traces. ---------- */
+const NOTE_PHOTO_DB_NAME = 'wards_note_photos_v1';
+const NOTE_PHOTO_STORE = 'notePhotos';
+let notePhotoDbPromise = null;
+function notePhotoDb(){
+  if(notePhotoDbPromise) return notePhotoDbPromise;
+  notePhotoDbPromise = new Promise((resolve, reject) => {
+    if(!window.indexedDB){ reject(new Error('IndexedDB unavailable')); return; }
+    const req = indexedDB.open(NOTE_PHOTO_DB_NAME, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(NOTE_PHOTO_STORE); };
+    req.onsuccess = () => resolve(req.result);
+    req.onerror = () => reject(req.error);
+  });
+  return notePhotoDbPromise;
+}
+function notePhotoSet(id, dataUrl){
+  return notePhotoDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(NOTE_PHOTO_STORE, 'readwrite');
+    tx.objectStore(NOTE_PHOTO_STORE).put(dataUrl, id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  }));
+}
+function notePhotoGet(id){
+  return notePhotoDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(NOTE_PHOTO_STORE, 'readonly');
+    const req = tx.objectStore(NOTE_PHOTO_STORE).get(id);
+    req.onsuccess = () => resolve(req.result || '');
+    req.onerror = () => reject(req.error);
+  }));
+}
+function notePhotoDelete(id){
+  return notePhotoDb().then(db => new Promise((resolve, reject) => {
+    const tx = db.transaction(NOTE_PHOTO_STORE, 'readwrite');
+    tx.objectStore(NOTE_PHOTO_STORE).delete(id);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  })).catch(() => {});
+}
+function openNotePhotoLightbox(id, caption){
+  const lbImg = document.getElementById('mat-lb-img'), lbCap = document.getElementById('mat-lb-cap'), lightbox = document.getElementById('mat-lightbox');
+  const gridToggle = document.getElementById('mat-lb-grid-toggle');
+  if(gridToggle) gridToggle.hidden = true;
+  if(lbImg) lbImg.src = '';
+  if(lbCap) lbCap.textContent = caption || '';
+  if(lightbox) lightbox.classList.add('show');
+  notePhotoGet(id).then(dataUrl => {
+    if(lbImg) lbImg.src = safeCtgImageSrc(dataUrl);
+  }).catch(() => {});
+}
+function setupNotePhotoInput(inputId, labelId, nameId){
+  const input = document.getElementById(inputId);
+  const label = document.getElementById(labelId);
+  const nameEl = document.getElementById(nameId);
+  if(!input || input.dataset.wired) return;
+  input.dataset.wired = '1';
+  input.addEventListener('change', () => {
+    const f = input.files && input.files[0];
+    if(label) label.classList.toggle('has-photo', !!f);
+    if(nameEl) nameEl.textContent = f ? (' — ' + f.name) : '';
+  });
+}
+function clearNotePhotoInput(inputId, labelId, nameId){
+  const input = document.getElementById(inputId);
+  const label = document.getElementById(labelId);
+  const nameEl = document.getElementById(nameId);
+  if(input) input.value = '';
+  if(label) label.classList.remove('has-photo');
+  if(nameEl) nameEl.textContent = '';
 }
 
 function compressCtgFile(file){
@@ -6228,7 +6350,11 @@ function setupMaternitySection(){
   }
   const lbClose = document.getElementById('mat-lb-close');
   const lightbox = document.getElementById('mat-lightbox');
-  if(lbClose && lightbox) lbClose.addEventListener('click', () => { lightbox.classList.remove('show'); });
+  if(lbClose && lightbox) lbClose.addEventListener('click', () => {
+    lightbox.classList.remove('show');
+    const gridToggle = document.getElementById('mat-lb-grid-toggle');
+    if(gridToggle) gridToggle.hidden = false;
+  });
 
   const notesBtn = document.getElementById('mat-btn-log-notes');
   if(notesBtn){
@@ -6241,25 +6367,49 @@ function setupMaternitySection(){
       const timeEl = document.getElementById('mat-f-notes-time');
       const authorEl = document.getElementById('mat-f-notes-author');
       const at = timeEl && timeEl.value ? new Date(timeEl.value).toISOString() : new Date().toISOString();
-      m.notesLog.push({ id: genVitalsId('mn'), at, author: authorEl ? authorEl.value.trim() : '', note, advice });
+      const noteEntry = { id: genVitalsId('mn'), at, author: authorEl ? authorEl.value.trim() : '', note, advice };
+      const photoInput = document.getElementById('mat-f-notes-photo');
+      const photoFile = photoInput && photoInput.files && photoInput.files[0];
+      m.notesLog.push(noteEntry);
       saveVitalsData();
       if(noteEl) noteEl.value = '';
       if(adviceEl) adviceEl.value = '';
       if(timeEl) timeEl.value = localDateTimeInputValue(new Date());
+      clearNotePhotoInput('mat-f-notes-photo', 'mat-f-notes-photo-label', 'mat-f-notes-photo-name');
       renderMaternityNotesLog(m);
       haptic('Light');
+      if(photoFile){
+        compressCtgFile(photoFile).then(dataUrl => {
+          if(!dataUrl) return;
+          return notePhotoSet(noteEntry.id, dataUrl);
+        }).then(() => {
+          noteEntry.hasPhoto = true;
+          saveVitalsData();
+          renderMaternityNotesLog(m);
+        }).catch(() => showToast('Could not save the attached photo (storage error).'));
+      }
     });
   }
   const notesTimeline = document.getElementById('mat-notes-timeline');
   if(notesTimeline){
     notesTimeline.addEventListener('click', e => {
+      const viewBtn = e.target.closest('[data-view-note-photo]');
+      if(viewBtn){
+        const p = activePatient();
+        const m = p ? ensureMaternity(p) : null;
+        const n = m ? m.notesLog.find(x => x.id === viewBtn.dataset.viewNotePhoto) : null;
+        openNotePhotoLightbox(viewBtn.dataset.viewNotePhoto, n ? fmtVitalsTime(n.at) + ' — attached photo' : 'Attached photo');
+        return;
+      }
       const delBtn = e.target.closest('[data-del-note]');
       if(!delBtn) return;
       const p = activePatient(); if(!p) return;
       const m = ensureMaternity(p);
+      const removed = m.notesLog.find(n => n.id === delBtn.dataset.delNote);
       m.notesLog = m.notesLog.filter(n => n.id !== delBtn.dataset.delNote);
       saveVitalsData();
       renderMaternityNotesLog(m);
+      if(removed && removed.hasPhoto) notePhotoDelete(removed.id);
     });
   }
   const notesSearch = document.getElementById('mat-notes-search');
