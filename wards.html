@@ -1607,6 +1607,18 @@ table.vitals-table th{text-align:left;font-size:10.5px;font-weight:700;letter-sp
   padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap;position:sticky;top:0;background:var(--surface);}
 table.vitals-table td{padding:12px 14px;border-bottom:1px solid var(--line-soft);color:var(--ink);white-space:nowrap;vertical-align:top;}
 table.vitals-table td.vitals-td-notes{white-space:normal;min-width:160px;color:var(--ink-soft);}
+.shift-band-tag{display:inline-block;margin-left:6px;padding:1px 6px;border-radius:8px;font-family:var(--ff-sans);font-size:10px;font-weight:600;letter-spacing:.02em;vertical-align:middle;background:var(--surface-2, rgba(127,127,127,.18));color:var(--ink-soft);}
+.shift-band-tag.shift-band-day{background:rgba(230,180,40,.22);color:#8a6a00;}
+.shift-band-tag.shift-band-evening{background:rgba(230,120,40,.2);color:#a05000;}
+.shift-band-tag.shift-band-night{background:rgba(70,90,180,.22);color:#3a4fb0;}
+:root[data-theme="dark"] .shift-band-tag.shift-band-day{color:#e8c85a;}
+:root[data-theme="dark"] .shift-band-tag.shift-band-evening{color:#ffab66;}
+:root[data-theme="dark"] .shift-band-tag.shift-band-night{color:#a6b6ff;}
+@media (prefers-color-scheme: dark){
+  .shift-band-tag.shift-band-day{color:#e8c85a;}
+  .shift-band-tag.shift-band-evening{color:#ffab66;}
+  .shift-band-tag.shift-band-night{color:#a6b6ff;}
+}
 table.vitals-table tr:last-child td{border-bottom:none;}
 table.vitals-table td.vitals-td-flag{color:var(--caution);font-weight:700;}
 .vitals-row-delete{border:none;background:none;color:var(--ink-faint);cursor:pointer;padding:8px;border-radius:50%;
@@ -3607,6 +3619,23 @@ function fmtWardsDateTime(d){
   return d.toLocaleString(loc);
 }
 
+/* ---- shift band provenance tag — Day 07:00-15:00, Evening 15:00-23:00,
+   Night 23:00-07:00 by default; not currently user-configurable, just a
+   sensible fixed default matching common ward shift patterns. */
+function shiftBandForTs(iso){
+  const d = new Date(iso);
+  if(isNaN(d.getTime())) return null;
+  const h = d.getHours();
+  if(h >= 7 && h < 15) return 'Day';
+  if(h >= 15 && h < 23) return 'Evening';
+  return 'Night';
+}
+function shiftBandTagHtml(iso){
+  const band = shiftBandForTs(iso);
+  if(!band) return '';
+  return `<span class="shift-band-tag shift-band-${band.toLowerCase()}" title="${band} shift">${band}</span>`;
+}
+
 function activePatient(){
   return vitalsState.patients.find(p => p.id === vitalsState.activePatientId) || null;
 }
@@ -4821,7 +4850,7 @@ function renderVitalsTable(){
       ? `<td class="vitals-td-news2 n2-${n2.level}" title="${escapeHtml(news2LevelLabel(n2.level))}">${n2.score}</td>`
       : '<td class="vitals-td-news2">—</td>';
     tr.innerHTML = `
-      <td>${escapeHtml(fmtVitalsTime(entry.ts))}</td>
+      <td>${escapeHtml(fmtVitalsTime(entry.ts))}${shiftBandTagHtml(entry.ts)}</td>
       <td class="${flagClass.trim()}">${escapeHtml(entry.hr || '—')}</td>
       <td class="${flagClass.trim()}">${bp}</td>
       <td>${escapeHtml(entry.rr || '—')}</td>
@@ -5012,7 +5041,7 @@ function printVitalsSummary(){
     const bp = (e.sbp || e.dbp) ? `${escapeHtml(e.sbp || '—')}/${escapeHtml(e.dbp || '—')}` : '—';
     const flagged = vitalsRowFlag(e);
     return `<tr class="${flagged ? 'vps-flag' : ''}">
-      <td>${escapeHtml(fmtVitalsTime(e.ts))}</td>
+      <td>${escapeHtml(fmtVitalsTime(e.ts))} ${escapeHtml(shiftBandForTs(e.ts) || '')}</td>
       <td>${escapeHtml(e.hr || '—')}</td>
       <td>${bp}</td>
       <td>${escapeHtml(e.rr || '—')}</td>
@@ -5868,7 +5897,7 @@ function renderMaternityNotesLog(m){
   if(nomatchEl) nomatchEl.style.display = 'none';
   timeline.innerHTML = shown.map(n =>
     '<div class="mat-note-entry">' +
-      '<div class="nh"><span class="t">' + escapeHtml(fmtVitalsTime(n.at)) + '</span>' +
+      '<div class="nh"><span class="t">' + escapeHtml(fmtVitalsTime(n.at)) + '</span>' + shiftBandTagHtml(n.at) +
         (n.author ? '<span class="who">· ' + escapeHtml(n.author) + '</span>' : '') +
         '<button type="button" class="del" data-del-note="' + n.id + '">Remove</button></div>' +
       (n.note ? '<div class="body">' + escapeHtml(n.note) + '</div>' : '') +
