@@ -1587,6 +1587,36 @@ table.vitals-table td.vitals-td-flag{color:var(--caution);font-weight:700;}
 .vitals-row-delete:hover{color:var(--caution);background:var(--caution-bg);}
 .vitals-row-delete svg{width:16px;height:16px;}
 .vitals-table-empty{padding:var(--space-7) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:13.5px;}
+table.vitals-table td.vitals-td-news2{font-weight:700;font-variant-numeric:tabular-nums;}
+table.vitals-table td.vitals-td-news2.n2-low{color:var(--ink-soft);}
+table.vitals-table td.vitals-td-news2.n2-medium{color:var(--fresh);}
+table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
+
+/* ---- NEWS2-style early warning score + escalation banner ---- */
+.vitals-news2-preview{display:flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--ink-faint);margin:-6px 0 var(--space-4);padding:8px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);width:fit-content;}
+.vitals-news2-preview .n2-score{font-family:var(--ff-mono);font-size:15px;font-weight:800;}
+.vitals-news2-preview.n2-low .n2-score{color:var(--ink-soft);}
+.vitals-news2-preview.n2-medium .n2-score{color:var(--fresh);}
+.vitals-news2-preview.n2-high .n2-score{color:var(--caution);}
+.vitals-escalation-banner{display:flex;align-items:center;gap:10px;font-family:var(--ff-sans);font-size:13.5px;font-weight:700;color:var(--caution);
+  padding:13px 16px;border:1.5px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-md);margin-bottom:var(--space-5);}
+.vitals-escalation-banner .n2-badge{font-family:var(--ff-mono);font-size:13px;font-weight:800;background:var(--caution);color:var(--shell-ink);
+  padding:2px 9px;border-radius:var(--r-pill);flex-shrink:0;}
+
+/* ---- trend-based deterioration badges ---- */
+.vitals-trend-alerts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--space-5);}
+.vitals-trend-badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--ff-sans);font-size:12px;font-weight:700;
+  padding:7px 12px;border-radius:var(--r-pill);background:var(--fresh-bg);color:var(--fresh);border:1px solid transparent;}
+.vitals-trend-badge.severe{background:var(--caution-bg);color:var(--caution);}
+
+/* ---- entry sanity-check confirm-before-save ---- */
+.vitals-sanity-banner{margin:0 0 var(--space-4);padding:12px 14px;border:1px solid var(--caution-line);border-radius:var(--r-sm);background:var(--caution-bg);}
+.vitals-sanity-msg{font-family:var(--ff-sans);font-size:13px;color:var(--ink);margin:0 0 10px;line-height:1.5;}
+.vitals-sanity-actions{display:flex;gap:8px;}
+.vitals-field-checkbox{flex-direction:row;align-items:center;gap:8px;justify-content:flex-start;}
+.vitals-field-checkbox label{order:1;}
+.vitals-field-checkbox input{width:auto;min-height:0;flex:none;order:0;}
+
 
 /* Department-specific charting sections (ICU / Surgery / Pediatrics) —
    General reuses the vitals-panel look, kept plain/lightweight since
@@ -2333,6 +2363,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         </div>
       </header>
 
+      <div class="vitals-escalation-banner" id="vitals-escalation-banner" hidden></div>
+
       <div class="vitals-baselines-form" id="vitals-baselines-form" hidden>
         <p class="vitals-baselines-note">Optional per-patient overrides for this patient's typical range — used instead of the global defaults when flagging abnormal readings below. Leave a field blank to use the global default.</p>
         <div class="vitals-baselines-grid">
@@ -2394,7 +2426,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <svg class="vitals-combined-spark" id="vitals-combined-spark" viewBox="0 0 320 70" preserveAspectRatio="none" aria-hidden="true"></svg>
       </div>
 
-      <form class="vitals-panel" id="vitals-entry-form" autocomplete="off">
+      <div class="vitals-trend-alerts" id="vitals-trend-alerts" hidden></div>
+
+      <form class="vitals-panel" id="vitals-entry-form" autocomplete="off" novalidate>
         <div class="vitals-form-toprow">
           <button type="button" class="vitals-btn-outline" id="vitals-fill-normal-btn" title="Fill HR/BP/RR/SpO2/Temp with typical-normal adult values as a starting point — adjust whatever's actually abnormal, then log">Fill normal values</button>
         </div>
@@ -2435,6 +2469,18 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <label for="v-uop">Urine output <span>mL</span></label>
             <input id="v-uop" type="number" inputmode="numeric" min="0">
           </div>
+          <div class="vitals-field vitals-field-checkbox">
+            <label for="v-o2sup">On supplemental O&#8322;<span> (for NEWS2)</span></label>
+            <input id="v-o2sup" type="checkbox">
+          </div>
+        </div>
+        <div class="vitals-news2-preview" id="vitals-news2-preview" hidden></div>
+        <div class="vitals-sanity-banner" id="vitals-sanity-banner" hidden>
+          <p class="vitals-sanity-msg" id="vitals-sanity-msg"></p>
+          <div class="vitals-sanity-actions">
+            <button type="button" class="vitals-btn-outline" id="vitals-sanity-fix-btn">Fix</button>
+            <button type="button" class="vitals-btn-primary" id="vitals-sanity-save-btn">Save anyway</button>
+          </div>
         </div>
         <div class="vitals-field vitals-notes-field">
           <label for="v-notes">Notes</label>
@@ -2451,7 +2497,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <table class="vitals-table" id="vitals-table">
           <thead>
             <tr>
-              <th>Time</th><th>HR</th><th>BP</th><th>RR</th><th>SpO&#8322;</th><th>Temp</th><th>GCS</th><th>UOP</th><th>Notes</th><th></th>
+              <th>Time</th><th>HR</th><th>BP</th><th>RR</th><th>SpO&#8322;</th><th>Temp</th><th>GCS</th><th>UOP</th><th title="NEWS2-style early warning score">NEWS2</th><th>Notes</th><th></th>
             </tr>
           </thead>
           <tbody id="vitals-table-body"></tbody>
@@ -3113,6 +3159,7 @@ function initVitals(){
   setupVitalsBaselinesForm();
   setupVitalsLogSearch();
   setupVitalsMineFilterToggle();
+  setupVitalsNews2Preview();
   setupMaternitySection();
   setupIcuSection();
   setupSurgerySection();
@@ -3300,6 +3347,69 @@ function setupAddPatientForm(){
 
 /* ---- entry form ---- */
 
+// Shared by the real submit handler, the sanity-check "Save anyway" path
+// and the tab-switch autosave — one place that reads whatever's currently
+// in the entry form fields into a plain entry object.
+function readVitalsFormEntry(){
+  const val = id => {
+    const el = document.getElementById(id);
+    return el ? el.value.trim() : '';
+  };
+  const tsRaw = val('v-ts');
+  const ts = tsRaw ? new Date(tsRaw) : new Date();
+  const o2El = document.getElementById('v-o2sup');
+  return {
+    id: genVitalsId('vr'),
+    ts: isNaN(ts.getTime()) ? new Date().toISOString() : ts.toISOString(),
+    hr: val('v-hr'), sbp: val('v-sbp'), dbp: val('v-dbp'), rr: val('v-rr'),
+    spo2: val('v-spo2'), temp: val('v-temp'), gcs: val('v-gcs'), uop: val('v-uop'),
+    o2sup: !!(o2El && o2El.checked),
+    notes: val('v-notes')
+  };
+}
+
+function clearVitalsEntryFormFields(){
+  ['v-hr','v-sbp','v-dbp','v-rr','v-spo2','v-temp','v-gcs','v-uop','v-notes'].forEach(id => {
+    const el = document.getElementById(id);
+    if(el) el.value = '';
+  });
+  const o2El = document.getElementById('v-o2sup');
+  if(o2El) o2El.checked = false;
+}
+
+function vitalsEntryHasAnyVital(entry){
+  return ['hr','sbp','dbp','rr','spo2','temp','gcs','uop'].some(k => entry[k] !== '');
+}
+
+let pendingVitalsEntry = null;
+
+function hideVitalsSanityBanner(){
+  const banner = document.getElementById('vitals-sanity-banner');
+  if(banner) banner.hidden = true;
+  pendingVitalsEntry = null;
+}
+
+function showVitalsSanityBanner(issues){
+  const banner = document.getElementById('vitals-sanity-banner');
+  const msg = document.getElementById('vitals-sanity-msg');
+  if(!banner || !msg) return;
+  msg.innerHTML = issues.map(i => escapeHtml(i.message)).join('<br>');
+  banner.hidden = false;
+}
+
+function finalizeVitalsEntrySave(p, entry){
+  if(!vitalsState.logs[p.id]) vitalsState.logs[p.id] = [];
+  vitalsState.logs[p.id].push(entry);
+  saveVitalsData();
+  haptic('Light');
+  clearVitalsEntryFormFields();
+  hideVitalsSanityBanner();
+  prefillVitalsTimestamp();
+  updateNews2Preview();
+  renderPatientList();
+  renderVitalsMain();
+}
+
 function setupVitalsEntryForm(){
   const form = document.getElementById('vitals-entry-form');
   if(!form || form.dataset.wired) return;
@@ -3308,35 +3418,67 @@ function setupVitalsEntryForm(){
     e.preventDefault();
     const p = activePatient();
     if(!p) return;
-    const val = id => {
-      const el = document.getElementById(id);
-      return el ? el.value.trim() : '';
-    };
-    const tsRaw = val('v-ts');
-    const ts = tsRaw ? new Date(tsRaw) : new Date();
-    const entry = {
-      id: genVitalsId('vr'),
-      ts: isNaN(ts.getTime()) ? new Date().toISOString() : ts.toISOString(),
-      hr: val('v-hr'), sbp: val('v-sbp'), dbp: val('v-dbp'), rr: val('v-rr'),
-      spo2: val('v-spo2'), temp: val('v-temp'), gcs: val('v-gcs'), uop: val('v-uop'),
-      notes: val('v-notes')
-    };
-    const hasAnyVital = ['hr','sbp','dbp','rr','spo2','temp','gcs','uop'].some(k => entry[k] !== '');
-    if(!hasAnyVital && !entry.notes){
+    const entry = readVitalsFormEntry();
+    if(!vitalsEntryHasAnyVital(entry) && !entry.notes){
       document.getElementById('v-hr').focus();
       return;
     }
-    if(!vitalsState.logs[p.id]) vitalsState.logs[p.id] = [];
-    vitalsState.logs[p.id].push(entry);
-    saveVitalsData();
-    haptic('Light');
-    ['v-hr','v-sbp','v-dbp','v-rr','v-spo2','v-temp','v-gcs','v-uop','v-notes'].forEach(id => {
-      const el = document.getElementById(id);
-      if(el) el.value = '';
-    });
-    prefillVitalsTimestamp();
-    renderPatientList();
-    renderVitalsMain();
+    const issues = vitalsSanityIssues(entry);
+    if(issues.length){
+      pendingVitalsEntry = entry;
+      showVitalsSanityBanner(issues);
+      return;
+    }
+    finalizeVitalsEntrySave(p, entry);
+  });
+
+  const fixBtn = document.getElementById('vitals-sanity-fix-btn');
+  const saveAnywayBtn = document.getElementById('vitals-sanity-save-btn');
+  if(fixBtn) fixBtn.addEventListener('click', () => {
+    const issues = pendingVitalsEntry ? vitalsSanityIssues(pendingVitalsEntry) : [];
+    hideVitalsSanityBanner();
+    if(issues[0]){
+      const el = document.getElementById(issues[0].field);
+      if(el) el.focus();
+    }
+  });
+  if(saveAnywayBtn) saveAnywayBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(p && pendingVitalsEntry) finalizeVitalsEntrySave(p, pendingVitalsEntry);
+  });
+}
+
+/* ---- NEWS2 live preview, updated as the entry form is typed into ---- */
+const NEWS2_PREVIEW_FIELDS = ['v-hr','v-rr','v-spo2','v-sbp','v-temp','v-gcs','v-o2sup'];
+
+function updateNews2Preview(){
+  const out = document.getElementById('vitals-news2-preview');
+  if(!out) return;
+  const p = activePatient();
+  const entry = readVitalsFormEntry();
+  if(!p || !vitalsEntryHasAnyVital(entry)){
+    out.hidden = true;
+    out.innerHTML = '';
+    out.className = 'vitals-news2-preview';
+    return;
+  }
+  const result = computeNews2(entry, p);
+  if(!result.dataPresent){
+    out.hidden = true;
+    return;
+  }
+  out.hidden = false;
+  out.className = 'vitals-news2-preview n2-' + result.level;
+  out.innerHTML = `NEWS2 live preview: <span class="n2-score">${result.score}</span> <span>${escapeHtml(news2LevelLabel(result.level))}</span>`;
+}
+
+function setupVitalsNews2Preview(){
+  NEWS2_PREVIEW_FIELDS.forEach(id => {
+    const el = document.getElementById(id);
+    if(!el || el.dataset.news2Wired) return;
+    el.dataset.news2Wired = '1';
+    el.addEventListener('input', updateNews2Preview);
+    el.addEventListener('change', updateNews2Preview);
   });
 }
 
@@ -3432,29 +3574,13 @@ function prefillVitalsTimestamp(){
 function autosaveVitalsReadingIfNeeded(){
   const p = activePatient();
   if(!p) return;
-  const val = id => { const el = document.getElementById(id); return el ? el.value.trim() : ''; };
-  const tsRaw = val('v-ts');
-  const ts = tsRaw ? new Date(tsRaw) : new Date();
-  const entry = {
-    id: genVitalsId('vr'),
-    ts: isNaN(ts.getTime()) ? new Date().toISOString() : ts.toISOString(),
-    hr: val('v-hr'), sbp: val('v-sbp'), dbp: val('v-dbp'), rr: val('v-rr'),
-    spo2: val('v-spo2'), temp: val('v-temp'), gcs: val('v-gcs'), uop: val('v-uop'),
-    notes: val('v-notes')
-  };
-  const hasAnyVital = ['hr','sbp','dbp','rr','spo2','temp','gcs','uop'].some(k => entry[k] !== '');
-  if(!hasAnyVital && !entry.notes) return; // nothing typed, nothing to save
-
-  if(!vitalsState.logs[p.id]) vitalsState.logs[p.id] = [];
-  vitalsState.logs[p.id].push(entry);
-  saveVitalsData();
-  ['v-hr','v-sbp','v-dbp','v-rr','v-spo2','v-temp','v-gcs','v-uop','v-notes'].forEach(id => {
-    const el = document.getElementById(id);
-    if(el) el.value = '';
-  });
-  prefillVitalsTimestamp();
-  renderPatientList();
-  renderVitalsMain();
+  // The tab-switch autosave can't show a confirm-before-save prompt (there's
+  // no user present to answer it) — it always saves whatever's typed as-is,
+  // sanity issues and all. The row/table still flags it same as any other
+  // reading once logged.
+  const entry = readVitalsFormEntry();
+  if(!vitalsEntryHasAnyVital(entry) && !entry.notes) return; // nothing typed, nothing to save
+  finalizeVitalsEntrySave(p, entry);
 }
 // Watches #view-vitals's own [hidden] attribute (toggled by the app's
 // shared switchView() whenever the user picks a different tab) and
@@ -3522,8 +3648,11 @@ function renderVitalsMain(){
   renderVitalsTable();
   renderVitalsSparklines();
   renderVitalsCombinedTrend();
+  renderVitalsTrendAlerts();
   refreshAllVitalsDeltas();
   renderDeptSections(p);
+  renderEscalationBanner(p);
+  updateNews2Preview();
 }
 
 const DEPT_LABELS = { general: 'GENERAL', icu: 'ICU', surgery: 'SURGERY / POST-OP', pediatrics: 'PEDIATRICS', maternity: 'MATERNITY' };
@@ -3537,12 +3666,33 @@ function deleteVitalsRow(patientId, entryId){
   renderVitalsMain();
 }
 
-// Global default thresholds — unchanged, still the fallback whenever a
-// patient has no per-patient override set for a given bound.
+// Global (general-ward adult) default thresholds — the base fallback
+// whenever a department has no override for a given bound and the patient
+// has no per-patient override either.
 const VITALS_GLOBAL_BASELINES = { hrLow: 50, hrHigh: 130, sbpLow: 90, sbpHigh: 180, spo2Low: 90, tempLow: 35, tempHigh: 38.5 };
 
+// Per-department default overrides, layered on top of VITALS_GLOBAL_BASELINES
+// (only the bounds listed here differ from the general-ward default — any
+// bound a department doesn't mention just falls through to the global one).
+// Hard-coded, not admin-configurable — same "hard-coded department table"
+// decision already made for the department field itself elsewhere in this
+// file. These are deliberately simplified, defensible-but-not-authoritative
+// generalizations for a personal charting aid, not an institutional protocol:
+// ICU patients are watched closely enough that we alarm sooner (tighter
+// bounds); post-op surgical patients get a similarly tighter SpO2/BP floor
+// (bleeding/sepsis risk); pediatric SpO2 alarms sooner than adult; maternity
+// tightens the systolic-BP ceiling because pre-eclampsia risk starts well
+// below the general-ward hypertension threshold.
+const VITALS_DEPT_BASELINES = {
+  general:    {},
+  icu:        { spo2Low: 92, hrLow: 55, hrHigh: 120, sbpLow: 100, sbpHigh: 160, tempHigh: 38.0 },
+  surgery:    { spo2Low: 92, sbpLow: 95, hrHigh: 120 },
+  pediatrics: { spo2Low: 94 },
+  maternity:  { spo2Low: 92, sbpHigh: 140, hrHigh: 120 }
+};
+
 // Age-band HR/RR normal ranges for pediatrics — a simple lookup, not a
-// clinical scoring system. BP/SpO2/temp bounds stay the adult defaults
+// clinical scoring system. BP/SpO2/temp bounds stay the department defaults
 // (no widely-agreed simple age-band equivalent worth hard-coding here).
 const PEDIATRIC_AGE_BANDS = [
   { max: 1,  label: 'infant',     hrLow: 100, hrHigh: 160, rrLow: 30, rrHigh: 60 },
@@ -3555,33 +3705,248 @@ function pediatricAgeBand(ageYears){
   return PEDIATRIC_AGE_BANDS.find(b => ageYears <= b.max) || PEDIATRIC_AGE_BANDS[PEDIATRIC_AGE_BANDS.length - 1];
 }
 
+// Resolves the effective hr/sbp/spo2/temp bounds for a patient, in
+// precedence order: explicit per-patient baseline override > pediatric
+// age-band (HR only) > department default > global default. Shared by
+// vitalsRowFlag() and the NEWS2 SpO2-scale choice below so "what counts as
+// abnormal" stays one source of truth instead of drifting between the two.
+function effectiveBaselines(patient){
+  const p = patient || activePatient();
+  const b = (p && p.baselines) || {};
+  const dept = (p && p.department) || 'general';
+  const deptOverrides = VITALS_DEPT_BASELINES[dept] || {};
+  const eff = Object.assign({}, VITALS_GLOBAL_BASELINES, deptOverrides);
+  const ageBand = (dept === 'pediatrics' && p && p.pediatrics) ? pediatricAgeBand(p.pediatrics.ageYears) : null;
+  if(ageBand){ eff.hrLow = ageBand.hrLow; eff.hrHigh = ageBand.hrHigh; }
+  Object.keys(eff).forEach(key => {
+    if(b[key] !== undefined && b[key] !== null && b[key] !== '') eff[key] = parseFloat(b[key]);
+  });
+  eff._ageBand = ageBand;
+  return eff;
+}
+
 function vitalsRowFlag(entry, patient){
   // A light, non-diagnostic visual nudge only — flags values a shift
   // nurse/intern would typically double-check, nothing more.
-  // Additive per-patient baseline overrides (e.g. a known-baseline
-  // arrhythmia's resting HR) take precedence per-bound when set;
-  // any bound left unset on the patient falls back to the global default.
   const p = patient || activePatient();
-  const b = (p && p.baselines) || {};
-  const g = VITALS_GLOBAL_BASELINES;
-  // Pediatric patients use age-band HR/RR thresholds instead of the adult
-  // global defaults, unless the clinician has set an explicit per-patient
-  // baseline override for that bound (overrides still win either way).
-  const ageBand = (p && p.department === 'pediatrics' && p.pediatrics)
-    ? pediatricAgeBand(p.pediatrics.ageYears) : null;
-  const gEff = ageBand ? Object.assign({}, g, { hrLow: ageBand.hrLow, hrHigh: ageBand.hrHigh }) : g;
-  const bound = key => (b[key] !== undefined && b[key] !== null && b[key] !== '') ? parseFloat(b[key]) : gEff[key];
+  const eff = effectiveBaselines(p);
+  const ageBand = eff._ageBand;
   if(ageBand){
     const rr = entry.rr === '' || entry.rr === undefined ? null : parseFloat(entry.rr);
     if(rr !== null && (rr < ageBand.rrLow || rr > ageBand.rrHigh)) return true;
   }
   const n = v => v === '' ? null : parseFloat(v);
   const hr = n(entry.hr), sbp = n(entry.sbp), spo2 = n(entry.spo2), temp = n(entry.temp);
-  if(spo2 !== null && spo2 < bound('spo2Low')) return true;
-  if(sbp !== null && (sbp < bound('sbpLow') || sbp > bound('sbpHigh'))) return true;
-  if(hr !== null && (hr < bound('hrLow') || hr > bound('hrHigh'))) return true;
-  if(temp !== null && (temp < bound('tempLow') || temp >= bound('tempHigh'))) return true;
+  if(spo2 !== null && spo2 < eff.spo2Low) return true;
+  if(sbp !== null && (sbp < eff.sbpLow || sbp > eff.sbpHigh)) return true;
+  if(hr !== null && (hr < eff.hrLow || hr > eff.hrHigh)) return true;
+  if(temp !== null && (temp < eff.tempLow || temp >= eff.tempHigh)) return true;
   return false;
+}
+
+/* ============================================================
+   NEWS2-style early warning score
+   Standard Royal College of Physicians NEWS2 point bands for RR, SpO2,
+   air/oxygen, systolic BP, HR and temperature; consciousness is derived
+   from GCS (GCS 15 = Alert = 0 points, any lower logged GCS = CVPU = 3
+   points — a simplification, since we don't separately capture
+   confusion/voice/pain/unresponsive here). This is a *reference aid*,
+   not a validated clinical calculation performed by trained staff on an
+   official chart — see the disclaimer on this tab.
+   ============================================================ */
+
+function news2RRScore(rr){
+  if(rr === null) return null;
+  if(rr <= 8) return 3;
+  if(rr <= 11) return 1;
+  if(rr <= 20) return 0;
+  if(rr <= 24) return 2;
+  return 3;
+}
+function news2Spo2Score(spo2, useScale2, onO2){
+  if(spo2 === null) return null;
+  if(!useScale2){
+    if(spo2 <= 91) return 3;
+    if(spo2 <= 93) return 2;
+    if(spo2 <= 95) return 1;
+    return 0;
+  }
+  // Scale 2 — permissive target range (e.g. known hypercapnic risk)
+  if(spo2 <= 83) return 3;
+  if(spo2 <= 85) return 2;
+  if(spo2 <= 87) return 1;
+  if(spo2 <= 92) return 0;
+  if(onO2) return spo2 <= 94 ? 1 : 2;
+  return 0; // 93-100 on air
+}
+function news2SbpScore(sbp){
+  if(sbp === null) return null;
+  if(sbp <= 90) return 3;
+  if(sbp <= 100) return 2;
+  if(sbp <= 110) return 1;
+  if(sbp <= 219) return 0;
+  return 3;
+}
+function news2HrScore(hr){
+  if(hr === null) return null;
+  if(hr <= 40) return 3;
+  if(hr <= 50) return 1;
+  if(hr <= 90) return 0;
+  if(hr <= 110) return 1;
+  if(hr <= 130) return 2;
+  return 3;
+}
+function news2TempScore(t){
+  if(t === null) return null;
+  if(t <= 35.0) return 3;
+  if(t <= 36.0) return 1;
+  if(t <= 38.0) return 0;
+  if(t <= 39.0) return 1;
+  return 2;
+}
+function news2ConsciousnessScore(gcsRaw){
+  if(gcsRaw === '' || gcsRaw === null || gcsRaw === undefined) return null;
+  const g = parseFloat(gcsRaw);
+  if(isNaN(g)) return null;
+  return g >= 15 ? 0 : 3;
+}
+
+// score: total NEWS2 points across whichever parameters were actually
+// logged (a partial reading still yields a partial, honestly-labelled
+// score rather than silently treating missing fields as "normal").
+function computeNews2(entry, patient){
+  const p = patient || activePatient();
+  const n = v => (v === '' || v === null || v === undefined) ? null : parseFloat(v);
+  const rr = n(entry.rr), spo2 = n(entry.spo2), sbp = n(entry.sbp), hr = n(entry.hr), temp = n(entry.temp);
+  const onO2 = !!entry.o2sup;
+  // Scale 2 (permissive SpO2 target, e.g. 88-92%) only applies when the
+  // clinician has explicitly set this patient's own SpO2-low baseline
+  // override to <=88 — the real NEWS2 trigger for it (known hypercapnic
+  // respiratory failure risk), not a blanket per-department setting. See
+  // effectiveBaselines()/VITALS_DEPT_BASELINES for department flag bands,
+  // which stay separate from this — NEWS2's bands are a validated fixed
+  // score, only its documented SpO2-scale choice is patient-specific.
+  const useScale2 = !!(p && p.baselines && p.baselines.spo2Low !== undefined && p.baselines.spo2Low !== null &&
+    p.baselines.spo2Low !== '' && parseFloat(p.baselines.spo2Low) <= 88);
+  const parts = {
+    rr: news2RRScore(rr),
+    spo2: news2Spo2Score(spo2, useScale2, onO2),
+    o2: spo2 === null ? null : (onO2 ? 2 : 0),
+    sbp: news2SbpScore(sbp),
+    hr: news2HrScore(hr),
+    temp: news2TempScore(temp),
+    consciousness: news2ConsciousnessScore(entry.gcs)
+  };
+  const scored = Object.keys(parts).map(k => parts[k]).filter(v => v !== null);
+  const dataPresent = scored.length > 0;
+  const score = scored.reduce((a, b) => a + b, 0);
+  const anySingle3 = scored.some(v => v === 3);
+  let level = 'low';
+  if(score >= 7) level = 'high';
+  else if(score >= 5 || anySingle3) level = 'medium';
+  return { score, level, parts, dataPresent, anySingle3, useScale2 };
+}
+
+function news2LevelLabel(level){
+  if(level === 'high') return 'High — emergency-level response';
+  if(level === 'medium') return 'Medium — urgent review';
+  return 'Low';
+}
+
+/* ---- trend-based deterioration badges: last 3 consecutive logged
+   values for a vital moving consistently in its clinically-worsening
+   direction, past a meaningful step size — distinct from (and additive
+   to) the single-reading abnormal flag above. ---- */
+const TREND_WORSENING_DIRECTION = { hr: 'up', rr: 'up', spo2: 'down', sbp: 'down' };
+const TREND_STEP = { hr: 15, rr: 6, spo2: 4, sbp: 15 };
+const TREND_LABELS = { hr: 'HR', rr: 'RR', spo2: 'SpO₂', sbp: 'BP systolic' };
+
+function lastNVitalValues(field, count){
+  const log = activeLog().slice().sort((a, b) => new Date(a.ts) - new Date(b.ts));
+  const vals = [];
+  for(const e of log){
+    const raw = e[field];
+    if(raw === '' || raw === null || raw === undefined) continue;
+    const v = parseFloat(raw);
+    if(!isNaN(v)) vals.push(v);
+  }
+  return vals.slice(-count);
+}
+
+function detectVitalTrend(field){
+  const vals = lastNVitalValues(field, 3);
+  if(vals.length < 3) return null;
+  const [a, b, c] = vals;
+  const d1 = b - a, d2 = c - b;
+  if(d1 === 0 || d2 === 0) return null;
+  const sameDirection = (d1 > 0 && d2 > 0) || (d1 < 0 && d2 < 0);
+  if(!sameDirection) return null;
+  const totalChange = c - a;
+  if(Math.abs(totalChange) < TREND_STEP[field]) return null;
+  const direction = totalChange > 0 ? 'up' : 'down';
+  return { direction, worsening: direction === TREND_WORSENING_DIRECTION[field], totalChange };
+}
+
+function renderVitalsTrendAlerts(){
+  const wrap = document.getElementById('vitals-trend-alerts');
+  if(!wrap) return;
+  const p = activePatient();
+  if(!p){ wrap.hidden = true; wrap.innerHTML = ''; return; }
+  const badges = Object.keys(TREND_WORSENING_DIRECTION).map(field => {
+    const trend = detectVitalTrend(field);
+    if(!trend || !trend.worsening) return '';
+    const arrow = trend.direction === 'up' ? '↑' : '↓';
+    const severe = Math.abs(trend.totalChange) >= TREND_STEP[field] * 1.5;
+    return `<span class="vitals-trend-badge${severe ? ' severe' : ''}">${arrow} ${escapeHtml(TREND_LABELS[field])} trending ${trend.direction} — last 3 readings</span>`;
+  }).join('');
+  wrap.innerHTML = badges;
+  wrap.hidden = !badges;
+}
+
+/* ---- vitals entry sanity check: catches obviously-mistyped values
+   (decimal-point shifts, missing/extra digits) before saving — a
+   confirm-before-save nudge, never a hard block. ---- */
+function vitalsShiftSuggestion(val, lo, hi){
+  if(val === null) return null;
+  const times10 = Math.round(val * 10 * 10) / 10;
+  if(times10 >= lo && times10 <= hi) return times10;
+  const div10 = Math.round((val / 10) * 10) / 10;
+  if(div10 >= lo && div10 <= hi) return div10;
+  return null;
+}
+
+function vitalsSanityIssues(entry){
+  const issues = [];
+  const n = v => (v === '' || v === null || v === undefined) ? null : parseFloat(v);
+  const hr = n(entry.hr), sbp = n(entry.sbp), dbp = n(entry.dbp), rr = n(entry.rr), temp = n(entry.temp);
+  if(hr !== null && (hr < 30 || hr > 220)){
+    const sug = vitalsShiftSuggestion(hr, 30, 220);
+    issues.push({ field: 'v-hr', message: sug !== null
+      ? `HR of ${hr} bpm looks unusual — did you mean ${sug}?`
+      : `HR of ${hr} bpm is far outside a plausible range — please double-check.` });
+  }
+  if(temp !== null && (temp < 30 || temp > 43)){
+    const sug = vitalsShiftSuggestion(temp, 30, 43);
+    issues.push({ field: 'v-temp', message: sug !== null
+      ? `Temp of ${temp}°C looks unusual — did you mean ${sug}°C?`
+      : `Temp of ${temp}°C is far outside a plausible range — please double-check.` });
+  }
+  if(rr !== null && (rr < 4 || rr > 60)){
+    const sug = vitalsShiftSuggestion(rr, 4, 60);
+    issues.push({ field: 'v-rr', message: sug !== null
+      ? `RR of ${rr}/min looks unusual — did you mean ${sug}/min?`
+      : `RR of ${rr}/min is far outside a plausible range — please double-check.` });
+  }
+  if(sbp !== null && (sbp < 40 || sbp > 260)){
+    const sug = vitalsShiftSuggestion(sbp, 40, 260);
+    issues.push({ field: 'v-sbp', message: sug !== null
+      ? `BP systolic of ${sbp} looks unusual — did you mean ${sug}?`
+      : `BP systolic of ${sbp} is far outside a plausible range — please double-check.` });
+  }
+  if(sbp !== null && dbp !== null && dbp >= sbp){
+    issues.push({ field: 'v-dbp', message: `Diastolic (${dbp}) isn’t lower than systolic (${sbp}) — check these aren’t swapped.` });
+  }
+  return issues;
 }
 
 // Text-filter over a patient's own log: matches notes text or any
@@ -3626,7 +3991,11 @@ function renderVitalsTable(){
   log.forEach(entry => {
     const tr = document.createElement('tr');
     const bp = (entry.sbp || entry.dbp) ? `${escapeHtml(entry.sbp || '—')}/${escapeHtml(entry.dbp || '—')}` : '—';
-    const flagClass = vitalsRowFlag(entry) ? ' vitals-td-flag' : '';
+    const flagClass = vitalsRowFlag(entry, p) ? ' vitals-td-flag' : '';
+    const n2 = computeNews2(entry, p);
+    const n2Cell = n2.dataPresent
+      ? `<td class="vitals-td-news2 n2-${n2.level}" title="${escapeHtml(news2LevelLabel(n2.level))}">${n2.score}</td>`
+      : '<td class="vitals-td-news2">—</td>';
     tr.innerHTML = `
       <td>${escapeHtml(fmtVitalsTime(entry.ts))}</td>
       <td class="${flagClass.trim()}">${escapeHtml(entry.hr || '—')}</td>
@@ -3636,6 +4005,7 @@ function renderVitalsTable(){
       <td class="${flagClass.trim()}">${escapeHtml(entry.temp || '—')}</td>
       <td>${escapeHtml(entry.gcs || '—')}</td>
       <td>${escapeHtml(entry.uop || '—')}</td>
+      ${n2Cell}
       <td class="vitals-td-notes">${escapeHtml(entry.notes || '')}</td>
       <td><button type="button" class="vitals-row-delete" aria-label="Delete this reading" data-entry-id="${entry.id}">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
@@ -3863,9 +4233,29 @@ function setupVitalsBaselinesForm(){
     p.baselines = baselines;
     saveVitalsData();
     form.hidden = true;
-    renderVitalsTable();
+    renderVitalsMain(); // baselines can shift flagging bounds and the NEWS2 SpO2 scale
     haptic('Light');
   });
+}
+
+/* ---- escalation banner — driven by the most recently *logged* reading's
+   NEWS2 score, not whatever's mid-typed in the entry form (that's the
+   separate live preview above the form). ---- */
+function renderEscalationBanner(p){
+  const el = document.getElementById('vitals-escalation-banner');
+  if(!el) return;
+  const log = (p && vitalsState.logs[p.id]) || [];
+  if(!log.length){ el.hidden = true; el.innerHTML = ''; return; }
+  const latest = log.slice().sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+  const result = computeNews2(latest, p);
+  if(!result.dataPresent || (result.score < 5 && !result.anySingle3)){
+    el.hidden = true;
+    el.innerHTML = '';
+    return;
+  }
+  el.hidden = false;
+  el.innerHTML = `<span class="n2-badge">NEWS2 ${result.score}</span> Escalate — urgent review needed ` +
+    `<span style="font-weight:500;">(based on the reading logged ${escapeHtml(fmtVitalsTime(latest.ts))} — use clinical judgement, this is a reference aid only)</span>`;
 }
 
 /* ============================================================
