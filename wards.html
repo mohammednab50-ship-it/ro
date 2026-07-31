@@ -967,6 +967,24 @@ body,.card,.drug-card,.approval-card,.guidelines-box,.sources-box,.disclaimer-bo
              border-color var(--dur-base) var(--ease-out);
 }
 
+/* ---- colour-blind-safe palette ----
+   Separate toggle from light/dark theme and the wards-hc high-contrast
+   mode above. Overrides the semantic status tokens used by NEWS2 bands,
+   trend badges and isolation flags to a blue/orange scheme instead of
+   red/orange (closer together for red-green colour vision deficiency),
+   and adds glyph + weight redundancy so status never rests on colour
+   alone. Applies in both light and dark theme. */
+html.wards-cbsafe{ --fresh:#0B6FA8; --fresh-bg:#E1F0FA; --caution:#B95000; --caution-bg:#FCE8D9; --caution-line:#F0C79B; }
+html.wards-cbsafe[data-theme="dark"]{ --fresh:#7FC8F5; --fresh-bg:#0E2536; --caution:#FFA552; --caution-bg:#2A1D0D; --caution-line:#4A3216; }
+html.wards-cbsafe td.vitals-td-news2.n2-medium::before,
+html.wards-cbsafe .vitals-news2-preview.n2-medium .n2-score::before,
+html.wards-cbsafe .vitals-board-n2.n2-medium::before{content:"\25b2 ";font-size:0.75em;}
+html.wards-cbsafe td.vitals-td-news2.n2-high::before,
+html.wards-cbsafe .vitals-news2-preview.n2-high .n2-score::before,
+html.wards-cbsafe .vitals-board-n2.n2-high::before{content:"\25b2\25b2 ";font-size:0.75em;}
+html.wards-cbsafe .vitals-trend-badge.severe{background:var(--caution-bg);color:var(--caution);border:1px solid var(--caution-line);font-weight:800;}
+html.wards-cbsafe .iso-badge{border:1.5px solid currentColor;}
+
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important;}
@@ -2406,6 +2424,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <button type="button" class="seg-btn" data-size="xlarge">A++</button>
           </div>
         </div>
+        <label class="qh-row ws-row"><input type="checkbox" id="wards-cbsafe-toggle"> Colour-blind-safe palette</label>
+        <p class="qh-note">Shifts status colours (NEWS2 bands, trend badges, isolation flags) off a red/green-only scheme and adds icon/label redundancy.</p>
       </div>
     </div>
   </div>
@@ -3150,6 +3170,23 @@ function toggleA11yMode(){
 }
 
 /* ============================================================
+   Colour-blind-safe palette — separate toggle from both the theme
+   (light/dark) and the wards-hc high-contrast mode. See the CSS block
+   above (html.wards-cbsafe) for what it actually changes.
+   ============================================================ */
+const CBSAFE_KEY = 'wards_cbsafe_v1';
+function getInitialCbSafe(){
+  try{ return localStorage.getItem(CBSAFE_KEY) === '1'; }catch(e){ return false; }
+}
+function applyCbSafe(on){
+  document.documentElement.classList.toggle('wards-cbsafe', !!on);
+}
+function setCbSafe(on){
+  applyCbSafe(on);
+  try{ localStorage.setItem(CBSAFE_KEY, on ? '1' : '0'); }catch(e){}
+}
+
+/* ============================================================
    Text size — independent of the high-contrast mode above (that
    bumps font-size as a side effect of its own fixed profile; this is
    a separate, adjustable small/normal/large/extra-large control).
@@ -3209,6 +3246,12 @@ function setupWardsSettingsUI(){
         sizeSeg.querySelectorAll('.seg-btn').forEach(x => x.classList.toggle('active', x === b));
       };
     });
+  }
+
+  const cbInput = document.getElementById('wards-cbsafe-toggle');
+  if(cbInput){
+    cbInput.checked = getInitialCbSafe();
+    cbInput.addEventListener('change', () => { setCbSafe(cbInput.checked); haptic('Light'); });
   }
 
   btn.addEventListener('click', (e) => {
@@ -6403,6 +6446,7 @@ function boot(){
   const a11yToggle = document.getElementById('a11y-toggle');
   if(a11yToggle) a11yToggle.onclick = toggleA11yMode;
   applyWardsFontSize(getInitialWardsFontSize());
+  applyCbSafe(getInitialCbSafe());
   setupConnectivityIndicator();
   setupQuietHoursUI();
   setupWardsSettingsUI();
