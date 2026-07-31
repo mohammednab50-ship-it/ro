@@ -294,6 +294,27 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .app-toast-undo{flex-shrink:0;border:1px solid var(--shell-line,rgba(244,241,234,0.28));background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;padding:3px 10px;border-radius:var(--r-pill);margin-left:2px;}
 .app-toast-undo:hover{background:rgba(244,241,234,0.14);}
 
+/* ---- "On this day" bookmark resurfacing card — a gentle, dismissable,
+   non-blocking corner card, not a modal. ---- */
+.on-this-day-card{position:fixed;right:20px;bottom:20px;z-index:1350;max-width:300px;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-md);
+  box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,0.25));padding:16px 18px;
+  opacity:0;transform:translateY(14px);pointer-events:none;
+  transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
+.on-this-day-card.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+.otd-eyebrow{font-family:var(--ff-sans);font-size:10.5px;font-weight:700;letter-spacing:0.06em;color:var(--evidence-dark, var(--ink-faint));margin-bottom:4px;}
+.otd-label{font-family:var(--ff-sans);font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.4;margin-bottom:12px;}
+.otd-actions{display:flex;gap:8px;}
+.otd-btn{border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);border-radius:var(--r-pill);
+  padding:6px 14px;font-family:var(--ff-sans);font-size:12px;font-weight:600;cursor:pointer;}
+.otd-btn-primary{background:var(--cta-bg);color:var(--cta-ink);border-color:transparent;}
+
+.rounds-demo-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
+  padding:8px 20px;background:#664d03;color:#fff3cd;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
+.rounds-demo-banner button{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;
+  border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:700;cursor:pointer;}
+.rounds-demo-banner button:hover{background:rgba(255,255,255,.22);}
+
 /* ---- app footer / version ---- */
 .app-footer{max-width:1280px;margin:0 auto;padding:28px 40px 40px;display:flex;flex-wrap:wrap;gap:6px 16px;
   align-items:center;justify-content:center;text-align:center;border-top:1px solid var(--line-soft);}
@@ -1185,6 +1206,15 @@ body.locked{overflow:hidden;}
 .crashlog-time{display:block;font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-faint);margin-bottom:3px;}
 .crashlog-msg{font-family:var(--ff-mono);font-size:12px;color:var(--shell-ink);word-break:break-word;white-space:pre-wrap;margin:0;}
 .crashlog-actions{display:flex;gap:8px;}
+.usage-stats-tiles{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.usage-stats-tile{flex:1;min-width:110px;border:1px solid var(--shell-line);border-radius:var(--r-md);padding:12px 14px;text-align:center;}
+.usage-stats-tile strong{display:block;font-family:var(--ff-display);font-size:24px;font-weight:800;color:var(--shell-ink);}
+.usage-stats-tile span{display:block;font-family:var(--ff-sans);font-size:11.5px;color:var(--ink-faint);margin-top:2px;}
+.usage-stats-h{font-family:var(--ff-sans);font-size:12px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--ink-faint);margin:16px 0 8px;}
+.usage-stats-list{list-style:none;margin:0;padding:0;border:1px solid var(--shell-line);border-radius:var(--r-md);overflow:hidden;}
+.usage-stats-list li{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;font-family:var(--ff-sans);font-size:13px;color:var(--shell-ink);border-bottom:1px solid var(--shell-line);}
+.usage-stats-list li:last-child{border-bottom:none;}
+.usl-count{color:var(--ink-faint);white-space:nowrap;}
 .shortcuts-table{width:100%;border-collapse:collapse;font-family:var(--ff-sans);font-size:13.5px;}
 .shortcuts-table td{padding:8px 4px;border-bottom:1px solid var(--shell-line);color:var(--shell-ink-soft);}
 .shortcuts-table tr:last-child td{border-bottom:none;}
@@ -1956,6 +1986,19 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Date/number format</strong><span class="settings-sub">Locale used for dates and numbers</span></div>
+      <select id="settings-locale-select" class="settings-select">
+        <option value="device">Use device default</option>
+        <option value="en-US">English (US)</option>
+        <option value="en-GB">English (UK)</option>
+        <option value="en-AU">English (Australia)</option>
+        <option value="fr-FR">Français (France)</option>
+        <option value="de-DE">Deutsch (Germany)</option>
+        <option value="es-ES">Español (Spain)</option>
+      </select>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Default department</strong><span class="settings-sub">Opens here on launch</span></div>
       <select id="settings-default-specialty" class="settings-select"></select>
     </div>
@@ -1968,6 +2011,16 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div class="settings-row">
       <div class="settings-label"><strong>Recently viewed</strong><span class="settings-sub" id="settings-recent-info">Nothing viewed yet</span></div>
       <button type="button" class="settings-btn" id="settings-view-recent">View</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Your activity</strong><span class="settings-sub">Personal usage insight — local only</span></div>
+      <button type="button" class="settings-btn" id="settings-view-usage-stats">View</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Demo mode</strong><span class="settings-sub">Sample bookmarks, for showing colleagues</span></div>
+      <button type="button" class="settings-btn" id="settings-demo-toggle">Try demo mode</button>
     </div>
 
     <div class="settings-row">
@@ -2033,7 +2086,9 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <textarea id="feedback-text" class="bookmark-note-input" style="min-height:120px;margin-bottom:14px;" placeholder="What happened? What did you expect instead?" maxlength="4000"></textarea>
     <div class="crashlog-actions">
       <button type="button" class="settings-btn" id="feedback-download">Download report</button>
+      <button type="button" class="settings-btn" id="feedback-copy-debug">Copy debug data</button>
     </div>
+    <p class="settings-sub" style="display:block;margin:10px 0 0;">"Copy debug data" copies structural info only — storage key names, item counts, schema version — never the actual saved text/content.</p>
   </div>
 </div>
 
@@ -2045,6 +2100,15 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <h2 class="onb-title serif" id="recent-title">Recently viewed</h2>
     <p class="settings-sub" style="display:block;margin:-4px 0 14px;">Your last drug lookups, condition research, advances, and trials — across all four tabs.</p>
     <div class="crashlog-list" id="recent-list"></div>
+  </div>
+</div>
+
+<div class="rename-overlay" id="usage-stats-modal" role="dialog" aria-modal="true" aria-labelledby="usage-stats-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="usage-stats-close" aria-label="Close your activity">&times;</button>
+    <p class="onb-eyebrow">YOUR ACTIVITY</p>
+    <h2 class="onb-title serif" id="usage-stats-title">Your activity</h2>
+    <div id="usage-stats-body"></div>
   </div>
 </div>
 
@@ -2279,6 +2343,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </svg>
   </div>
 </header>
+
+<div class="rounds-demo-banner" id="rounds-demo-banner" hidden>
+  <span>&#9888; DEMO MODE — sample bookmarks shown below. Nothing here is your real saved data, and nothing you do while demoing is saved.</span>
+  <button type="button" id="rounds-demo-exit-btn">Exit demo mode</button>
+</div>
 
 <div class="disclaimer" id="disclaimer-wrap">
   <div class="disclaimer-box" role="note">
@@ -6447,6 +6516,46 @@ const CHANGELOG = [
     '"Export all Rounds data" backup added to Settings.'
   ]}
 ];
+/* ============================================================
+   Guest / demo mode — a temporary in-memory bookmark set for showing
+   Rounds to a colleague without exposing (or risking overwriting) real
+   saved data. getBookmarks/setBookmarks and their condition-bookmark
+   equivalents below branch on roundsDemoMode; everything else already
+   reads bookmarks through those two functions, so nothing else needs
+   to change.
+   ============================================================ */
+let roundsDemoMode = false;
+let roundsDemoBookmarks = {};
+let roundsDemoConditionBookmarks = {};
+function roundsDemoSeed(){
+  roundsDemoBookmarks = {
+    'demo1': { pmid: 'demo1', title: 'Sample bookmark — Early goal-directed therapy in sepsis (demo article)', journal: 'Demo Journal', date: '2024' },
+    'demo2': { pmid: 'demo2', title: 'Sample bookmark — DOACs vs warfarin in atrial fibrillation (demo article)', journal: 'Demo Journal', date: '2023' }
+  };
+  roundsDemoConditionBookmarks = {
+    'Demo condition — Community-acquired pneumonia': { name: 'Demo condition — Community-acquired pneumonia', addedAt: Date.now() }
+  };
+}
+function enterRoundsDemoMode(){
+  if(roundsDemoMode) return;
+  roundsDemoSeed();
+  roundsDemoMode = true;
+  const banner = document.getElementById('rounds-demo-banner');
+  if(banner) banner.hidden = false;
+  if(typeof renderChapters === 'function') renderChapters();
+  if(typeof renderSyndromeGroups === 'function') renderSyndromeGroups();
+}
+function exitRoundsDemoMode(){
+  if(!roundsDemoMode) return;
+  roundsDemoMode = false;
+  roundsDemoBookmarks = {};
+  roundsDemoConditionBookmarks = {};
+  const banner = document.getElementById('rounds-demo-banner');
+  if(banner) banner.hidden = true;
+  if(typeof renderChapters === 'function') renderChapters();
+  if(typeof renderSyndromeGroups === 'function') renderSyndromeGroups();
+}
+
 const BOOKMARK_KEY = 'rounds_bookmarks_v1';
 const THEME_KEY = 'rounds_theme_v1';
 const DISCLAIMER_KEY = 'rounds_disclaimer_dismissed';
@@ -6501,6 +6610,79 @@ function recordRecentlyViewed(category, label, url){
     if(list.length > RECENTLY_VIEWED_MAX) list = list.slice(0, RECENTLY_VIEWED_MAX);
     localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(list));
   }catch(e){}
+  bumpLookupCount(category, label);
+}
+
+/* ============================================================
+   Personal usage stats — self-only counts derived from data already
+   stored locally (lookup counts piggyback on recordRecentlyViewed
+   above; quiz/cases counts are bumped at session-complete/open).
+   Nothing here is sent anywhere.
+   ============================================================ */
+const LOOKUP_COUNTS_KEY = 'rounds_lookup_counts_v1';
+const USAGE_STATS_KEY = 'rounds_usage_stats_v1';
+function bumpLookupCount(category, label){
+  if(category !== 'drug' && category !== 'condition') return;
+  try{
+    const counts = JSON.parse(localStorage.getItem(LOOKUP_COUNTS_KEY) || '{}');
+    const key = category + ':' + label;
+    counts[key] = (counts[key] || 0) + 1;
+    localStorage.setItem(LOOKUP_COUNTS_KEY, JSON.stringify(counts));
+  }catch(e){}
+}
+function getLookupCounts(){
+  try{ const v = JSON.parse(localStorage.getItem(LOOKUP_COUNTS_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; }
+  catch(e){ return {}; }
+}
+function getUsageStats(){
+  try{ const v = JSON.parse(localStorage.getItem(USAGE_STATS_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; }
+  catch(e){ return {}; }
+}
+function bumpUsageStat(key){
+  try{
+    const stats = getUsageStats();
+    stats[key] = (stats[key] || 0) + 1;
+    localStorage.setItem(USAGE_STATS_KEY, JSON.stringify(stats));
+  }catch(e){}
+}
+function topLookupEntries(category, n){
+  const counts = getLookupCounts();
+  return Object.keys(counts)
+    .filter(k => k.startsWith(category + ':'))
+    .map(k => ({ label: k.slice(category.length + 1), count: counts[k] }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, n);
+}
+function openUsageStats(){
+  const modal = document.getElementById('usage-stats-modal');
+  const body = document.getElementById('usage-stats-body');
+  if(!modal || !body) return;
+  const stats = getUsageStats();
+  const bookmarkCount = Object.keys(getBookmarks()).length;
+  const condBookmarkCount = Object.keys(getConditionBookmarks()).length;
+  const topDrugs = topLookupEntries('drug', 5);
+  const topConditions = topLookupEntries('condition', 5);
+  const listHtml = (items) => items.length
+    ? '<ol class="usage-stats-list">' + items.map(it => `<li><span class="usl-label">${escapeHtml(it.label)}</span><span class="usl-count">${it.count}&times;</span></li>`).join('') + '</ol>'
+    : '<p class="crashlog-empty" style="padding:10px 0;">Nothing looked up yet.</p>';
+  body.innerHTML = `
+    <div class="usage-stats-tiles">
+      <div class="usage-stats-tile"><strong>${bookmarkCount + condBookmarkCount}</strong><span>Bookmarks saved</span></div>
+      <div class="usage-stats-tile"><strong>${stats.quizSessions || 0}</strong><span>Quiz sessions completed</span></div>
+      <div class="usage-stats-tile"><strong>${stats.casesViewed || 0}</strong><span>Teaching cases viewed</span></div>
+    </div>
+    <h3 class="usage-stats-h">Most looked up drugs</h3>
+    ${listHtml(topDrugs)}
+    <h3 class="usage-stats-h">Most looked up conditions</h3>
+    ${listHtml(topConditions)}
+    <p class="settings-sub" style="display:block;margin-top:6px;">Personal insight only, computed entirely from what's stored on this device — nothing here is sent anywhere.</p>
+  `;
+  modal.hidden = false;
+  function close(){ modal.hidden = true; document.removeEventListener('keydown', onKey); }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('usage-stats-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  document.addEventListener('keydown', onKey);
 }
 const CBER_LAST_REVIEWED = '2026-07-19';
 
@@ -6745,9 +6927,13 @@ let syndromesState = { init: false, mode: 'alpha', query: '', geneticInit: false
    ============================================================ */
 
 function getBookmarks(){
+  if(roundsDemoMode) return roundsDemoBookmarks;
   try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY) || '{}'); } catch(e){ return {}; }
 }
-function setBookmarks(obj){ localStorage.setItem(BOOKMARK_KEY, JSON.stringify(obj)); }
+function setBookmarks(obj){
+  if(roundsDemoMode){ roundsDemoBookmarks = obj; return; }
+  localStorage.setItem(BOOKMARK_KEY, JSON.stringify(obj));
+}
 function isBookmarked(pmid){ return !!getBookmarks()[pmid]; }
 function toggleBookmark(article){
   const bm = getBookmarks();
@@ -6812,7 +6998,10 @@ const COND_BOOKMARK_KEY = 'rounds_condition_bookmarks_v1';
 function getConditionBookmarks(){
   try{ return JSON.parse(localStorage.getItem(COND_BOOKMARK_KEY) || '{}'); }catch(e){ return {}; }
 }
-function setConditionBookmarks(obj){ try{ localStorage.setItem(COND_BOOKMARK_KEY, JSON.stringify(obj)); }catch(e){} }
+function setConditionBookmarks(obj){
+  if(roundsDemoMode){ roundsDemoConditionBookmarks = obj; return; }
+  try{ localStorage.setItem(COND_BOOKMARK_KEY, JSON.stringify(obj)); }catch(e){}
+}
 function isConditionBookmarked(name){ return !!getConditionBookmarks()[name]; }
 function toggleConditionBookmark(name){
   const bm = getConditionBookmarks();
@@ -8745,6 +8934,18 @@ const ADVANCE_FIELDS = [
 
 const ADVANCE_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+const ROUNDS_LOCALE_KEY = 'rounds_locale_v1';
+function getRoundsLocale(){ try{ return localStorage.getItem(ROUNDS_LOCALE_KEY) || 'device'; }catch(e){ return 'device'; } }
+function setRoundsLocale(v){ try{ localStorage.setItem(ROUNDS_LOCALE_KEY, v); }catch(e){} }
+function roundsLocaleArg(){ const l = getRoundsLocale(); return l === 'device' ? [] : [l]; }
+function roundsFmtNumber(n){ return Number(n).toLocaleString(roundsLocaleArg()); }
+function roundsFmtDate(y, monIdx, d){
+  if(!y) return '';
+  const dt = new Date(Date.UTC(Number(y), monIdx >= 0 ? monIdx : 0, d || 1));
+  const opts = monIdx >= 0 ? (d ? {year:'numeric', month:'short', day:'numeric', timeZone:'UTC'} : {year:'numeric', month:'short', timeZone:'UTC'}) : {year:'numeric', timeZone:'UTC'};
+  return dt.toLocaleDateString(roundsLocaleArg(), opts);
+}
+
 /* Normalize a PubMed date ("2024 Mar 14", "2024 Mar", "2024") to a display
    string and a sortable YYYYMMDD key. */
 function advanceParseDate(raw){
@@ -8754,8 +8955,7 @@ function advanceParseDate(raw){
   const y = m[1];
   const monIdx = m[2] ? ADVANCE_MONTHS.findIndex(mm => mm.toLowerCase() === m[2].slice(0,3).toLowerCase()) : -1;
   const d = m[3] ? Number(m[3]) : null;
-  let display = y;
-  if(monIdx >= 0) display = d ? `${ADVANCE_MONTHS[monIdx]} ${d}, ${y}` : `${ADVANCE_MONTHS[monIdx]} ${y}`;
+  let display = roundsFmtDate(y, monIdx, d);
   const mm = monIdx >= 0 ? String(monIdx + 1).padStart(2,'0') : '00';
   const dd = d ? String(d).padStart(2,'0') : '00';
   return { display, sort: `${y}${mm}${dd}`, year: y };
@@ -9091,8 +9291,8 @@ function mapTrial(study){
 
 function fmtTrialDate(raw){
   const s = String(raw || '').trim();
-  if(/^\d{4}-\d{2}$/.test(s)){ return `${ADVANCE_MONTHS[Number(s.slice(5,7))-1] || ''} ${s.slice(0,4)}`; }
-  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ return `${ADVANCE_MONTHS[Number(s.slice(5,7))-1] || ''} ${Number(s.slice(8,10))}, ${s.slice(0,4)}`; }
+  if(/^\d{4}-\d{2}$/.test(s)){ return roundsFmtDate(s.slice(0,4), Number(s.slice(5,7))-1, null); }
+  if(/^\d{4}-\d{2}-\d{2}$/.test(s)){ return roundsFmtDate(s.slice(0,4), Number(s.slice(5,7))-1, Number(s.slice(8,10))); }
   return s;
 }
 
@@ -9107,12 +9307,12 @@ function renderTrials(){
   const shown = items.length;
   const total = trialsState.total || shown;
   const statusName = (TRIAL_STATUS_FILTERS.find(f => f.id === trialsState.status) || {}).name || 'All studies';
-  const totalLabel = total > shown ? `${shown} of ${total.toLocaleString()} studies` : `${shown} ${shown === 1 ? 'study' : 'studies'}`;
+  const totalLabel = total > shown ? `${shown} of ${roundsFmtNumber(total)} studies` : `${shown} ${shown === 1 ? 'study' : 'studies'}`;
 
   const rows = items.map(t => {
     const meta = [
       t.sponsor ? `<span><b>Sponsor</b> ${escapeHtml(t.sponsor)}</span>` : '',
-      t.enrollment ? `<span><b>Enrollment</b> ${t.enrollment.toLocaleString()}</span>` : '',
+      t.enrollment ? `<span><b>Enrollment</b> ${roundsFmtNumber(t.enrollment)}</span>` : '',
       t.start ? `<span><b>Started</b> ${escapeHtml(fmtTrialDate(t.start))}</span>` : '',
       t.studyType ? `<span><b>Type</b> ${escapeHtml(t.studyType)}</span>` : ''
     ].filter(Boolean).join('');
@@ -10720,6 +10920,75 @@ function init(){
   setupQuiz();
   setupCases();
   setupStudyExport();
+  maybeShowOnThisDay();
+  const demoExitBtn = document.getElementById('rounds-demo-exit-btn');
+  if(demoExitBtn){
+    demoExitBtn.onclick = () => {
+      exitRoundsDemoMode();
+      haptic('Light');
+      showToast('Exited demo mode — your real saved list is back', 'ok');
+    };
+  }
+}
+
+/* ============================================================
+   "On this day" — gently resurface one random previously-saved item,
+   once per calendar day, to reinforce recall. Never blocking — a
+   dismissable card, not a modal.
+   ============================================================ */
+const ON_THIS_DAY_KEY = 'rounds_on_this_day_v1';
+function onThisDayCandidates(){
+  const items = [];
+  Object.values(getBookmarks()).forEach(a => {
+    if(a && a.title) items.push({ kind: 'article', label: a.title, ref: a });
+  });
+  Object.values(getConditionBookmarks()).forEach(cb => {
+    if(cb && cb.name) items.push({ kind: 'condition', label: cb.name, ref: cb });
+  });
+  return items;
+}
+function maybeShowOnThisDay(){
+  try{
+    const today = new Date().toISOString().slice(0, 10);
+    if(localStorage.getItem(ON_THIS_DAY_KEY) === today) return;
+    const items = onThisDayCandidates();
+    if(!items.length) return;
+    const pick = items[Math.floor(Math.random() * items.length)];
+    localStorage.setItem(ON_THIS_DAY_KEY, today);
+    showOnThisDayCard(pick);
+  }catch(e){}
+}
+function showOnThisDayCard(item){
+  const el = document.createElement('div');
+  el.className = 'on-this-day-card';
+  el.innerHTML = `
+    <div class="otd-eyebrow">REVISIT THIS</div>
+    <div class="otd-label"></div>
+    <div class="otd-actions">
+      <button type="button" class="otd-btn otd-btn-primary">Open</button>
+      <button type="button" class="otd-btn" aria-label="Dismiss">Dismiss</button>
+    </div>`;
+  el.querySelector('.otd-label').textContent = item.label;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  const dismiss = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  el.querySelector('.otd-btn-primary').addEventListener('click', () => {
+    haptic('Light');
+    if(item.kind === 'article'){
+      switchView('literature');
+    } else if(item.kind === 'condition'){
+      switchView('syndromes');
+      const search = document.getElementById('syndrome-search');
+      if(search){
+        search.value = item.label;
+        if(typeof syndromesState !== 'undefined'){ syndromesState.query = item.label.toLowerCase(); }
+        if(typeof renderSyndromeGroups === 'function') renderSyndromeGroups();
+      }
+    }
+    dismiss();
+  });
+  el.querySelectorAll('.otd-btn:not(.otd-btn-primary)').forEach(b => b.addEventListener('click', dismiss));
+  setTimeout(dismiss, 12000);
 }
 
 function restoreLastSpecialty(){
@@ -10977,6 +11246,16 @@ function openSettings(){
     syncBs();
   }
 
+  const localeSel = document.getElementById('settings-locale-select');
+  if(localeSel){
+    localeSel.value = getRoundsLocale();
+    localeSel.onchange = () => {
+      setRoundsLocale(localeSel.value);
+      haptic('Light');
+      showToast('Date/number format updated', 'ok');
+    };
+  }
+
   const sel = document.getElementById('settings-default-specialty');
   if(sel){
     let curSp = '';
@@ -11070,6 +11349,25 @@ function openSettings(){
   const recentViewBtn = document.getElementById('settings-view-recent');
   if(recentViewBtn) recentViewBtn.onclick = () => { haptic('Light'); openRecentlyViewed(); };
 
+  const usageStatsBtn = document.getElementById('settings-view-usage-stats');
+  if(usageStatsBtn) usageStatsBtn.onclick = () => { haptic('Light'); openUsageStats(); };
+
+  const demoBtn = document.getElementById('settings-demo-toggle');
+  function syncDemoBtn(){
+    if(!demoBtn) return;
+    demoBtn.textContent = roundsDemoMode ? 'In demo mode' : 'Try demo mode';
+    demoBtn.disabled = roundsDemoMode;
+  }
+  if(demoBtn){
+    demoBtn.onclick = () => {
+      enterRoundsDemoMode();
+      haptic('Medium');
+      showToast('Demo mode on — sample bookmarks only, nothing is saved', 'ok');
+      syncDemoBtn();
+    };
+  }
+  syncDemoBtn();
+
   const whatsNewBtn = document.getElementById('settings-view-whatsnew');
   if(whatsNewBtn) whatsNewBtn.onclick = () => { haptic('Light'); openWhatsNew(); };
 
@@ -11149,6 +11447,41 @@ function currentActiveTab(){
   const el = document.querySelector('#tabbar .tab[aria-selected="true"]');
   return el ? el.dataset.view : 'unknown';
 }
+/* Structural-only shape of a value — array length, object key count,
+   string length — never the actual content, so this stays safe to share
+   even though some localStorage values hold user-entered text. */
+function debugDumpShapeOf(val){
+  if(val === null || val === undefined) return String(val);
+  if(Array.isArray(val)) return `array(len=${val.length})`;
+  if(typeof val === 'object') return `object(keys=[${Object.keys(val).join(',')}])`;
+  if(typeof val === 'string') return `string(len=${val.length})`;
+  return typeof val;
+}
+function buildDebugDump(){
+  const dump = { generatedAt: new Date().toISOString(), appVersion: (typeof APP_VERSION !== 'undefined') ? APP_VERSION : '', userAgent: navigator.userAgent, localStorageKeys: {} };
+  try{
+    for(let i = 0; i < localStorage.length; i++){
+      const k = localStorage.key(i);
+      const raw = localStorage.getItem(k);
+      let parsed;
+      try{ parsed = JSON.parse(raw); }catch(e){ parsed = raw; }
+      dump.localStorageKeys[k] = debugDumpShapeOf(parsed);
+    }
+  }catch(e){}
+  return dump;
+}
+function copyDebugDump(){
+  const text = JSON.stringify(buildDebugDump(), null, 2);
+  const done = () => { haptic('Light'); showToast('Debug data copied — key names and shapes only, no saved text', 'ok'); };
+  try{
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done, () => fallbackCopy(text, done));
+    } else {
+      fallbackCopy(text, done);
+    }
+  }catch(e){ fallbackCopy(text, done); }
+}
+
 function openFeedback(){
   const modal = document.getElementById('feedback-modal');
   if(!modal) return;
@@ -11200,6 +11533,9 @@ function openFeedback(){
       close();
     };
   }
+
+  const copyDebugBtn = document.getElementById('feedback-copy-debug');
+  if(copyDebugBtn) copyDebugBtn.onclick = copyDebugDump;
 
   modal.hidden = false;
   document.addEventListener('keydown', onKey);
@@ -11281,7 +11617,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
@@ -11680,6 +12016,7 @@ function renderQuizCard(){
     const rc = quizSession ? quizSession.resultCounts : { again: 0, hard: 0, good: 0, easy: 0 };
     const total = quizSession ? quizSession.total : 0;
     summaryEl.innerHTML = `<strong>Session complete</strong>Reviewed ${total} card${total === 1 ? '' : 's'} · Again ${rc.again} · Hard ${rc.hard} · Good ${rc.good} · Easy ${rc.easy}<br><br>Come back later — cards you rated lower will resurface sooner.`;
+    if(quizSession && quizSession.total > 0) bumpUsageStat('quizSessions');
     quizSession = null;
     return;
   }
@@ -11876,6 +12213,7 @@ function caseStep(dir){
   casesState.idx = (casesState.idx + dir + CASES.length) % CASES.length;
   casesState.revealed = false;
   renderCase();
+  bumpUsageStat('casesViewed');
   haptic('Light');
 }
 
@@ -11920,6 +12258,7 @@ function openCases(){
   if(!modal) return;
   casesState.revealed = false;
   renderCase();
+  bumpUsageStat('casesViewed');
   modal.hidden = false;
   document.addEventListener('keydown', onCasesKey);
 }
@@ -11971,7 +12310,7 @@ function buildStudySheetHtml(){
   const formulary = getFormulary();
   const drugs = RX_DRUGS.filter(d => formulary[d.id]);
   const total = bm.length + condBm.length + drugs.length;
-  let html = `<h1 class="ss-title">Rounds — Study sheet</h1><p class="ss-meta">${total} item${total === 1 ? '' : 's'} · generated ${escapeHtml(new Date().toLocaleDateString())} · educational self-study aid, not a clinical protocol</p>`;
+  let html = `<h1 class="ss-title">Rounds — Study sheet</h1><p class="ss-meta">${total} item${total === 1 ? '' : 's'} · generated ${escapeHtml(new Date().toLocaleDateString(roundsLocaleArg()))} · educational self-study aid, not a clinical protocol</p>`;
   bm.forEach(a => {
     const note = getBookmarkNote(a.pmid);
     html += `<div class="ss-item"><span class="ss-tag">Literature</span><h3>${escapeHtml(a.title || 'Untitled')}</h3>` +
