@@ -309,6 +309,12 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
   padding:6px 14px;font-family:var(--ff-sans);font-size:12px;font-weight:600;cursor:pointer;}
 .otd-btn-primary{background:var(--cta-bg);color:var(--cta-ink);border-color:transparent;}
 
+.rounds-demo-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
+  padding:8px 20px;background:#664d03;color:#fff3cd;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
+.rounds-demo-banner button{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;
+  border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:700;cursor:pointer;}
+.rounds-demo-banner button:hover{background:rgba(255,255,255,.22);}
+
 /* ---- app footer / version ---- */
 .app-footer{max-width:1280px;margin:0 auto;padding:28px 40px 40px;display:flex;flex-wrap:wrap;gap:6px 16px;
   align-items:center;justify-content:center;text-align:center;border-top:1px solid var(--line-soft);}
@@ -2013,6 +2019,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Demo mode</strong><span class="settings-sub">Sample bookmarks, for showing colleagues</span></div>
+      <button type="button" class="settings-btn" id="settings-demo-toggle">Try demo mode</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>What's new</strong><span class="settings-sub">Recent changes to Rounds</span></div>
       <button type="button" class="settings-btn" id="settings-view-whatsnew">View</button>
     </div>
@@ -2332,6 +2343,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </svg>
   </div>
 </header>
+
+<div class="rounds-demo-banner" id="rounds-demo-banner" hidden>
+  <span>&#9888; DEMO MODE — sample bookmarks shown below. Nothing here is your real saved data, and nothing you do while demoing is saved.</span>
+  <button type="button" id="rounds-demo-exit-btn">Exit demo mode</button>
+</div>
 
 <div class="disclaimer" id="disclaimer-wrap">
   <div class="disclaimer-box" role="note">
@@ -6500,6 +6516,46 @@ const CHANGELOG = [
     '"Export all Rounds data" backup added to Settings.'
   ]}
 ];
+/* ============================================================
+   Guest / demo mode — a temporary in-memory bookmark set for showing
+   Rounds to a colleague without exposing (or risking overwriting) real
+   saved data. getBookmarks/setBookmarks and their condition-bookmark
+   equivalents below branch on roundsDemoMode; everything else already
+   reads bookmarks through those two functions, so nothing else needs
+   to change.
+   ============================================================ */
+let roundsDemoMode = false;
+let roundsDemoBookmarks = {};
+let roundsDemoConditionBookmarks = {};
+function roundsDemoSeed(){
+  roundsDemoBookmarks = {
+    'demo1': { pmid: 'demo1', title: 'Sample bookmark — Early goal-directed therapy in sepsis (demo article)', journal: 'Demo Journal', date: '2024' },
+    'demo2': { pmid: 'demo2', title: 'Sample bookmark — DOACs vs warfarin in atrial fibrillation (demo article)', journal: 'Demo Journal', date: '2023' }
+  };
+  roundsDemoConditionBookmarks = {
+    'Demo condition — Community-acquired pneumonia': { name: 'Demo condition — Community-acquired pneumonia', addedAt: Date.now() }
+  };
+}
+function enterRoundsDemoMode(){
+  if(roundsDemoMode) return;
+  roundsDemoSeed();
+  roundsDemoMode = true;
+  const banner = document.getElementById('rounds-demo-banner');
+  if(banner) banner.hidden = false;
+  if(typeof renderChapters === 'function') renderChapters();
+  if(typeof renderSyndromeGroups === 'function') renderSyndromeGroups();
+}
+function exitRoundsDemoMode(){
+  if(!roundsDemoMode) return;
+  roundsDemoMode = false;
+  roundsDemoBookmarks = {};
+  roundsDemoConditionBookmarks = {};
+  const banner = document.getElementById('rounds-demo-banner');
+  if(banner) banner.hidden = true;
+  if(typeof renderChapters === 'function') renderChapters();
+  if(typeof renderSyndromeGroups === 'function') renderSyndromeGroups();
+}
+
 const BOOKMARK_KEY = 'rounds_bookmarks_v1';
 const THEME_KEY = 'rounds_theme_v1';
 const DISCLAIMER_KEY = 'rounds_disclaimer_dismissed';
@@ -6871,9 +6927,13 @@ let syndromesState = { init: false, mode: 'alpha', query: '', geneticInit: false
    ============================================================ */
 
 function getBookmarks(){
+  if(roundsDemoMode) return roundsDemoBookmarks;
   try { return JSON.parse(localStorage.getItem(BOOKMARK_KEY) || '{}'); } catch(e){ return {}; }
 }
-function setBookmarks(obj){ localStorage.setItem(BOOKMARK_KEY, JSON.stringify(obj)); }
+function setBookmarks(obj){
+  if(roundsDemoMode){ roundsDemoBookmarks = obj; return; }
+  localStorage.setItem(BOOKMARK_KEY, JSON.stringify(obj));
+}
 function isBookmarked(pmid){ return !!getBookmarks()[pmid]; }
 function toggleBookmark(article){
   const bm = getBookmarks();
@@ -6938,7 +6998,10 @@ const COND_BOOKMARK_KEY = 'rounds_condition_bookmarks_v1';
 function getConditionBookmarks(){
   try{ return JSON.parse(localStorage.getItem(COND_BOOKMARK_KEY) || '{}'); }catch(e){ return {}; }
 }
-function setConditionBookmarks(obj){ try{ localStorage.setItem(COND_BOOKMARK_KEY, JSON.stringify(obj)); }catch(e){} }
+function setConditionBookmarks(obj){
+  if(roundsDemoMode){ roundsDemoConditionBookmarks = obj; return; }
+  try{ localStorage.setItem(COND_BOOKMARK_KEY, JSON.stringify(obj)); }catch(e){}
+}
 function isConditionBookmarked(name){ return !!getConditionBookmarks()[name]; }
 function toggleConditionBookmark(name){
   const bm = getConditionBookmarks();
@@ -10858,6 +10921,14 @@ function init(){
   setupCases();
   setupStudyExport();
   maybeShowOnThisDay();
+  const demoExitBtn = document.getElementById('rounds-demo-exit-btn');
+  if(demoExitBtn){
+    demoExitBtn.onclick = () => {
+      exitRoundsDemoMode();
+      haptic('Light');
+      showToast('Exited demo mode — your real saved list is back', 'ok');
+    };
+  }
 }
 
 /* ============================================================
@@ -11280,6 +11351,22 @@ function openSettings(){
 
   const usageStatsBtn = document.getElementById('settings-view-usage-stats');
   if(usageStatsBtn) usageStatsBtn.onclick = () => { haptic('Light'); openUsageStats(); };
+
+  const demoBtn = document.getElementById('settings-demo-toggle');
+  function syncDemoBtn(){
+    if(!demoBtn) return;
+    demoBtn.textContent = roundsDemoMode ? 'In demo mode' : 'Try demo mode';
+    demoBtn.disabled = roundsDemoMode;
+  }
+  if(demoBtn){
+    demoBtn.onclick = () => {
+      enterRoundsDemoMode();
+      haptic('Medium');
+      showToast('Demo mode on — sample bookmarks only, nothing is saved', 'ok');
+      syncDemoBtn();
+    };
+  }
+  syncDemoBtn();
 
   const whatsNewBtn = document.getElementById('settings-view-whatsnew');
   if(whatsNewBtn) whatsNewBtn.onclick = () => { haptic('Light'); openWhatsNew(); };
