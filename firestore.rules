@@ -1,23 +1,25 @@
 rules_version = '2';
 
 // =====================================================================
-// Rounds/Wards — hospital > department > ward/group access control for
-// the Vitals and Maternity tabs (moving to a standalone "Wards" app).
-// Two fully independent group systems: vitalsGroups and maternityGroups.
+// Rounds/Wards — hospital > department > ward-group access control for
+// the unified, department-tagged patient system (Wards' single Patients
+// tab covers General/ICU/Surgery/Pediatrics/Maternity via a `department`
+// field on each patient doc — previously two independent group systems,
+// vitalsGroups and maternityGroups, now collapsed into one).
 //
 // Three-tier hierarchy:
 //   Hospital super-admin  — `users/{uid}.superAdmin == true`. Sees/manages
-//     every department and every ward/group in both systems. Bootstrapped
-//     manually once (see README-FIRESTORE-SETUP.md), then can promote/
-//     demote others and create departments from within the app.
+//     every department and every ward group. Bootstrapped manually once
+//     (see README-FIRESTORE-SETUP.md), then can promote/demote others and
+//     create departments from within the app.
 //   Department admin      — listed in a `departments/{deptId}.admins` map.
-//     Sees/manages every ward/group tagged with that department's id, in
-//     both vitalsGroups and maternityGroups, but nothing outside it.
-//   Ward/group admin      — whoever creates a vitalsGroups/maternityGroups
-//     doc becomes its admin automatically (server-enforced, not just
-//     client convention). Can invite/remove members, rename, or delete
-//     just that one group. A group may optionally belong to a department
-//     (`departmentId` field) or stand alone with no department at all.
+//     Sees/manages every ward group tagged with that department's id, but
+//     nothing outside it.
+//   Ward-group admin       — whoever creates a wardGroups doc becomes its
+//     admin automatically (server-enforced, not just client convention).
+//     Can invite/remove members, rename, or delete just that one group. A
+//     group may optionally belong to a department (`departmentId` field)
+//     or stand alone with no department at all.
 //
 // Security model: every level of membership above is enforced server-side
 // here, not just hidden in the UI — someone who isn't a member (and isn't
@@ -29,13 +31,14 @@ rules_version = '2';
 //   users/{uid}                        { email, displayName, superAdmin }
 //   usersByEmail/{emailKey}             { uid }   — invite-by-email lookup
 //   departments/{deptId}                { name, createdBy, createdAt, admins: { [uid]: {role:'admin', email, joinedAt} } }
-//   vitalsGroups/{groupId}              { name, createdBy, createdAt, departmentId (nullable), members: { [uid]: {role, email, joinedAt} } }
-//   vitalsGroups/{groupId}/patients/{id}          — the actual patient/vitals-log records
-//   vitalsGroups/{groupId}/invites/{emailKey}     { email, invitedBy, invitedAt } — pending invite for a not-yet-registered email
-//   maternityGroups/{groupId}           — mirrors vitalsGroups exactly, fully independent
-//   maternityGroups/{groupId}/patients/{id}
-//   maternityGroups/{groupId}/invites/{emailKey}
-//   groupMemberships/{uid}_{groupId}    { uid, groupId, groupType: 'vitals'|'maternity', role, groupName, joinedAt }
+//   wardGroups/{groupId}                { name, createdBy, createdAt, departmentId (nullable), members: { [uid]: {role, email, joinedAt} } }
+//   wardGroups/{groupId}/patients/{id}  — the actual patient records; each
+//     carries its own `department` field ('general'|'icu'|'surgery'|
+//     'pediatrics'|'maternity') picking which charting sections the app
+//     shows for it — a per-patient tag, not a separate collection, since
+//     one ward group can hold patients from any mix of departments.
+//   wardGroups/{groupId}/invites/{emailKey}  { email, invitedBy, invitedAt } — pending invite for a not-yet-registered email
+//   groupMemberships/{uid}_{groupId}    { uid, groupId, role, groupName, joinedAt }
 //     — a flat join-collection purely so a signed-in user can list "which
 //     groups am I in" via a simple `where('uid','==',myUid)` query
 //     (Firestore can't query "does this map have key X" directly, and
@@ -45,10 +48,9 @@ rules_version = '2';
 //     source of truth for actual access control; this collection is a
 //     read-side index only, kept in sync by whichever client write
 //     creates/removes a membership (always in the same batched write).
-//     `departmentId` on vitalsGroups/maternityGroups is a plain field
-//     (not a map key), so "all groups in my department" is a normal
-//     `where('departmentId','==', deptId)` equality query — no join
-//     collection needed for that one.
+//     `departmentId` on wardGroups is a plain field (not a map key), so
+//     "all groups in my department" is a normal `where('departmentId','==',
+//     deptId)` equality query — no join collection needed for that one.
 // =====================================================================
 
 function signedIn() {
@@ -78,10 +80,8 @@ function isValidNewDepartment() {
     && request.resource.data.admins[request.auth.uid].role == 'admin';
 }
 
-function groupDoc(groupType, groupId) {
-  return groupType == 'vitals'
-    ? /databases/$(database)/documents/vitalsGroups/$(groupId)
-    : /databases/$(database)/documents/maternityGroups/$(groupId);
+function groupDoc(groupId) {
+  return /databases/$(database)/documents/wardGroups/$(groupId);
 }
 
 function isMemberPath(groupPath) {
@@ -172,70 +172,46 @@ match /databases/{database}/documents {
     allow create: if signedIn()
       && request.resource.data.uid is string
       && (
-        (request.resource.data.groupType == 'vitals' && (isGroupAdminPath(groupDoc('vitals', request.resource.data.groupId)) || isAboveGroupPath(groupDoc('vitals', request.resource.data.groupId))))
-        || (request.resource.data.groupType == 'maternity' && (isGroupAdminPath(groupDoc('maternity', request.resource.data.groupId)) || isAboveGroupPath(groupDoc('maternity', request.resource.data.groupId))))
+        isGroupAdminPath(groupDoc(request.resource.data.groupId))
+        || isAboveGroupPath(groupDoc(request.resource.data.groupId))
         || isSuperAdmin()
       );
     allow delete: if signedIn()
       && (
         resource.data.uid == request.auth.uid // anyone can remove themselves (leave a group)
-        || (resource.data.groupType == 'vitals' && (isGroupAdminPath(groupDoc('vitals', resource.data.groupId)) || isAboveGroupPath(groupDoc('vitals', resource.data.groupId))))
-        || (resource.data.groupType == 'maternity' && (isGroupAdminPath(groupDoc('maternity', resource.data.groupId)) || isAboveGroupPath(groupDoc('maternity', resource.data.groupId))))
+        || isGroupAdminPath(groupDoc(resource.data.groupId))
+        || isAboveGroupPath(groupDoc(resource.data.groupId))
         || isSuperAdmin()
       );
   }
 
-  // ---- Vitals groups ----
-  match /vitalsGroups/{groupId} {
-    allow get: if isMemberPath(/databases/$(database)/documents/vitalsGroups/$(groupId))
-      || isAboveGroupPath(/databases/$(database)/documents/vitalsGroups/$(groupId));
+  // ---- Ward groups (single system — patients within carry their own
+  // `department` field rather than living in a department-specific
+  // collection, so one ward group can hold patients from any mix of
+  // General/ICU/Surgery/Pediatrics/Maternity) ----
+  match /wardGroups/{groupId} {
+    allow get: if isMemberPath(/databases/$(database)/documents/wardGroups/$(groupId))
+      || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
     allow list: if signedIn(); // each returned doc still individually checked against `get` above (also how a dept admin's "all groups in my department" query gets scoped)
     allow create: if isValidNewGroup();
-    allow update: if isGroupAdminPath(/databases/$(database)/documents/vitalsGroups/$(groupId))
-      || isAboveGroupPath(/databases/$(database)/documents/vitalsGroups/$(groupId));
-    allow delete: if isGroupAdminPath(/databases/$(database)/documents/vitalsGroups/$(groupId))
-      || isAboveGroupPath(/databases/$(database)/documents/vitalsGroups/$(groupId));
+    allow update: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
+      || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
+    allow delete: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
+      || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
 
     match /patients/{patientId} {
-      allow read, write: if isMemberPath(/databases/$(database)/documents/vitalsGroups/$(groupId))
-        || isAboveGroupPath(/databases/$(database)/documents/vitalsGroups/$(groupId));
+      allow read, write: if isMemberPath(/databases/$(database)/documents/wardGroups/$(groupId))
+        || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
     }
     match /invites/{emailKey} {
       allow read: if signedIn() && (
         resource.data.email == request.auth.token.email
-        || isGroupAdminPath(/databases/$(database)/documents/vitalsGroups/$(groupId))
-        || isAboveGroupPath(/databases/$(database)/documents/vitalsGroups/$(groupId))
+        || isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
+        || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId))
       );
       allow list: if signedIn(); // a newly-registered user scans for invites matching their own email client-side
-      allow create, delete: if isGroupAdminPath(/databases/$(database)/documents/vitalsGroups/$(groupId))
-        || isAboveGroupPath(/databases/$(database)/documents/vitalsGroups/$(groupId));
-    }
-  }
-
-  // ---- Maternity groups (fully independent of vitalsGroups) ----
-  match /maternityGroups/{groupId} {
-    allow get: if isMemberPath(/databases/$(database)/documents/maternityGroups/$(groupId))
-      || isAboveGroupPath(/databases/$(database)/documents/maternityGroups/$(groupId));
-    allow list: if signedIn();
-    allow create: if isValidNewGroup();
-    allow update: if isGroupAdminPath(/databases/$(database)/documents/maternityGroups/$(groupId))
-      || isAboveGroupPath(/databases/$(database)/documents/maternityGroups/$(groupId));
-    allow delete: if isGroupAdminPath(/databases/$(database)/documents/maternityGroups/$(groupId))
-      || isAboveGroupPath(/databases/$(database)/documents/maternityGroups/$(groupId));
-
-    match /patients/{patientId} {
-      allow read, write: if isMemberPath(/databases/$(database)/documents/maternityGroups/$(groupId))
-        || isAboveGroupPath(/databases/$(database)/documents/maternityGroups/$(groupId));
-    }
-    match /invites/{emailKey} {
-      allow read: if signedIn() && (
-        resource.data.email == request.auth.token.email
-        || isGroupAdminPath(/databases/$(database)/documents/maternityGroups/$(groupId))
-        || isAboveGroupPath(/databases/$(database)/documents/maternityGroups/$(groupId))
-      );
-      allow list: if signedIn();
-      allow create, delete: if isGroupAdminPath(/databases/$(database)/documents/maternityGroups/$(groupId))
-        || isAboveGroupPath(/databases/$(database)/documents/maternityGroups/$(groupId));
+      allow create, delete: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
+        || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
     }
   }
 
