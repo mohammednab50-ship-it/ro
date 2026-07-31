@@ -418,6 +418,7 @@ nav.chapters .chapters-eyebrow{font-family:var(--ff-mono);font-size:10.5px;font-
 .chapter-mine-toggle.is-mine{color:var(--fresh);}
 .chapter-mine-toggle.is-mine svg path{fill-opacity:1 !important;}
 .vitals-mine-filter{display:flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);margin:0 0 14px 4px;cursor:pointer;}
+.vitals-sbar-all-btn{width:100%;margin:0 0 14px;white-space:normal;}
 .vitals-mine-filter input{cursor:pointer;}
 .chapter-btn .chapter-num{font-family:var(--ff-display);font-size:20px;font-weight:400;color:var(--ink-faint);width:32px;flex-shrink:0;line-height:1;transition:color var(--dur-base) var(--ease-out);}
 .chapter-btn .chapter-name{flex:1;line-height:1.3;}
@@ -1602,6 +1603,49 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
   padding:13px 16px;border:1.5px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-md);margin-bottom:var(--space-5);}
 .vitals-escalation-banner .n2-badge{font-family:var(--ff-mono);font-size:13px;font-weight:800;background:var(--caution);color:var(--shell-ink);
   padding:2px 9px;border-radius:var(--r-pill);flex-shrink:0;}
+.vitals-escalation-trail{margin-bottom:var(--space-5);}
+.vitals-escalation-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
+.vitals-escalation-trail-label{font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--ink-faint);}
+.vitals-escalation-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:4px;}
+.vitals-escalation-list li{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);display:flex;gap:8px;}
+.vitals-escalation-list li .esc-role{font-weight:700;color:var(--ink);}
+.vitals-escalation-list li .esc-time{color:var(--ink-faint);}
+
+/* ---- problem list ---- */
+.vitals-problem-list-panel{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
+  padding:14px 16px;margin-bottom:var(--space-5);}
+.vitals-problem-list{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:6px;}
+.vitals-problem-list li{display:flex;align-items:center;gap:10px;font-family:var(--ff-sans);font-size:13.5px;padding:6px 0;}
+.vitals-problem-list li.is-resolved .prob-text{color:var(--ink-faint);text-decoration:line-through;}
+.vitals-problem-list li .prob-text{flex:1;color:var(--ink);}
+.vitals-problem-list li .prob-added{color:var(--ink-faint);font-size:11.5px;white-space:nowrap;}
+.vitals-problem-add-row{display:flex;gap:8px;}
+.vitals-problem-add-row input{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--ink);font-family:var(--ff-sans);font-size:13.5px;}
+
+/* ---- reading-interval override ---- */
+.vitals-isolation-select-wrap input[type="number"]{border:1px solid var(--line);border-radius:var(--r-pill);padding:7px 9px;font-family:var(--ff-sans);font-size:12.5px;background:var(--surface);color:var(--ink-soft);}
+
+/* ---- I/O balance ---- */
+.vitals-io-balance{display:flex;flex-wrap:wrap;gap:16px;align-items:center;border:1px solid var(--line);border-radius:var(--r-md);
+  background:var(--surface);box-shadow:var(--shadow-sm);padding:12px 16px;margin-bottom:var(--space-5);font-family:var(--ff-sans);font-size:13px;}
+.vitals-io-balance .io-item{display:flex;flex-direction:column;gap:2px;}
+.vitals-io-balance .io-item .io-label{font-size:10.5px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-faint);}
+.vitals-io-balance .io-item .io-value{font-family:var(--ff-mono);font-size:16px;font-weight:800;color:var(--ink);}
+.vitals-io-balance .io-item .io-value.io-positive{color:var(--fresh);}
+.vitals-io-balance .io-item .io-value.io-negative{color:var(--caution);}
+
+/* ---- MAR ---- */
+.vitals-mar-row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;border-bottom:1px solid var(--line-soft);padding:10px 0;}
+.vitals-mar-row:last-child{border-bottom:none;}
+.vitals-mar-name{font-weight:700;color:var(--ink);min-width:110px;}
+.vitals-mar-detail{color:var(--ink-faint);font-size:12.5px;}
+.vitals-mar-status{font-size:11px;font-weight:700;padding:2px 8px;border-radius:var(--r-pill);}
+.vitals-mar-status.mar-due{background:var(--fresh-bg);color:var(--fresh);}
+.vitals-mar-status.mar-overdue{background:var(--caution-bg);color:var(--caution);}
+.vitals-mar-status.mar-notdue{background:var(--surface-raised);color:var(--ink-soft);}
+.vitals-mar-status.mar-prn{background:var(--evidence-bg);color:var(--evidence-dark);}
+.vitals-mar-give-btn{margin-left:auto;}
+.vitals-mar-last{font-size:11.5px;color:var(--ink-faint);white-space:nowrap;}
 
 /* ---- allergy banner + form ---- */
 .vitals-allergy-banner{display:flex;align-items:flex-start;gap:10px;font-family:var(--ff-sans);font-size:13.5px;font-weight:700;color:var(--caution);
@@ -2353,6 +2397,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       <input type="checkbox" id="vitals-overdue-filter-toggle">
       Not seen recently only
     </label>
+    <button type="button" class="vitals-btn-outline vitals-sbar-all-btn" id="vitals-sbar-all-btn" title="Generate one combined SBAR handover for every patient marked as yours this shift">SBAR &mdash; my patients this shift</button>
     <ol class="chapter-list" id="patient-list"></ol>
     <button type="button" class="vitals-add-patient-btn" id="vitals-add-patient-btn">+ Add patient</button>
     <div class="vitals-add-form" id="vitals-add-form" hidden>
@@ -2426,8 +2471,23 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
               <option value="airborne">Airborne</option>
             </select>
           </label>
+          <label class="vitals-isolation-select-wrap" title="How often this patient's vitals should be checked — used by the 'not seen recently' sweep instead of the department default when set">
+            <span>Reading interval</span>
+            <select id="vitals-interval-select">
+              <option value="">Department default</option>
+              <option value="15">Every 15 min</option>
+              <option value="30">Every 30 min</option>
+              <option value="60">Every 1 hour</option>
+              <option value="120">Every 2 hours</option>
+              <option value="240">Every 4 hours</option>
+              <option value="480">Every 8 hours</option>
+              <option value="custom">Custom&hellip;</option>
+            </select>
+            <input id="vitals-interval-custom" type="number" min="1" step="1" placeholder="min" hidden style="width:70px;">
+          </label>
           <button type="button" class="vitals-btn-outline" id="vitals-allergies-btn" title="Set this patient's known allergies">Allergies</button>
           <button type="button" class="vitals-btn-outline" id="vitals-baselines-btn" title="Set this patient's own normal-range overrides">Baselines</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-sbar-btn" title="Generate a Situation-Background-Assessment-Recommendation handover summary">SBAR handover</button>
           <button type="button" class="vitals-btn-outline" id="vitals-print-btn" title="Print a one-page vitals summary">Print summary</button>
           <button type="button" class="vitals-btn-outline" id="vitals-export-btn">Export CSV</button>
           <button type="button" class="vitals-btn-outline vitals-btn-danger" id="vitals-remove-patient-btn">Remove patient</button>
@@ -2436,7 +2496,39 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 
       <div class="vitals-allergy-banner" id="vitals-allergy-banner" hidden></div>
 
+      <div class="vitals-problem-list-panel">
+        <p class="vitals-dept-subtitle">Problem list</p>
+        <ul class="vitals-problem-list" id="vitals-problem-list"></ul>
+        <p class="vitals-dept-empty" id="vitals-problem-list-empty" hidden>No active problems.</p>
+        <div class="vitals-problem-add-row">
+          <input type="text" id="vitals-problem-input" maxlength="120" placeholder="e.g. AKI, awaiting renal review">
+          <button type="button" class="vitals-btn-outline" id="vitals-problem-add-btn">+ Add problem</button>
+        </div>
+      </div>
+
       <div class="vitals-escalation-banner" id="vitals-escalation-banner" hidden></div>
+
+      <div class="vitals-escalation-trail">
+        <div class="vitals-escalation-actions">
+          <span class="vitals-escalation-trail-label">Notified:</span>
+          <button type="button" class="vitals-btn-outline" data-escalate-role="senior">Senior</button>
+          <button type="button" class="vitals-btn-outline" data-escalate-role="registrar">Registrar</button>
+          <button type="button" class="vitals-btn-outline" data-escalate-role="consultant">Consultant</button>
+        </div>
+        <ul class="vitals-escalation-list" id="vitals-escalation-list"></ul>
+      </div>
+
+      <div class="vitals-allergies-form" id="vitals-sbar-panel" hidden>
+        <div class="vitals-field">
+          <label for="vitals-sbar-text">SBAR handover summary <span>reference aid — verify against the chart before handing over</span></label>
+          <textarea id="vitals-sbar-text" rows="14" readonly></textarea>
+        </div>
+        <div class="vitals-baselines-actions">
+          <button type="button" class="vitals-btn-primary" id="vitals-sbar-copy-btn">Copy</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-sbar-print-btn">Print</button>
+          <button type="button" class="vitals-btn-ghost" id="vitals-sbar-close-btn">Close</button>
+        </div>
+      </div>
 
       <div class="vitals-allergies-form" id="vitals-allergies-form" hidden>
         <div class="vitals-field">
@@ -3254,6 +3346,8 @@ function initVitals(){
   setupPediatricsSection();
   setupVitalsBoardToggle();
   setupVitalsCopyLastButton();
+  setupEscalationTrail();
+  setupProblemList();
   renderPatientList();
   renderVitalsMain();
 }
@@ -4023,7 +4117,9 @@ function renderVitalsMain(){
   refreshAllVitalsDeltas();
   renderDeptSections(p);
   renderAllergyBanner(p);
+  renderProblemList(p);
   renderEscalationBanner(p);
+  renderEscalationList(p);
   updateNews2Preview();
 }
 
@@ -4650,6 +4746,73 @@ function setupAllergiesForm(){
   });
 }
 
+/* ---- persistent problem list — carries across shifts, separate from the
+   vitals log itself. ---- */
+function ensureProblems(p){
+  if(!Array.isArray(p.problems)) p.problems = [];
+  return p.problems;
+}
+
+function renderProblemList(p){
+  const list = document.getElementById('vitals-problem-list');
+  const empty = document.getElementById('vitals-problem-list-empty');
+  if(!list) return;
+  const problems = (p && p.problems) || [];
+  if(!problems.length){
+    list.innerHTML = '';
+    if(empty) empty.hidden = false;
+    return;
+  }
+  if(empty) empty.hidden = true;
+  const sorted = problems.slice().sort((a, b) => (a.resolvedAt ? 1 : 0) - (b.resolvedAt ? 1 : 0) || new Date(b.addedAt) - new Date(a.addedAt));
+  list.innerHTML = sorted.map(pr => {
+    const resolved = !!pr.resolvedAt;
+    return `<li class="${resolved ? 'is-resolved' : ''}" data-problem-id="${pr.id}">` +
+      `<span class="prob-text">${escapeHtml(pr.text)}</span>` +
+      `<span class="prob-added">added ${escapeHtml(fmtVitalsTime(pr.addedAt))}</span>` +
+      `<button type="button" class="vitals-btn-outline" data-problem-toggle="${pr.id}">${resolved ? 'Reopen' : 'Resolve'}</button>` +
+      `</li>`;
+  }).join('');
+}
+
+function setupProblemList(){
+  const addBtn = document.getElementById('vitals-problem-add-btn');
+  const input = document.getElementById('vitals-problem-input');
+  const list = document.getElementById('vitals-problem-list');
+  if(!addBtn || addBtn.dataset.wired) return;
+  addBtn.dataset.wired = '1';
+
+  const addProblem = () => {
+    const p = activePatient();
+    if(!p || !input) return;
+    const text = input.value.trim();
+    if(!text) return;
+    ensureProblems(p).push({ id: genVitalsId('prob'), text, addedAt: new Date().toISOString(), resolvedAt: null });
+    saveVitalsData();
+    input.value = '';
+    renderProblemList(p);
+    haptic('Light');
+  };
+  addBtn.addEventListener('click', addProblem);
+  if(input) input.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); addProblem(); } });
+
+  if(list && !list.dataset.wired){
+    list.dataset.wired = '1';
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('[data-problem-toggle]');
+      if(!btn) return;
+      const p = activePatient();
+      if(!p) return;
+      const prob = ensureProblems(p).find(pr => pr.id === btn.dataset.problemToggle);
+      if(!prob) return;
+      prob.resolvedAt = prob.resolvedAt ? null : new Date().toISOString();
+      saveVitalsData();
+      renderProblemList(p);
+      haptic('Light');
+    });
+  }
+}
+
 /* ---- isolation / precaution status ---- */
 
 const ISOLATION_LABELS = { none: 'None', contact: 'Contact', droplet: 'Droplet', airborne: 'Airborne' };
@@ -4693,6 +4856,44 @@ function renderEscalationBanner(p){
   el.hidden = false;
   el.innerHTML = `<span class="n2-badge">NEWS2 ${result.score}</span> Escalate — urgent review needed ` +
     `<span style="font-weight:500;">(based on the reading logged ${escapeHtml(fmtVitalsTime(latest.ts))} — use clinical judgement, this is a reference aid only)</span>`;
+}
+
+/* ---- escalation trail — one-tap "Notified [role]" timestamped log entries,
+   so the escalation banner above has somewhere concrete for the "notified
+   senior/registrar/consultant" step to be recorded. ---- */
+const ESCALATION_ROLE_LABELS = { senior: 'Senior', registrar: 'Registrar', consultant: 'Consultant' };
+
+function ensureEscalations(p){
+  if(!Array.isArray(p.escalations)) p.escalations = [];
+  return p.escalations;
+}
+
+function renderEscalationList(p){
+  const list = document.getElementById('vitals-escalation-list');
+  if(!list) return;
+  const entries = ((p && p.escalations) || []).slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  list.innerHTML = entries.map(e =>
+    `<li><span class="esc-role">Notified ${escapeHtml(ESCALATION_ROLE_LABELS[e.role] || e.role)}</span>` +
+    `<span class="esc-time">${escapeHtml(fmtVitalsTime(e.ts))}</span></li>`
+  ).join('');
+}
+
+function setupEscalationTrail(){
+  const wrap = document.querySelector('.vitals-escalation-actions');
+  if(!wrap || wrap.dataset.wired) return;
+  wrap.dataset.wired = '1';
+  wrap.addEventListener('click', e => {
+    const btn = e.target.closest('[data-escalate-role]');
+    if(!btn) return;
+    const p = activePatient();
+    if(!p) return;
+    const role = btn.dataset.escalateRole;
+    ensureEscalations(p).push({ id: genVitalsId('esc'), ts: new Date().toISOString(), role });
+    saveVitalsData();
+    renderEscalationList(p);
+    showToast(`Logged: notified ${ESCALATION_ROLE_LABELS[role] || role}.`);
+    haptic('Light');
+  });
 }
 
 /* ============================================================
