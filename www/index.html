@@ -1189,6 +1189,50 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .uc-eq{color:var(--shell-ink-soft);font-weight:600;}
 @media (max-width:520px){.uc-pair input{width:76px;}}
 
+/* ---- quiz (spaced repetition) & teaching cases ---- */
+.quiz-card,.cases-card{max-width:560px;}
+.quiz-progress,#case-progress{font-family:var(--ff-mono);font-size:11px;letter-spacing:0.04em;color:var(--shell-ink-soft);text-transform:uppercase;margin-bottom:10px;}
+.quiz-flashcard{border:1px solid var(--shell-line);border-radius:var(--r-md);padding:18px 18px 16px;background:rgba(255,255,255,0.03);min-height:120px;}
+.quiz-type-tag{display:inline-block;font-family:var(--ff-mono);font-size:10.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--evidence-bright);background:rgba(91,156,255,0.14);border-radius:var(--r-pill);padding:3px 10px;margin-bottom:10px;}
+.quiz-question{font-family:var(--ff-sans);font-size:16px;font-weight:600;color:var(--shell-ink);line-height:1.4;margin:0;}
+.quiz-sub{font-family:var(--ff-sans);font-size:12px;color:var(--shell-ink-soft);margin:6px 0 0;}
+.case-title{font-family:var(--ff-sans);font-size:15px;font-weight:700;color:var(--shell-ink);margin:0 0 8px;}
+.case-stem{font-weight:400;font-size:14.5px;}
+.quiz-answer{margin-top:14px;padding-top:14px;border-top:1px dashed var(--shell-line);font-family:var(--ff-sans);font-size:13.5px;color:var(--shell-ink-soft);line-height:1.6;}
+.quiz-answer strong{color:var(--shell-ink);}
+.quiz-answer ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;}
+#quiz-reveal-btn,#case-reveal-btn,#own-reveal-btn,#own-next-btn{width:100%;margin-top:12px;}
+.quiz-rate-row{display:flex;gap:8px;margin-top:12px;}
+.quiz-rate-btn{flex:1;border:1px solid var(--shell-line);background:none;border-radius:var(--r-pill);padding:9px 6px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--shell-ink-soft);cursor:pointer;transition:background var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out);}
+.quiz-rate-btn:hover{border-color:var(--evidence-bright);color:var(--evidence-bright);}
+.quiz-rate-again{border-color:#ff8a80;color:#ff8a80;}
+.quiz-rate-hard{border-color:#ffb74d;color:#ffb74d;}
+.quiz-rate-good{border-color:var(--evidence-bright);color:var(--evidence-bright);}
+.quiz-rate-easy{border-color:var(--fresh);color:var(--fresh);}
+.quiz-rate-again:hover,.quiz-rate-hard:hover,.quiz-rate-good:hover,.quiz-rate-easy:hover{background:rgba(255,255,255,0.06);}
+.quiz-summary{font-family:var(--ff-sans);font-size:14px;color:var(--shell-ink-soft);text-align:center;padding:20px 6px;}
+.quiz-summary strong{display:block;font-size:20px;color:var(--shell-ink);margin-bottom:6px;}
+.cases-mode-seg{margin:6px 0 16px;}
+.cond-bookmark-btn{background:none;border:1px solid var(--line);border-radius:var(--r-pill);padding:4px 12px;font-family:var(--ff-sans);font-size:11.5px;font-weight:600;cursor:pointer;color:var(--ink-soft);display:inline-flex;align-items:center;gap:5px;margin-left:8px;transition:border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
+.cond-bookmark-btn:hover{border-color:var(--fresh);color:var(--fresh);background:var(--fresh-bg);}
+.cond-bookmark-btn.saved{background:var(--fresh-bg);border-color:var(--fresh);color:var(--fresh);}
+.cond-bookmark-btn .star{width:12px;height:12px;flex-shrink:0;}
+
+/* ---- print-only study sheet ---- */
+#study-sheet{display:none;}
+.ss-title{font-family:var(--ff-sans);font-size:22px;font-weight:700;margin:0 0 4px;}
+.ss-meta{font-family:var(--ff-sans);font-size:12px;color:#555;margin:0 0 20px;}
+.ss-item{border:1px solid #ccc;border-radius:8px;padding:14px 16px;margin-bottom:14px;break-inside:avoid;}
+.ss-item h3{font-family:var(--ff-sans);font-size:15px;margin:0 0 4px;}
+.ss-item .ss-tag{display:inline-block;font-family:var(--ff-mono);font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#555;border:1px solid #999;border-radius:20px;padding:2px 8px;margin-bottom:6px;}
+.ss-item .ss-sub{font-size:11.5px;color:#555;margin:0 0 8px;}
+.ss-item .ss-body{font-size:12.5px;line-height:1.5;}
+.ss-item .ss-body ul{margin:4px 0;padding-left:18px;}
+@media print{
+  body.printing-study-sheet > *:not(#study-sheet){display:none !important;}
+  body.printing-study-sheet #study-sheet{display:block !important;padding:24px;}
+}
+
 /* =====================================================================
    Responsive — tablet & phone tuning (additive overrides)
    ===================================================================== */
@@ -2086,6 +2130,78 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== Spaced-repetition quiz — built from bookmarked articles, drugs
+     marked "stocked" in your formulary, and bookmarked conditions ===== -->
+<div class="rename-overlay" id="quiz-modal" role="dialog" aria-modal="true" aria-labelledby="quiz-title" hidden>
+  <div class="rename-card settings-card global-search-card quiz-card" role="document">
+    <button type="button" class="onb-close" id="quiz-close" aria-label="Close quiz">&times;</button>
+    <p class="onb-eyebrow">SPACED REPETITION</p>
+    <h2 class="onb-title serif" id="quiz-title">Quiz</h2>
+    <p class="settings-sub" style="display:block;margin:6px 0 14px;">Self-testing on your saved articles, conditions and formulary drugs. Rate your recall honestly — it decides when a card comes back.</p>
+    <div id="quiz-empty" class="cmp-empty" hidden></div>
+    <div id="quiz-body" hidden>
+      <div class="quiz-progress" id="quiz-progress"></div>
+      <div class="quiz-flashcard">
+        <span class="quiz-type-tag" id="quiz-type-tag"></span>
+        <p class="quiz-question" id="quiz-question"></p>
+        <p class="quiz-sub" id="quiz-sub"></p>
+        <div class="quiz-answer" id="quiz-answer" hidden></div>
+      </div>
+      <button type="button" class="results-export-btn" id="quiz-reveal-btn">Reveal answer</button>
+      <div class="quiz-rate-row" id="quiz-rate-row" hidden>
+        <button type="button" class="quiz-rate-btn quiz-rate-again" data-rate="again">Again</button>
+        <button type="button" class="quiz-rate-btn quiz-rate-hard" data-rate="hard">Hard</button>
+        <button type="button" class="quiz-rate-btn quiz-rate-good" data-rate="good">Good</button>
+        <button type="button" class="quiz-rate-btn quiz-rate-easy" data-rate="easy">Easy</button>
+      </div>
+    </div>
+    <div id="quiz-summary" class="quiz-summary" hidden></div>
+  </div>
+</div>
+
+<!-- ===== Teaching cases — curated vignettes plus a "quiz yourself" stem
+     generator built from Conditions/Drugs already in the app ===== -->
+<div class="rename-overlay" id="cases-modal" role="dialog" aria-modal="true" aria-labelledby="cases-title" hidden>
+  <div class="rename-card settings-card global-search-card cases-card" role="document">
+    <button type="button" class="onb-close" id="cases-close" aria-label="Close cases">&times;</button>
+    <p class="onb-eyebrow">TEACHING CASES</p>
+    <h2 class="onb-title serif" id="cases-title">Case vignettes</h2>
+    <p class="settings-sub" style="display:block;margin:6px 0 10px;">Short educational vignettes for self-study — not real patient data, and not a diagnostic tool. Verify anything clinical against primary sources.</p>
+    <div class="seg cases-mode-seg" role="tablist">
+      <button type="button" class="seg-btn seg-btn-text active" data-casemode="curated" aria-pressed="true">Curated cases</button>
+      <button type="button" class="seg-btn seg-btn-text" data-casemode="own" aria-pressed="false">Quiz yourself</button>
+    </div>
+    <div id="cases-curated">
+      <div class="quiz-progress" id="case-progress"></div>
+      <div class="quiz-flashcard">
+        <span class="quiz-type-tag" id="case-specialty-tag"></span>
+        <h3 class="case-title" id="case-title"></h3>
+        <p class="quiz-question case-stem" id="case-stem"></p>
+        <div class="quiz-answer" id="case-reveal" hidden></div>
+      </div>
+      <button type="button" class="results-export-btn" id="case-reveal-btn">Reveal diagnosis &amp; key points</button>
+      <div class="quiz-rate-row">
+        <button type="button" class="quiz-rate-btn" id="case-prev-btn">&larr; Previous</button>
+        <button type="button" class="quiz-rate-btn quiz-rate-good" id="case-next-btn">Next &rarr;</button>
+      </div>
+    </div>
+    <div id="cases-own" hidden>
+      <p class="settings-sub" style="display:block;margin-bottom:10px;">Generates a simple stem from a random Condition or Drug in this app's reference data — a lighter companion to the full quiz above.</p>
+      <div class="quiz-flashcard">
+        <span class="quiz-type-tag" id="own-type-tag"></span>
+        <p class="quiz-question" id="own-stem"></p>
+        <div class="quiz-answer" id="own-reveal" hidden></div>
+      </div>
+      <button type="button" class="results-export-btn" id="own-reveal-btn">Reveal</button>
+      <button type="button" class="results-export-btn" id="own-next-btn">New stem</button>
+    </div>
+  </div>
+</div>
+
+<!-- ===== Print-only study sheet — populated by exportStudySheet(), shown
+     only while body.printing-study-sheet is set (see @media print rule) ===== -->
+<div id="study-sheet"></div>
+
 <header>
   <div class="header-inner">
     <a class="brand" href="#" aria-label="Rounds — home">
@@ -2105,6 +2221,8 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <button id="search-btn" class="btn-search" type="button">Search</button>
       <button id="search-everywhere-btn" class="btn-search-everywhere" type="button" title="Search everywhere — Literature, Drugs, Conditions, Advances, Trials at once">Everywhere</button>
       <button id="unit-converter-btn" class="btn-search-everywhere" type="button" title="Quick unit converter — kg/lb, °C/°F, mL/fl oz, mg/mmol">Convert</button>
+      <button id="quiz-btn" class="btn-search-everywhere" type="button" title="Spaced-repetition quiz from your bookmarks">Quiz</button>
+      <button id="cases-btn" class="btn-search-everywhere" type="button" title="Case vignettes for self-study">Cases</button>
     </form>
     <div class="header-actions">
     <span id="welcome-greeting" class="welcome-greeting" hidden></span>
@@ -2186,6 +2304,8 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <div class="results-export" id="results-export" hidden>
         <button type="button" class="results-export-btn" id="export-bib-btn">Export .bib</button>
         <button type="button" class="results-export-btn" id="export-ris-btn">Export .ris</button>
+        <button type="button" class="results-export-btn" id="export-study-btn">Export study sheet</button>
+        <button type="button" class="results-export-btn" id="start-quiz-btn">Start quiz</button>
       </div>
     </header>
     <ul class="cards" id="cards" aria-live="polite"></ul>
@@ -6576,6 +6696,25 @@ function removeBookmarkNote(pmid){
   try{ localStorage.setItem(BOOKMARK_NOTES_KEY, JSON.stringify(notes)); }catch(e){}
 }
 
+/* ---- Condition bookmarks — same shape/pattern as article bookmarks,
+   keyed by condition name, so the curated Conditions cards can also
+   feed the quiz and the study-sheet export. ---- */
+const COND_BOOKMARK_KEY = 'rounds_condition_bookmarks_v1';
+function getConditionBookmarks(){
+  try{ return JSON.parse(localStorage.getItem(COND_BOOKMARK_KEY) || '{}'); }catch(e){ return {}; }
+}
+function setConditionBookmarks(obj){ try{ localStorage.setItem(COND_BOOKMARK_KEY, JSON.stringify(obj)); }catch(e){} }
+function isConditionBookmarked(name){ return !!getConditionBookmarks()[name]; }
+function toggleConditionBookmark(name){
+  const bm = getConditionBookmarks();
+  let added;
+  if(bm[name]){ delete bm[name]; added = false; }
+  else { bm[name] = { name, addedAt: Date.now() }; added = true; }
+  haptic('Medium');
+  setConditionBookmarks(bm);
+  showToast(added ? 'Saved to your list' : 'Removed from saved', 'ok');
+}
+
 /* ============================================================
    Theme management
    ============================================================ */
@@ -7587,6 +7726,28 @@ function renderConditionResults(q){
     + `<p class="condition-divider">Browse guideline updates by body system ↓</p>`;
 }
 
+function conditionBookmarkBtnHtml(name){
+  const saved = isConditionBookmarked(name);
+  return `<button type="button" class="cond-bookmark-btn${saved ? ' saved' : ''}" data-cond-name="${escapeHtml(name)}" aria-pressed="${saved ? 'true' : 'false'}" aria-label="${saved ? 'Remove from saved' : 'Save this condition for the quiz'}"><svg class="star" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.2 12.4 7.4 18 8.2 13.9 12 15 17.6 10 14.8 5 17.6 6.1 12 2 8.2 7.6 7.4Z" fill="${saved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>${saved ? 'Saved' : 'Save'}</button>`;
+}
+/* Delegated once — syndrome rows (and the disabled Guidelines search, if
+   ever re-enabled) are re-rendered via innerHTML repeatedly, so a per-row
+   listener would need constant rewiring. */
+function setupConditionBookmarks(){
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cond-bookmark-btn');
+    if(!btn) return;
+    toggleConditionBookmark(btn.dataset.condName);
+    const saved = isConditionBookmarked(btn.dataset.condName);
+    btn.classList.toggle('saved', saved);
+    btn.setAttribute('aria-pressed', saved ? 'true' : 'false');
+    btn.setAttribute('aria-label', saved ? 'Remove from saved' : 'Save this condition for the quiz');
+    const star = btn.querySelector('.star path');
+    if(star) star.setAttribute('fill', saved ? 'currentColor' : 'none');
+    btn.lastChild.textContent = saved ? 'Saved' : 'Save';
+  });
+}
+
 function initConditionSearch(){
   const input = document.getElementById('condition-input');
   const suggest = document.getElementById('condition-suggest');
@@ -7821,6 +7982,7 @@ function syndromeRowHtml(s){
     <span class="syndrome-actions">
       <button type="button" class="syndrome-evidence-btn" aria-expanded="false">Recent research <span class="chev" aria-hidden="true">▾</span></button>
       <a class="syndrome-src" href="${src}" target="_blank" rel="noopener">Look up →</a>
+      ${conditionBookmarkBtnHtml(s.name)}
     </span>
   </li>`;
 }
@@ -10443,6 +10605,10 @@ function init(){
   setupKeyboardShortcuts();
   setupGlobalSearch();
   setupUnitConverter();
+  setupConditionBookmarks();
+  setupQuiz();
+  setupCases();
+  setupStudyExport();
 }
 
 function restoreLastSpecialty(){
@@ -10982,7 +11148,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
@@ -11263,6 +11429,461 @@ function setupUnitConverter(){
   const closeBtn = document.getElementById('unit-converter-close');
   if(closeBtn) closeBtn.onclick = close;
   modal.onclick = (e) => { if(e.target === modal) close(); };
+}
+
+/* ============================================================
+   Spaced-repetition quiz — built from bookmarked literature, bookmarked
+   Condition cards, and drugs marked "stocked" in My Formulary.
+   Leitner-box scheduling: a card's box (0–5) sets its next-due interval;
+   "Again" resets the box, "Hard"/"Good"/"Easy" step it down/up/up-more.
+   ============================================================ */
+const SRS_KEY = 'rounds_srs_v1';
+const SRS_INTERVALS = [0, 1, 3, 7, 16, 35]; // days, indexed by box
+
+function getSrsState(){
+  try{ return JSON.parse(localStorage.getItem(SRS_KEY) || '{}'); }catch(e){ return {}; }
+}
+function setSrsState(obj){ try{ localStorage.setItem(SRS_KEY, JSON.stringify(obj)); }catch(e){} }
+function srsRate(key, rating){
+  const state = getSrsState();
+  const card = state[key] || { box: 0, due: 0, reps: 0 };
+  if(rating === 'again') card.box = 0;
+  else if(rating === 'hard') card.box = Math.max(0, card.box - 1);
+  else if(rating === 'good') card.box = Math.min(SRS_INTERVALS.length - 1, card.box + 1);
+  else if(rating === 'easy') card.box = Math.min(SRS_INTERVALS.length - 1, card.box + 2);
+  card.reps = (card.reps || 0) + 1;
+  card.lastResult = rating;
+  card.due = Date.now() + SRS_INTERVALS[card.box] * 86400000;
+  state[key] = card;
+  setSrsState(state);
+}
+
+function getStudyItems(){
+  const items = [];
+  Object.values(getBookmarks()).forEach(a => {
+    if(!a || !a.pmid) return;
+    const abstract = (a.abstract || '').trim();
+    const shown = abstract.length > 500 ? abstract.slice(0, 500) + '…' : (abstract || 'No abstract available.');
+    items.push({
+      key: 'lit:' + a.pmid,
+      type: 'Literature',
+      q: a.title || 'Untitled article',
+      sub: [a.journal, a.date].filter(Boolean).join(' · '),
+      answerHtml: `<p>${escapeHtml(shown)}</p>`
+    });
+  });
+  Object.values(getConditionBookmarks()).forEach(cb => {
+    const c = SYNDROMES.find(x => x.name === cb.name);
+    if(!c) return;
+    items.push({
+      key: 'cond:' + c.name,
+      type: 'Condition',
+      q: `${c.name} — recall the key definition/features`,
+      sub: SYNDROME_SYSTEMS[c.system] || c.system || '',
+      answerHtml: `<p>${escapeHtml(c.desc || '')}</p>`
+    });
+  });
+  const formulary = getFormulary();
+  Object.keys(formulary).filter(id => formulary[id]).forEach(id => {
+    const d = RX_DRUGS.find(x => x.id === id);
+    if(!d) return;
+    items.push({
+      key: 'drug:' + d.id,
+      type: 'Drug',
+      q: `${d.generic} (${d.brand}) — recall class/indication & dosing`,
+      sub: d.ref || '',
+      answerHtml: `<ul>${d.regimens.map(r => `<li><strong>${escapeHtml(r.label)}:</strong> ${escapeHtml(r.note || '')}</li>`).join('')}</ul>`
+    });
+  });
+  return items;
+}
+
+function shuffleArr(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+let quizSession = null;
+
+function buildQuizQueue(){
+  const items = getStudyItems();
+  const srs = getSrsState();
+  const now = Date.now();
+  const due = items.filter(it => { const c = srs[it.key]; return !c || c.due <= now; });
+  return due.length ? due : items;
+}
+
+function openQuiz(){
+  const modal = document.getElementById('quiz-modal');
+  if(!modal) return;
+  const emptyEl = document.getElementById('quiz-empty');
+  const bodyEl = document.getElementById('quiz-body');
+  const summaryEl = document.getElementById('quiz-summary');
+  summaryEl.hidden = true;
+  const items = getStudyItems();
+  if(items.length === 0){
+    emptyEl.hidden = false;
+    bodyEl.hidden = true;
+    emptyEl.innerHTML = 'Nothing to quiz yet. Save an article, star a Condition card, or mark a drug "stocked" in My Formulary — then come back here.';
+  } else {
+    emptyEl.hidden = true;
+    const queue = shuffleArr(buildQuizQueue());
+    quizSession = { queue, idx: 0, total: queue.length, resultCounts: { again: 0, hard: 0, good: 0, easy: 0 } };
+    renderQuizCard();
+  }
+  modal.hidden = false;
+  document.addEventListener('keydown', onQuizKey);
+}
+function renderQuizCard(){
+  const bodyEl = document.getElementById('quiz-body');
+  const summaryEl = document.getElementById('quiz-summary');
+  if(!quizSession || quizSession.idx >= quizSession.queue.length){
+    bodyEl.hidden = true;
+    summaryEl.hidden = false;
+    const rc = quizSession ? quizSession.resultCounts : { again: 0, hard: 0, good: 0, easy: 0 };
+    const total = quizSession ? quizSession.total : 0;
+    summaryEl.innerHTML = `<strong>Session complete</strong>Reviewed ${total} card${total === 1 ? '' : 's'} · Again ${rc.again} · Hard ${rc.hard} · Good ${rc.good} · Easy ${rc.easy}<br><br>Come back later — cards you rated lower will resurface sooner.`;
+    quizSession = null;
+    return;
+  }
+  bodyEl.hidden = false;
+  summaryEl.hidden = true;
+  const item = quizSession.queue[quizSession.idx];
+  document.getElementById('quiz-progress').textContent = `Card ${quizSession.idx + 1} of ${quizSession.total}`;
+  document.getElementById('quiz-type-tag').textContent = item.type;
+  document.getElementById('quiz-question').textContent = item.q;
+  document.getElementById('quiz-sub').textContent = item.sub || '';
+  const answerEl = document.getElementById('quiz-answer');
+  answerEl.innerHTML = item.answerHtml;
+  answerEl.hidden = true;
+  document.getElementById('quiz-reveal-btn').hidden = false;
+  document.getElementById('quiz-rate-row').hidden = true;
+}
+function revealQuizAnswer(){
+  document.getElementById('quiz-answer').hidden = false;
+  document.getElementById('quiz-reveal-btn').hidden = true;
+  document.getElementById('quiz-rate-row').hidden = false;
+  haptic('Light');
+}
+function rateQuizCard(rating){
+  if(!quizSession) return;
+  const item = quizSession.queue[quizSession.idx];
+  srsRate(item.key, rating);
+  quizSession.resultCounts[rating] = (quizSession.resultCounts[rating] || 0) + 1;
+  quizSession.idx++;
+  haptic('Light');
+  renderQuizCard();
+}
+function onQuizKey(e){ if(e.key === 'Escape') closeQuiz(); }
+function closeQuiz(){
+  const modal = document.getElementById('quiz-modal');
+  if(modal) modal.hidden = true;
+  document.removeEventListener('keydown', onQuizKey);
+}
+function setupQuiz(){
+  [document.getElementById('quiz-btn'), document.getElementById('start-quiz-btn')].forEach(b => {
+    if(b) b.onclick = () => { haptic('Light'); openQuiz(); };
+  });
+  const closeBtn = document.getElementById('quiz-close');
+  if(closeBtn) closeBtn.onclick = closeQuiz;
+  const modal = document.getElementById('quiz-modal');
+  if(modal) modal.onclick = (e) => { if(e.target === modal) closeQuiz(); };
+  const revealBtn = document.getElementById('quiz-reveal-btn');
+  if(revealBtn) revealBtn.onclick = revealQuizAnswer;
+  document.querySelectorAll('.quiz-rate-btn[data-rate]').forEach(btn => {
+    btn.onclick = () => rateQuizCard(btn.dataset.rate);
+  });
+}
+
+/* ============================================================
+   Teaching cases — curated vignettes for self-study, plus a "quiz
+   yourself" stem generator built from this app's own Condition/Drug
+   reference data. Educational aids only — not real patient data and
+   not a diagnostic tool; verify anything clinical against primary
+   sources (matches the tone of the interaction checker's disclaimer).
+   ============================================================ */
+const CASES = [
+  {
+    title: 'Sudden headache and a seizure on the ward',
+    specialty: 'Nephrology · Neurology',
+    stem: 'A 34-year-old woman on the medical ward, admitted three days ago for post-operative ileus and treated with intravenous dextrose-saline, develops a sudden severe headache followed by a witnessed generalised seizure. On arrival she is drowsy and confused.',
+    diagnosis: 'Severe symptomatic hyponatremia (acute) — a monitored-care emergency',
+    points: [
+      'Seizure plus reduced consciousness here is a "severe symptom" red flag regardless of the exact sodium value — treat urgently rather than waiting for a formal severity classification.',
+      'Send an urgent serum sodium; recent hypotonic IV fluids plus post-operative pain/nausea is a classic euvolemic-hyponatremia setup (non-osmotic vasopressin release).',
+      'Escalate immediately for senior/critical-care input and a hypertonic-saline protocol — this is not managed with routine fluid restriction.',
+      'Correction still has a ceiling once symptoms improve (≤10 mmol/L in the first 24h) — rapid correction risks osmotic demyelination.'
+    ],
+    relatedCondition: 'Hyponatremia', relatedDrugs: []
+  },
+  {
+    title: 'Deep breathing and vomiting in a known diabetic',
+    specialty: 'Endocrinology',
+    stem: 'A 58-year-old man with known type 2 diabetes is brought in unwell for two days with vomiting, deep sighing breaths and abdominal pain. He looks dehydrated; his capillary glucose reads "HI".',
+    diagnosis: 'Diabetic ketoacidosis (DKA)',
+    points: [
+      'Kussmaul breathing, vomiting and very high glucose in a known diabetic should trigger an immediate VBG, ketones and electrolytes.',
+      'Confirm the triad — hyperglycaemia, ketosis/ketonaemia and metabolic acidosis — before labelling it DKA rather than simple hyperglycaemia.',
+      'Start fluid resuscitation, then a fixed-rate IV insulin infusion; check potassium before and during insulin, since insulin drives K+ intracellularly and can precipitate dangerous hypokalaemia.',
+      'Look for and treat the precipitant (infection, missed insulin, new diagnosis) — DKA rarely happens without one.'
+    ],
+    relatedCondition: 'Diabetic ketoacidosis', relatedDrugs: []
+  },
+  {
+    title: 'Fever, confusion and a low blood pressure',
+    specialty: 'Emergency medicine · Infectious disease',
+    stem: 'A 62-year-old woman is brought from a nursing home with two days of fever, cough and confusion. She is tachypnoeic, hypotensive (88/54) with a lactate of 4.2 mmol/L, and has signs of right basal consolidation.',
+    diagnosis: 'Community-acquired pneumonia complicated by septic shock',
+    points: [
+      'This meets sepsis criteria (infection plus organ dysfunction — hypotension, raised lactate): start the sepsis bundle immediately — cultures, broad-spectrum antibiotics within the hour, and IV fluids.',
+      'Empirical antibiotics should cover typical and atypical CAP organisms — ceftriaxone plus azithromycin is one commonly used combination for severe CAP (verify against local protocol/antibiogram).',
+      'Reassess perfusion after the initial fluid bolus — persistent hypotension after fluids is when vasopressor support and ICU/HDU escalation come into play.',
+      "Confusion in an older adult with sepsis is itself a marker of severity — don't dismiss it as baseline dementia without checking."
+    ],
+    relatedCondition: 'Community-acquired pneumonia', relatedDrugs: ['ceftriaxone', 'azithromycin']
+  },
+  {
+    title: 'Falling urine output on IV antibiotics',
+    specialty: 'Nephrology · Pharmacology',
+    stem: 'A 45-year-old man on gentamicin for a complicated UTI develops reduced urine output and rising creatinine on day 3 of admission. He has also had several episodes of vomiting and diarrhoea.',
+    diagnosis: 'Acute kidney injury — likely pre-renal (volume loss) with a nephrotoxic drug contributing',
+    points: [
+      'Stage the AKI by the rise in creatinine / fall in urine output, and look for reversible pre-renal causes first — here, ongoing GI losses point to volume depletion.',
+      "Review every nephrotoxic and renally-cleared drug on the chart — gentamicin needs an extended interval or level-guided dosing once renal function drops (this app's renal dosing calculator flags that threshold).",
+      'Recheck fluid balance, weight and postural vitals; correcting volume status and adjusting the drug should happen together, not sequentially.',
+      "Trend creatinine and urine output over the next 24–48h — an AKI that doesn't improve with volume correction needs a broader work-up."
+    ],
+    relatedCondition: 'Acute kidney injury', relatedDrugs: ['gentamicin']
+  },
+  {
+    title: 'Bleeding gums after a bite in the paddy field',
+    specialty: 'Emergency medicine · Toxinology',
+    stem: 'A farmer presents with a painful swollen leg after a suspected snakebite while working in a paddy field two hours ago. He now has bleeding gums, and his blood fails to clot in a bedside 20-minute whole blood clotting test.',
+    diagnosis: 'Snakebite envenomation with systemic (haemotoxic) envenoming — likely a viper bite',
+    points: [
+      'A positive 20-minute whole blood clotting test at the bedside is a simple, validated way to detect venom-induced consumption coagulopathy when lab coagulation studies are not immediately available.',
+      'Local swelling plus systemic bleeding indicates systemic envenoming — this patient needs antivenom, not just wound care.',
+      'Do not incise, suction, or apply a tight tourniquet to the bite site — immobilise the limb below heart level and transport urgently.',
+      'Watch for anaphylaxis to antivenom itself — have adrenaline immediately available before and during administration.'
+    ],
+    relatedCondition: 'Snakebite envenomation', relatedDrugs: []
+  },
+  {
+    title: 'Vomiting blood in a patient with cirrhosis',
+    specialty: 'Gastroenterology',
+    stem: 'A 55-year-old man with known cirrhosis presents with two episodes of large-volume haematemesis and dark, tarry stools. He is tachycardic and mildly hypotensive.',
+    diagnosis: 'Acute upper gastrointestinal bleeding — likely variceal, given his cirrhosis',
+    points: [
+      'Resuscitate first: two large-bore IV lines, crossmatch blood, and a restrictive transfusion target (roughly Hb 7–8 g/dL) rather than over-transfusing, which can worsen portal pressure.',
+      'In known or suspected cirrhosis, start empirical therapy for variceal bleeding early — a vasoactive drug plus prophylactic antibiotics, before endoscopy confirms the source.',
+      'Correct coagulopathy and consider early airway protection if there is ongoing haematemesis or reduced consciousness, given aspiration risk.',
+      'Endoscopy within 12–24 hours (sooner if unstable) both confirms the diagnosis and allows band ligation or sclerotherapy for varices.'
+    ],
+    relatedCondition: 'Upper GI bleeding', relatedDrugs: []
+  },
+  {
+    title: 'Swelling and wheeze minutes after a dose',
+    specialty: 'Allergy · Paediatrics',
+    stem: 'A child is given a dose of amoxicillin for otitis media. Fifteen minutes later she develops facial swelling, an urticarial rash and audible wheeze, and becomes floppy.',
+    diagnosis: 'Anaphylaxis (drug-induced, amoxicillin)',
+    points: [
+      "This is anaphylaxis until proven otherwise: rapid onset, skin/mucosal signs plus respiratory compromise after a known allergen exposure — treat immediately, don't wait for hypotension to appear.",
+      'First-line treatment is intramuscular adrenaline in the anterolateral thigh, repeated every 5 minutes if needed — antihistamines and steroids are adjuncts, not substitutes.',
+      'Lay the child flat with legs raised (or sitting up if breathing is the main problem) and give high-flow oxygen while adrenaline is drawn up.',
+      'Document the reaction clearly as a penicillin allergy going forward, and observe for a biphasic reaction for several hours after treatment.'
+    ],
+    relatedCondition: 'Anaphylaxis', relatedDrugs: ['amoxicillin']
+  },
+  {
+    title: 'Creatinine climbing on IV vancomycin',
+    specialty: 'Nephrology · Pharmacology',
+    stem: 'An elderly woman being treated with IV vancomycin for MRSA bacteraemia has her creatinine rise over three days of therapy, with a falling estimated CrCl.',
+    diagnosis: 'Vancomycin-associated nephrotoxicity requiring dose/interval adjustment',
+    points: [
+      'Vancomycin is renally cleared and nephrotoxic — falling renal function needs the interval extended and dosing re-targeted to AUC-guided levels rather than continuing the original regimen unchanged.',
+      'Check for other contributing nephrotoxins (e.g. concurrent NSAIDs, contrast, other antibiotics) and hydration status — nephrotoxicity is often multifactorial in unwell inpatients.',
+      "Don't stop treatment for confirmed MRSA bacteraemia outright — adjust the dose/interval and involve pharmacy/ID for AUC-guided monitoring rather than under-treating a bloodstream infection.",
+      'Trend creatinine daily while renal function is unstable, and reassess the ongoing need for vancomycin against culture/sensitivity results as they return.'
+    ],
+    relatedCondition: 'Acute kidney injury', relatedDrugs: ['vancomycin']
+  }
+];
+
+let casesState = { idx: 0, revealed: false, mode: 'curated', own: null };
+
+function renderCase(){
+  const c = CASES[casesState.idx];
+  document.getElementById('case-progress').textContent = `Case ${casesState.idx + 1} of ${CASES.length}`;
+  document.getElementById('case-specialty-tag').textContent = c.specialty;
+  document.getElementById('case-title').textContent = c.title;
+  document.getElementById('case-stem').textContent = c.stem;
+  const revealEl = document.getElementById('case-reveal');
+  const btn = document.getElementById('case-reveal-btn');
+  if(casesState.revealed){
+    revealEl.hidden = false;
+    btn.hidden = true;
+    const related = [];
+    if(c.relatedCondition) related.push(`Condition reference: ${c.relatedCondition}`);
+    (c.relatedDrugs || []).forEach(id => {
+      const d = RX_DRUGS.find(x => x.id === id);
+      if(d) related.push(`Drug reference: ${d.generic} (${d.brand})`);
+    });
+    revealEl.innerHTML = `<p><strong>${escapeHtml(c.diagnosis)}</strong></p><ul>${c.points.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>` +
+      (related.length ? `<p class="quiz-sub">${related.map(escapeHtml).join(' · ')} — look these up in Drugs/Conditions for the full reference.</p>` : '');
+  } else {
+    revealEl.hidden = true;
+    btn.hidden = false;
+  }
+}
+function caseStep(dir){
+  casesState.idx = (casesState.idx + dir + CASES.length) % CASES.length;
+  casesState.revealed = false;
+  renderCase();
+  haptic('Light');
+}
+
+function randomOwnStem(){
+  const pool = SYNDROMES.map(c => ({ kind: 'condition', c })).concat(RX_DRUGS.map(d => ({ kind: 'drug', d })));
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  if(pick.kind === 'condition'){
+    const c = pick.c;
+    return {
+      tag: 'Condition · ' + (SYNDROME_SYSTEMS[c.system] || c.system || ''),
+      stem: `${c.name} — what's the key definition/feature?`,
+      answerHtml: `<p>${escapeHtml(c.desc || '')}</p>`
+    };
+  }
+  const d = pick.d;
+  return {
+    tag: 'Drug',
+    stem: `${d.generic} (${d.brand}) — what class/indication is this, and how is it dosed?`,
+    answerHtml: `<ul>${d.regimens.map(r => `<li><strong>${escapeHtml(r.label)}:</strong> ${escapeHtml(r.note || '')}</li>`).join('')}</ul>`
+  };
+}
+function newOwnStem(){
+  const s = randomOwnStem();
+  casesState.own = s;
+  document.getElementById('own-type-tag').textContent = s.tag;
+  document.getElementById('own-stem').textContent = s.stem;
+  const revealEl = document.getElementById('own-reveal');
+  revealEl.innerHTML = s.answerHtml;
+  revealEl.hidden = true;
+  document.getElementById('own-reveal-btn').hidden = false;
+  haptic('Light');
+}
+
+function onCasesKey(e){ if(e.key === 'Escape') closeCases(); }
+function closeCases(){
+  const modal = document.getElementById('cases-modal');
+  if(modal) modal.hidden = true;
+  document.removeEventListener('keydown', onCasesKey);
+}
+function openCases(){
+  const modal = document.getElementById('cases-modal');
+  if(!modal) return;
+  casesState.revealed = false;
+  renderCase();
+  modal.hidden = false;
+  document.addEventListener('keydown', onCasesKey);
+}
+function setCasesMode(mode){
+  casesState.mode = mode;
+  document.querySelectorAll('.cases-mode-seg .seg-btn').forEach(b => {
+    const on = b.dataset.casemode === mode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  document.getElementById('cases-curated').hidden = mode !== 'curated';
+  document.getElementById('cases-own').hidden = mode !== 'own';
+  if(mode === 'own' && !casesState.own) newOwnStem();
+}
+function setupCases(){
+  const openBtn = document.getElementById('cases-btn');
+  if(openBtn) openBtn.onclick = () => { haptic('Light'); openCases(); };
+  const closeBtn = document.getElementById('cases-close');
+  if(closeBtn) closeBtn.onclick = closeCases;
+  const modal = document.getElementById('cases-modal');
+  if(modal) modal.onclick = (e) => { if(e.target === modal) closeCases(); };
+  const revealBtn = document.getElementById('case-reveal-btn');
+  if(revealBtn) revealBtn.onclick = () => { casesState.revealed = true; haptic('Light'); renderCase(); };
+  const nextBtn = document.getElementById('case-next-btn');
+  if(nextBtn) nextBtn.onclick = () => caseStep(1);
+  const prevBtn = document.getElementById('case-prev-btn');
+  if(prevBtn) prevBtn.onclick = () => caseStep(-1);
+  document.querySelectorAll('.cases-mode-seg .seg-btn[data-casemode]').forEach(btn => {
+    btn.onclick = () => setCasesMode(btn.dataset.casemode);
+  });
+  const ownRevealBtn = document.getElementById('own-reveal-btn');
+  if(ownRevealBtn) ownRevealBtn.onclick = () => {
+    document.getElementById('own-reveal').hidden = false;
+    ownRevealBtn.hidden = true;
+    haptic('Light');
+  };
+  const ownNextBtn = document.getElementById('own-next-btn');
+  if(ownNextBtn) ownNextBtn.onclick = newOwnStem;
+}
+
+/* ============================================================
+   Export bookmarks as a print-friendly study sheet — reuses the
+   browser's native print (window.print()), same approach the app
+   already relies on for its general "safe to print" pass above.
+   ============================================================ */
+function buildStudySheetHtml(){
+  const bm = Object.values(getBookmarks());
+  const condBm = Object.values(getConditionBookmarks()).map(cb => SYNDROMES.find(c => c.name === cb.name)).filter(Boolean);
+  const formulary = getFormulary();
+  const drugs = RX_DRUGS.filter(d => formulary[d.id]);
+  const total = bm.length + condBm.length + drugs.length;
+  let html = `<h1 class="ss-title">Rounds — Study sheet</h1><p class="ss-meta">${total} item${total === 1 ? '' : 's'} · generated ${escapeHtml(new Date().toLocaleDateString())} · educational self-study aid, not a clinical protocol</p>`;
+  bm.forEach(a => {
+    const note = getBookmarkNote(a.pmid);
+    html += `<div class="ss-item"><span class="ss-tag">Literature</span><h3>${escapeHtml(a.title || 'Untitled')}</h3>` +
+      `<p class="ss-sub">${escapeHtml([a.journal, a.date, a.authors].filter(Boolean).join(' · '))}${a.pmid ? ' · PMID ' + escapeHtml(a.pmid) : ''}</p>` +
+      `<div class="ss-body"><p>${escapeHtml(((a.abstract || '').slice(0, 700)) || 'No abstract available.')}</p>${note ? `<p><strong>My note:</strong> ${escapeHtml(note)}</p>` : ''}</div></div>`;
+  });
+  condBm.forEach(c => {
+    html += `<div class="ss-item"><span class="ss-tag">Condition</span><h3>${escapeHtml(c.name)}</h3>` +
+      `<p class="ss-sub">${escapeHtml(SYNDROME_SYSTEMS[c.system] || c.system || '')}</p>` +
+      `<div class="ss-body"><p>${escapeHtml(c.desc || '')}</p></div></div>`;
+  });
+  drugs.forEach(d => {
+    html += `<div class="ss-item"><span class="ss-tag">Drug</span><h3>${escapeHtml(d.generic)} (${escapeHtml(d.brand)})</h3>` +
+      `<p class="ss-sub">${escapeHtml(d.ref || '')}</p>` +
+      `<div class="ss-body"><ul>${d.regimens.map(r => `<li><strong>${escapeHtml(r.label)}:</strong> ${escapeHtml(r.note || '')}</li>`).join('')}</ul></div></div>`;
+  });
+  return { html, total };
+}
+function exportStudySheet(){
+  const { html, total } = buildStudySheetHtml();
+  if(total === 0){ showToast('Nothing saved to export yet', 'err'); return; }
+  const sheet = document.getElementById('study-sheet');
+  sheet.innerHTML = html;
+  document.body.classList.add('printing-study-sheet');
+  haptic('Light');
+  let cleaned = false;
+  function cleanup(){
+    if(cleaned) return;
+    cleaned = true;
+    document.body.classList.remove('printing-study-sheet');
+    sheet.innerHTML = '';
+    window.removeEventListener('afterprint', cleanup);
+  }
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(() => {
+    window.print();
+    // afterprint doesn't fire reliably in every environment (e.g. some
+    // automated/headless print flows) — fall back to a timed cleanup so
+    // the app doesn't stay stuck showing only the print sheet.
+    setTimeout(cleanup, 1200);
+  }, 50);
+}
+function setupStudyExport(){
+  const btn = document.getElementById('export-study-btn');
+  if(btn) btn.onclick = exportStudySheet;
 }
 
 function setupKeyboardShortcuts(){
