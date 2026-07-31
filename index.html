@@ -1189,6 +1189,50 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .uc-eq{color:var(--shell-ink-soft);font-weight:600;}
 @media (max-width:520px){.uc-pair input{width:76px;}}
 
+/* ---- quiz (spaced repetition) & teaching cases ---- */
+.quiz-card,.cases-card{max-width:560px;}
+.quiz-progress,#case-progress{font-family:var(--ff-mono);font-size:11px;letter-spacing:0.04em;color:var(--shell-ink-soft);text-transform:uppercase;margin-bottom:10px;}
+.quiz-flashcard{border:1px solid var(--shell-line);border-radius:var(--r-md);padding:18px 18px 16px;background:rgba(255,255,255,0.03);min-height:120px;}
+.quiz-type-tag{display:inline-block;font-family:var(--ff-mono);font-size:10.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--evidence-bright);background:rgba(91,156,255,0.14);border-radius:var(--r-pill);padding:3px 10px;margin-bottom:10px;}
+.quiz-question{font-family:var(--ff-sans);font-size:16px;font-weight:600;color:var(--shell-ink);line-height:1.4;margin:0;}
+.quiz-sub{font-family:var(--ff-sans);font-size:12px;color:var(--shell-ink-soft);margin:6px 0 0;}
+.case-title{font-family:var(--ff-sans);font-size:15px;font-weight:700;color:var(--shell-ink);margin:0 0 8px;}
+.case-stem{font-weight:400;font-size:14.5px;}
+.quiz-answer{margin-top:14px;padding-top:14px;border-top:1px dashed var(--shell-line);font-family:var(--ff-sans);font-size:13.5px;color:var(--shell-ink-soft);line-height:1.6;}
+.quiz-answer strong{color:var(--shell-ink);}
+.quiz-answer ul{margin:0;padding-left:18px;display:flex;flex-direction:column;gap:5px;}
+#quiz-reveal-btn,#case-reveal-btn,#own-reveal-btn,#own-next-btn{width:100%;margin-top:12px;}
+.quiz-rate-row{display:flex;gap:8px;margin-top:12px;}
+.quiz-rate-btn{flex:1;border:1px solid var(--shell-line);background:none;border-radius:var(--r-pill);padding:9px 6px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--shell-ink-soft);cursor:pointer;transition:background var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),border-color var(--dur-fast) var(--ease-out);}
+.quiz-rate-btn:hover{border-color:var(--evidence-bright);color:var(--evidence-bright);}
+.quiz-rate-again{border-color:#ff8a80;color:#ff8a80;}
+.quiz-rate-hard{border-color:#ffb74d;color:#ffb74d;}
+.quiz-rate-good{border-color:var(--evidence-bright);color:var(--evidence-bright);}
+.quiz-rate-easy{border-color:var(--fresh);color:var(--fresh);}
+.quiz-rate-again:hover,.quiz-rate-hard:hover,.quiz-rate-good:hover,.quiz-rate-easy:hover{background:rgba(255,255,255,0.06);}
+.quiz-summary{font-family:var(--ff-sans);font-size:14px;color:var(--shell-ink-soft);text-align:center;padding:20px 6px;}
+.quiz-summary strong{display:block;font-size:20px;color:var(--shell-ink);margin-bottom:6px;}
+.cases-mode-seg{margin:6px 0 16px;}
+.cond-bookmark-btn{background:none;border:1px solid var(--line);border-radius:var(--r-pill);padding:4px 12px;font-family:var(--ff-sans);font-size:11.5px;font-weight:600;cursor:pointer;color:var(--ink-soft);display:inline-flex;align-items:center;gap:5px;margin-left:8px;transition:border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
+.cond-bookmark-btn:hover{border-color:var(--fresh);color:var(--fresh);background:var(--fresh-bg);}
+.cond-bookmark-btn.saved{background:var(--fresh-bg);border-color:var(--fresh);color:var(--fresh);}
+.cond-bookmark-btn .star{width:12px;height:12px;flex-shrink:0;}
+
+/* ---- print-only study sheet ---- */
+#study-sheet{display:none;}
+.ss-title{font-family:var(--ff-sans);font-size:22px;font-weight:700;margin:0 0 4px;}
+.ss-meta{font-family:var(--ff-sans);font-size:12px;color:#555;margin:0 0 20px;}
+.ss-item{border:1px solid #ccc;border-radius:8px;padding:14px 16px;margin-bottom:14px;break-inside:avoid;}
+.ss-item h3{font-family:var(--ff-sans);font-size:15px;margin:0 0 4px;}
+.ss-item .ss-tag{display:inline-block;font-family:var(--ff-mono);font-size:9.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#555;border:1px solid #999;border-radius:20px;padding:2px 8px;margin-bottom:6px;}
+.ss-item .ss-sub{font-size:11.5px;color:#555;margin:0 0 8px;}
+.ss-item .ss-body{font-size:12.5px;line-height:1.5;}
+.ss-item .ss-body ul{margin:4px 0;padding-left:18px;}
+@media print{
+  body.printing-study-sheet > *:not(#study-sheet){display:none !important;}
+  body.printing-study-sheet #study-sheet{display:block !important;padding:24px;}
+}
+
 /* =====================================================================
    Responsive — tablet & phone tuning (additive overrides)
    ===================================================================== */
@@ -2086,6 +2130,35 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== Spaced-repetition quiz — built from bookmarked articles, drugs
+     marked "stocked" in your formulary, and bookmarked conditions ===== -->
+<div class="rename-overlay" id="quiz-modal" role="dialog" aria-modal="true" aria-labelledby="quiz-title" hidden>
+  <div class="rename-card settings-card global-search-card quiz-card" role="document">
+    <button type="button" class="onb-close" id="quiz-close" aria-label="Close quiz">&times;</button>
+    <p class="onb-eyebrow">SPACED REPETITION</p>
+    <h2 class="onb-title serif" id="quiz-title">Quiz</h2>
+    <p class="settings-sub" style="display:block;margin:6px 0 14px;">Self-testing on your saved articles, conditions and formulary drugs. Rate your recall honestly — it decides when a card comes back.</p>
+    <div id="quiz-empty" class="cmp-empty" hidden></div>
+    <div id="quiz-body" hidden>
+      <div class="quiz-progress" id="quiz-progress"></div>
+      <div class="quiz-flashcard">
+        <span class="quiz-type-tag" id="quiz-type-tag"></span>
+        <p class="quiz-question" id="quiz-question"></p>
+        <p class="quiz-sub" id="quiz-sub"></p>
+        <div class="quiz-answer" id="quiz-answer" hidden></div>
+      </div>
+      <button type="button" class="results-export-btn" id="quiz-reveal-btn">Reveal answer</button>
+      <div class="quiz-rate-row" id="quiz-rate-row" hidden>
+        <button type="button" class="quiz-rate-btn quiz-rate-again" data-rate="again">Again</button>
+        <button type="button" class="quiz-rate-btn quiz-rate-hard" data-rate="hard">Hard</button>
+        <button type="button" class="quiz-rate-btn quiz-rate-good" data-rate="good">Good</button>
+        <button type="button" class="quiz-rate-btn quiz-rate-easy" data-rate="easy">Easy</button>
+      </div>
+    </div>
+    <div id="quiz-summary" class="quiz-summary" hidden></div>
+  </div>
+</div>
+
 <header>
   <div class="header-inner">
     <a class="brand" href="#" aria-label="Rounds — home">
@@ -2105,6 +2178,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <button id="search-btn" class="btn-search" type="button">Search</button>
       <button id="search-everywhere-btn" class="btn-search-everywhere" type="button" title="Search everywhere — Literature, Drugs, Conditions, Advances, Trials at once">Everywhere</button>
       <button id="unit-converter-btn" class="btn-search-everywhere" type="button" title="Quick unit converter — kg/lb, °C/°F, mL/fl oz, mg/mmol">Convert</button>
+      <button id="quiz-btn" class="btn-search-everywhere" type="button" title="Spaced-repetition quiz from your bookmarks">Quiz</button>
     </form>
     <div class="header-actions">
     <span id="welcome-greeting" class="welcome-greeting" hidden></span>
@@ -2186,6 +2260,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <div class="results-export" id="results-export" hidden>
         <button type="button" class="results-export-btn" id="export-bib-btn">Export .bib</button>
         <button type="button" class="results-export-btn" id="export-ris-btn">Export .ris</button>
+        <button type="button" class="results-export-btn" id="start-quiz-btn">Start quiz</button>
       </div>
     </header>
     <ul class="cards" id="cards" aria-live="polite"></ul>
@@ -6576,6 +6651,25 @@ function removeBookmarkNote(pmid){
   try{ localStorage.setItem(BOOKMARK_NOTES_KEY, JSON.stringify(notes)); }catch(e){}
 }
 
+/* ---- Condition bookmarks — same shape/pattern as article bookmarks,
+   keyed by condition name, so the curated Conditions cards can also
+   feed the quiz and the study-sheet export. ---- */
+const COND_BOOKMARK_KEY = 'rounds_condition_bookmarks_v1';
+function getConditionBookmarks(){
+  try{ return JSON.parse(localStorage.getItem(COND_BOOKMARK_KEY) || '{}'); }catch(e){ return {}; }
+}
+function setConditionBookmarks(obj){ try{ localStorage.setItem(COND_BOOKMARK_KEY, JSON.stringify(obj)); }catch(e){} }
+function isConditionBookmarked(name){ return !!getConditionBookmarks()[name]; }
+function toggleConditionBookmark(name){
+  const bm = getConditionBookmarks();
+  let added;
+  if(bm[name]){ delete bm[name]; added = false; }
+  else { bm[name] = { name, addedAt: Date.now() }; added = true; }
+  haptic('Medium');
+  setConditionBookmarks(bm);
+  showToast(added ? 'Saved to your list' : 'Removed from saved', 'ok');
+}
+
 /* ============================================================
    Theme management
    ============================================================ */
@@ -7587,6 +7681,28 @@ function renderConditionResults(q){
     + `<p class="condition-divider">Browse guideline updates by body system ↓</p>`;
 }
 
+function conditionBookmarkBtnHtml(name){
+  const saved = isConditionBookmarked(name);
+  return `<button type="button" class="cond-bookmark-btn${saved ? ' saved' : ''}" data-cond-name="${escapeHtml(name)}" aria-pressed="${saved ? 'true' : 'false'}" aria-label="${saved ? 'Remove from saved' : 'Save this condition for the quiz'}"><svg class="star" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2.2 12.4 7.4 18 8.2 13.9 12 15 17.6 10 14.8 5 17.6 6.1 12 2 8.2 7.6 7.4Z" fill="${saved ? 'currentColor' : 'none'}" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/></svg>${saved ? 'Saved' : 'Save'}</button>`;
+}
+/* Delegated once — syndrome rows (and the disabled Guidelines search, if
+   ever re-enabled) are re-rendered via innerHTML repeatedly, so a per-row
+   listener would need constant rewiring. */
+function setupConditionBookmarks(){
+  document.addEventListener('click', (e) => {
+    const btn = e.target.closest('.cond-bookmark-btn');
+    if(!btn) return;
+    toggleConditionBookmark(btn.dataset.condName);
+    const saved = isConditionBookmarked(btn.dataset.condName);
+    btn.classList.toggle('saved', saved);
+    btn.setAttribute('aria-pressed', saved ? 'true' : 'false');
+    btn.setAttribute('aria-label', saved ? 'Remove from saved' : 'Save this condition for the quiz');
+    const star = btn.querySelector('.star path');
+    if(star) star.setAttribute('fill', saved ? 'currentColor' : 'none');
+    btn.lastChild.textContent = saved ? 'Saved' : 'Save';
+  });
+}
+
 function initConditionSearch(){
   const input = document.getElementById('condition-input');
   const suggest = document.getElementById('condition-suggest');
@@ -7821,6 +7937,7 @@ function syndromeRowHtml(s){
     <span class="syndrome-actions">
       <button type="button" class="syndrome-evidence-btn" aria-expanded="false">Recent research <span class="chev" aria-hidden="true">▾</span></button>
       <a class="syndrome-src" href="${src}" target="_blank" rel="noopener">Look up →</a>
+      ${conditionBookmarkBtnHtml(s.name)}
     </span>
   </li>`;
 }
@@ -10443,6 +10560,8 @@ function init(){
   setupKeyboardShortcuts();
   setupGlobalSearch();
   setupUnitConverter();
+  setupConditionBookmarks();
+  setupQuiz();
 }
 
 function restoreLastSpecialty(){
@@ -10982,7 +11101,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
@@ -11263,6 +11382,174 @@ function setupUnitConverter(){
   const closeBtn = document.getElementById('unit-converter-close');
   if(closeBtn) closeBtn.onclick = close;
   modal.onclick = (e) => { if(e.target === modal) close(); };
+}
+
+/* ============================================================
+   Spaced-repetition quiz — built from bookmarked literature, bookmarked
+   Condition cards, and drugs marked "stocked" in My Formulary.
+   Leitner-box scheduling: a card's box (0–5) sets its next-due interval;
+   "Again" resets the box, "Hard"/"Good"/"Easy" step it down/up/up-more.
+   ============================================================ */
+const SRS_KEY = 'rounds_srs_v1';
+const SRS_INTERVALS = [0, 1, 3, 7, 16, 35]; // days, indexed by box
+
+function getSrsState(){
+  try{ return JSON.parse(localStorage.getItem(SRS_KEY) || '{}'); }catch(e){ return {}; }
+}
+function setSrsState(obj){ try{ localStorage.setItem(SRS_KEY, JSON.stringify(obj)); }catch(e){} }
+function srsRate(key, rating){
+  const state = getSrsState();
+  const card = state[key] || { box: 0, due: 0, reps: 0 };
+  if(rating === 'again') card.box = 0;
+  else if(rating === 'hard') card.box = Math.max(0, card.box - 1);
+  else if(rating === 'good') card.box = Math.min(SRS_INTERVALS.length - 1, card.box + 1);
+  else if(rating === 'easy') card.box = Math.min(SRS_INTERVALS.length - 1, card.box + 2);
+  card.reps = (card.reps || 0) + 1;
+  card.lastResult = rating;
+  card.due = Date.now() + SRS_INTERVALS[card.box] * 86400000;
+  state[key] = card;
+  setSrsState(state);
+}
+
+function getStudyItems(){
+  const items = [];
+  Object.values(getBookmarks()).forEach(a => {
+    if(!a || !a.pmid) return;
+    const abstract = (a.abstract || '').trim();
+    const shown = abstract.length > 500 ? abstract.slice(0, 500) + '…' : (abstract || 'No abstract available.');
+    items.push({
+      key: 'lit:' + a.pmid,
+      type: 'Literature',
+      q: a.title || 'Untitled article',
+      sub: [a.journal, a.date].filter(Boolean).join(' · '),
+      answerHtml: `<p>${escapeHtml(shown)}</p>`
+    });
+  });
+  Object.values(getConditionBookmarks()).forEach(cb => {
+    const c = SYNDROMES.find(x => x.name === cb.name);
+    if(!c) return;
+    items.push({
+      key: 'cond:' + c.name,
+      type: 'Condition',
+      q: `${c.name} — recall the key definition/features`,
+      sub: SYNDROME_SYSTEMS[c.system] || c.system || '',
+      answerHtml: `<p>${escapeHtml(c.desc || '')}</p>`
+    });
+  });
+  const formulary = getFormulary();
+  Object.keys(formulary).filter(id => formulary[id]).forEach(id => {
+    const d = RX_DRUGS.find(x => x.id === id);
+    if(!d) return;
+    items.push({
+      key: 'drug:' + d.id,
+      type: 'Drug',
+      q: `${d.generic} (${d.brand}) — recall class/indication & dosing`,
+      sub: d.ref || '',
+      answerHtml: `<ul>${d.regimens.map(r => `<li><strong>${escapeHtml(r.label)}:</strong> ${escapeHtml(r.note || '')}</li>`).join('')}</ul>`
+    });
+  });
+  return items;
+}
+
+function shuffleArr(arr){
+  const a = arr.slice();
+  for(let i = a.length - 1; i > 0; i--){
+    const j = Math.floor(Math.random() * (i + 1));
+    [a[i], a[j]] = [a[j], a[i]];
+  }
+  return a;
+}
+
+let quizSession = null;
+
+function buildQuizQueue(){
+  const items = getStudyItems();
+  const srs = getSrsState();
+  const now = Date.now();
+  const due = items.filter(it => { const c = srs[it.key]; return !c || c.due <= now; });
+  return due.length ? due : items;
+}
+
+function openQuiz(){
+  const modal = document.getElementById('quiz-modal');
+  if(!modal) return;
+  const emptyEl = document.getElementById('quiz-empty');
+  const bodyEl = document.getElementById('quiz-body');
+  const summaryEl = document.getElementById('quiz-summary');
+  summaryEl.hidden = true;
+  const items = getStudyItems();
+  if(items.length === 0){
+    emptyEl.hidden = false;
+    bodyEl.hidden = true;
+    emptyEl.innerHTML = 'Nothing to quiz yet. Save an article, star a Condition card, or mark a drug "stocked" in My Formulary — then come back here.';
+  } else {
+    emptyEl.hidden = true;
+    const queue = shuffleArr(buildQuizQueue());
+    quizSession = { queue, idx: 0, total: queue.length, resultCounts: { again: 0, hard: 0, good: 0, easy: 0 } };
+    renderQuizCard();
+  }
+  modal.hidden = false;
+  document.addEventListener('keydown', onQuizKey);
+}
+function renderQuizCard(){
+  const bodyEl = document.getElementById('quiz-body');
+  const summaryEl = document.getElementById('quiz-summary');
+  if(!quizSession || quizSession.idx >= quizSession.queue.length){
+    bodyEl.hidden = true;
+    summaryEl.hidden = false;
+    const rc = quizSession ? quizSession.resultCounts : { again: 0, hard: 0, good: 0, easy: 0 };
+    const total = quizSession ? quizSession.total : 0;
+    summaryEl.innerHTML = `<strong>Session complete</strong>Reviewed ${total} card${total === 1 ? '' : 's'} · Again ${rc.again} · Hard ${rc.hard} · Good ${rc.good} · Easy ${rc.easy}<br><br>Come back later — cards you rated lower will resurface sooner.`;
+    quizSession = null;
+    return;
+  }
+  bodyEl.hidden = false;
+  summaryEl.hidden = true;
+  const item = quizSession.queue[quizSession.idx];
+  document.getElementById('quiz-progress').textContent = `Card ${quizSession.idx + 1} of ${quizSession.total}`;
+  document.getElementById('quiz-type-tag').textContent = item.type;
+  document.getElementById('quiz-question').textContent = item.q;
+  document.getElementById('quiz-sub').textContent = item.sub || '';
+  const answerEl = document.getElementById('quiz-answer');
+  answerEl.innerHTML = item.answerHtml;
+  answerEl.hidden = true;
+  document.getElementById('quiz-reveal-btn').hidden = false;
+  document.getElementById('quiz-rate-row').hidden = true;
+}
+function revealQuizAnswer(){
+  document.getElementById('quiz-answer').hidden = false;
+  document.getElementById('quiz-reveal-btn').hidden = true;
+  document.getElementById('quiz-rate-row').hidden = false;
+  haptic('Light');
+}
+function rateQuizCard(rating){
+  if(!quizSession) return;
+  const item = quizSession.queue[quizSession.idx];
+  srsRate(item.key, rating);
+  quizSession.resultCounts[rating] = (quizSession.resultCounts[rating] || 0) + 1;
+  quizSession.idx++;
+  haptic('Light');
+  renderQuizCard();
+}
+function onQuizKey(e){ if(e.key === 'Escape') closeQuiz(); }
+function closeQuiz(){
+  const modal = document.getElementById('quiz-modal');
+  if(modal) modal.hidden = true;
+  document.removeEventListener('keydown', onQuizKey);
+}
+function setupQuiz(){
+  [document.getElementById('quiz-btn'), document.getElementById('start-quiz-btn')].forEach(b => {
+    if(b) b.onclick = () => { haptic('Light'); openQuiz(); };
+  });
+  const closeBtn = document.getElementById('quiz-close');
+  if(closeBtn) closeBtn.onclick = closeQuiz;
+  const modal = document.getElementById('quiz-modal');
+  if(modal) modal.onclick = (e) => { if(e.target === modal) closeQuiz(); };
+  const revealBtn = document.getElementById('quiz-reveal-btn');
+  if(revealBtn) revealBtn.onclick = revealQuizAnswer;
+  document.querySelectorAll('.quiz-rate-btn[data-rate]').forEach(btn => {
+    btn.onclick = () => rateQuizCard(btn.dataset.rate);
+  });
 }
 
 function setupKeyboardShortcuts(){
