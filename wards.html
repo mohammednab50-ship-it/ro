@@ -985,6 +985,14 @@ html.wards-cbsafe .vitals-board-n2.n2-high::before{content:"\25b2\25b2 ";font-si
 html.wards-cbsafe .vitals-trend-badge.severe{background:var(--caution-bg);color:var(--caution);border:1px solid var(--caution-line);font-weight:800;}
 html.wards-cbsafe .iso-badge{border:1.5px solid currentColor;}
 
+/* ---- battery saver ----
+   Manual toggle, or auto-enabled when navigator.getBattery() reports a
+   low, unplugged battery (Chromium/Android WebView only — the API is
+   unsupported on iOS Safari/Firefox, where this stays manual-only).
+   Same blanket animation/transition kill as prefers-reduced-motion. */
+html.wards-battery-saver *,html.wards-battery-saver *::before,html.wards-battery-saver *::after{
+  animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important;}
+
 /* ---- reduced motion ---- */
 @media (prefers-reduced-motion: reduce){
   *,*::before,*::after{animation-duration:0.01ms !important;animation-iteration-count:1 !important;transition-duration:0.01ms !important;scroll-behavior:auto !important;}
@@ -2426,6 +2434,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         </div>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-cbsafe-toggle"> Colour-blind-safe palette</label>
         <p class="qh-note">Shifts status colours (NEWS2 bands, trend badges, isolation flags) off a red/green-only scheme and adds icon/label redundancy.</p>
+        <label class="qh-row ws-row"><input type="checkbox" id="wards-battery-saver-toggle"> Battery saver</label>
+        <p class="qh-note" id="wards-battery-saver-note">Reduces animation and transition effects. Auto-enables on low battery where the device reports it.</p>
       </div>
     </div>
   </div>
@@ -3187,6 +3197,46 @@ function setCbSafe(on){
 }
 
 /* ============================================================
+   Battery saver — manual toggle in the display settings popover,
+   plus auto-detection via navigator.getBattery() where the browser
+   implements it (feature-detected; no-ops silently where it isn't).
+   Effective state is manual-on OR auto-detected-low, so the user's
+   own choice always wins even once the device is charged back up.
+   ============================================================ */
+const BATTERY_SAVER_KEY = 'wards_battery_saver_v1';
+let _wardsBatteryAutoLow = false;
+function getBatterySaverManual(){
+  try{ return localStorage.getItem(BATTERY_SAVER_KEY) === '1'; }catch(e){ return false; }
+}
+function setBatterySaverManual(on){
+  try{ localStorage.setItem(BATTERY_SAVER_KEY, on ? '1' : '0'); }catch(e){}
+  updateBatterySaverState();
+}
+function updateBatterySaverState(){
+  const on = getBatterySaverManual() || _wardsBatteryAutoLow;
+  document.documentElement.classList.toggle('wards-battery-saver', on);
+  const note = document.getElementById('wards-battery-saver-note');
+  if(note){
+    note.textContent = _wardsBatteryAutoLow
+      ? 'Reduces animation and transition effects. Currently auto-enabled — battery is low and unplugged.'
+      : 'Reduces animation and transition effects. Auto-enables on low battery where the device reports it.';
+  }
+}
+function setupBatterySaver(){
+  updateBatterySaverState();
+  if(!(navigator && typeof navigator.getBattery === 'function')) return;
+  navigator.getBattery().then(battery => {
+    const check = () => {
+      _wardsBatteryAutoLow = battery.level <= 0.2 && !battery.charging;
+      updateBatterySaverState();
+    };
+    check();
+    battery.addEventListener('levelchange', check);
+    battery.addEventListener('chargingchange', check);
+  }).catch(() => {});
+}
+
+/* ============================================================
    Text size — independent of the high-contrast mode above (that
    bumps font-size as a side effect of its own fixed profile; this is
    a separate, adjustable small/normal/large/extra-large control).
@@ -3252,6 +3302,12 @@ function setupWardsSettingsUI(){
   if(cbInput){
     cbInput.checked = getInitialCbSafe();
     cbInput.addEventListener('change', () => { setCbSafe(cbInput.checked); haptic('Light'); });
+  }
+
+  const bsInput = document.getElementById('wards-battery-saver-toggle');
+  if(bsInput){
+    bsInput.checked = getBatterySaverManual();
+    bsInput.addEventListener('change', () => { setBatterySaverManual(bsInput.checked); haptic('Light'); });
   }
 
   btn.addEventListener('click', (e) => {
@@ -6450,6 +6506,7 @@ function boot(){
   setupConnectivityIndicator();
   setupQuietHoursUI();
   setupWardsSettingsUI();
+  setupBatterySaver();
   const exportBtn = document.getElementById('wards-export-all');
   if(exportBtn) exportBtn.onclick = () => { haptic('Light'); exportAllWardsData(); };
   setupWardsTabs();
