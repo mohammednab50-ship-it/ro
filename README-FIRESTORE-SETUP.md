@@ -35,8 +35,10 @@ database. After that, they can promote/demote others from inside the app.
    value `true` (not the string `"true"` — use the type dropdown next to the
    field to make sure it's Boolean).
 4. Save. That person is now a super-admin and can manage every department and
-   every ward/group in both Vitals and Maternity from within the app, and can
-   grant/revoke super-admin status for others going forward.
+   every ward group — across all patient departments (General/ICU/Surgery/
+   Pediatrics/Maternity, tagged per-patient in one unified system) — from
+   within the app, and can grant/revoke super-admin status for others going
+   forward.
 
 Department admins don't need this manual step — once a super-admin exists,
 they create departments and assign department admins entirely from within
