@@ -1044,6 +1044,14 @@ body.locked{overflow:hidden;}
     radial-gradient(560px 380px at -8% 12%, rgba(196,117,10,0.10), transparent 60%);
   animation:login-fade var(--dur-base) var(--ease-out);}
 .login-overlay[hidden]{display:none;}
+.wards-lock-overlay{position:fixed;inset:0;z-index:1100;display:none;place-items:center;background:var(--shell);padding:20px;}
+.wards-lock-overlay.show{display:grid;}
+.wards-lock-card{max-width:320px;width:100%;background:var(--surface);border-radius:var(--r-md,14px);padding:28px 24px;text-align:center;box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,.3));}
+.wards-lock-card h2{margin:0 0 6px;font-family:var(--ff-display);font-size:19px;color:var(--ink);}
+.wards-lock-card p{margin:0 0 16px;font-family:var(--ff-sans);font-size:13px;color:var(--ink-faint);}
+.wards-lock-pin{font-family:var(--ff-mono);font-size:22px;letter-spacing:8px;text-align:center;width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--ink);margin-bottom:12px;box-sizing:border-box;}
+.wards-lock-error{color:#c62828;font-family:var(--ff-sans);font-size:12.5px;min-height:16px;margin:0 0 10px;}
+.wards-lock-actions{display:flex;flex-direction:column;gap:8px;}
 @keyframes login-fade{from{opacity:0;}to{opacity:1;}}
 .login-card{width:100%;max-width:420px;background:var(--shell-raised);border:1px solid var(--shell-line);border-radius:var(--r-lg);
   padding:40px 36px 32px;box-shadow:0 30px 70px rgba(0,0,0,0.55);animation:login-rise var(--dur-slow) var(--ease-out) both;}
@@ -1822,6 +1830,19 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </form>
 </div>
 
+<div class="wards-lock-overlay" id="wards-lock-overlay">
+  <div class="wards-lock-card" role="dialog" aria-modal="true" aria-labelledby="wards-lock-title">
+    <h2 id="wards-lock-title">Rounds is locked</h2>
+    <p id="wards-lock-sub">Enter your PIN to continue.</p>
+    <input type="password" inputmode="numeric" pattern="[0-9]*" maxlength="8" class="wards-lock-pin" id="wards-lock-pin-input" autocomplete="off">
+    <p class="wards-lock-error" id="wards-lock-error"></p>
+    <div class="wards-lock-actions">
+      <button type="button" class="settings-btn" id="wards-lock-unlock-btn">Unlock</button>
+      <button type="button" class="settings-btn" id="wards-lock-biometric-btn" hidden>Use biometrics</button>
+    </div>
+  </div>
+</div>
+
 <!-- ===== First-run onboarding ===== -->
 <div class="onb-overlay" id="onboarding" role="dialog" aria-modal="true" aria-labelledby="onb-title" hidden>
   <div class="onb-card" role="document">
@@ -2046,6 +2067,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div class="settings-row">
       <div class="settings-label"><strong>Feedback</strong><span class="settings-sub">Report a bug or send a suggestion</span></div>
       <button type="button" class="settings-btn" id="settings-feedback">Write feedback</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>App lock</strong><span class="settings-sub">Biometric/PIN gate before Rounds opens</span></div>
+      <button type="button" class="settings-btn" id="settings-applock-btn">Set up</button>
     </div>
 
     <div class="settings-row">
@@ -11145,6 +11171,7 @@ function enterApp(user){
   if(!appBooted){ appBooted = true; init(); }
   maybeShowOnboarding();
   maybeShowWhatsNew();
+  if(typeof setupWardsAppLockGate === 'function') setupWardsAppLockGate();
 }
 
 function displayNameFor(user){
@@ -11201,6 +11228,160 @@ function editUsername(){
   setTimeout(() => { input.focus(); input.select(); }, 60);
 }
 
+/* ============================================================
+   App lock — WebAuthn platform authenticator with a salted-PIN
+   fallback. Gates the app UI itself, separate from Firebase sign-in
+   above (that's who you are to the server; this is "is this really
+   you holding the device"). Off by default, opt-in from Settings.
+   Same approach/storage shape as Wards' own app lock.
+   ============================================================ */
+const WARDS_LOCK_KEY = 'rounds_applock_v1';
+
+function wardsLockConfig(){
+  try{ return JSON.parse(localStorage.getItem(WARDS_LOCK_KEY) || 'null'); }catch(e){ return null; }
+}
+function wardsLockSave(cfg){ try{ localStorage.setItem(WARDS_LOCK_KEY, JSON.stringify(cfg)); }catch(e){} }
+function wardsLockClear(){ try{ localStorage.removeItem(WARDS_LOCK_KEY); }catch(e){} }
+
+async function wardsSha256Hex(str){
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function wardsRandomHex(bytes){
+  const arr = new Uint8Array(bytes);
+  crypto.getRandomValues(arr);
+  return Array.from(arr).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+function wardsWebAuthnAvailable(){
+  return !!(window.PublicKeyCredential && navigator.credentials && window.isSecureContext !== false);
+}
+
+async function wardsSetupPin(pin){
+  const salt = wardsRandomHex(16);
+  const pinHash = await wardsSha256Hex(salt + pin);
+  wardsLockSave({ mode: 'pin', pinSalt: salt, pinHash });
+}
+async function wardsVerifyPin(pin){
+  const cfg = wardsLockConfig();
+  if(!cfg || cfg.mode !== 'pin') return false;
+  const hash = await wardsSha256Hex(cfg.pinSalt + pin);
+  return hash === cfg.pinHash;
+}
+
+async function wardsSetupWebAuthn(){
+  const cred = await navigator.credentials.create({
+    publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: 'Rounds' },
+      user: { id: crypto.getRandomValues(new Uint8Array(16)), name: 'rounds-device-lock', displayName: 'Rounds app lock' },
+      pubKeyCredParams: [{ type: 'public-key', alg: -7 }, { type: 'public-key', alg: -257 }],
+      authenticatorSelection: { authenticatorAttachment: 'platform', userVerification: 'required' },
+      timeout: 60000
+    }
+  });
+  if(!cred) throw new Error('No credential created');
+  const credId = btoa(String.fromCharCode(...new Uint8Array(cred.rawId)));
+  wardsLockSave({ mode: 'webauthn', credId });
+}
+async function wardsVerifyWebAuthn(){
+  const cfg = wardsLockConfig();
+  if(!cfg || cfg.mode !== 'webauthn') return false;
+  const credIdBytes = Uint8Array.from(atob(cfg.credId), c => c.charCodeAt(0));
+  const assertion = await navigator.credentials.get({
+    publicKey: { challenge: crypto.getRandomValues(new Uint8Array(32)), allowCredentials: [{ id: credIdBytes, type: 'public-key' }], userVerification: 'required', timeout: 60000 }
+  });
+  return !!assertion;
+}
+
+let wardsLockMode = 'idle';
+let wardsLockFirstPin = '';
+
+function wardsLockOverlayShow(title, sub, showBiometricBtn){
+  const overlay = document.getElementById('wards-lock-overlay');
+  if(!overlay) return;
+  overlay.classList.add('show');
+  const titleEl = document.getElementById('wards-lock-title');
+  const subEl = document.getElementById('wards-lock-sub');
+  const pinInput = document.getElementById('wards-lock-pin-input');
+  const bioBtn = document.getElementById('wards-lock-biometric-btn');
+  const errEl = document.getElementById('wards-lock-error');
+  if(titleEl) titleEl.textContent = title;
+  if(subEl) subEl.textContent = sub;
+  if(errEl) errEl.textContent = '';
+  if(pinInput){ pinInput.value = ''; pinInput.style.display = ''; setTimeout(() => pinInput.focus(), 80); }
+  if(bioBtn) bioBtn.hidden = !showBiometricBtn;
+}
+function wardsLockOverlayHide(){
+  const overlay = document.getElementById('wards-lock-overlay');
+  if(overlay) overlay.classList.remove('show');
+  wardsLockMode = 'idle';
+}
+function wardsStartLockSetup(){
+  wardsLockMode = 'setup-enter';
+  wardsLockFirstPin = '';
+  wardsLockOverlayShow('Set an app lock PIN', 'Enter a new 4–8 digit PIN.', false);
+}
+function wardsStartUnlock(){
+  const cfg = wardsLockConfig();
+  wardsLockMode = 'unlock';
+  if(cfg && cfg.mode === 'webauthn' && wardsWebAuthnAvailable()){
+    wardsLockOverlayShow('Rounds is locked', 'Use biometrics to continue.', true);
+    wardsAttemptBiometricUnlock();
+  } else {
+    wardsLockOverlayShow('Rounds is locked', 'Enter your PIN to continue.', false);
+  }
+}
+async function wardsAttemptBiometricUnlock(){
+  const errEl = document.getElementById('wards-lock-error');
+  try{
+    const ok = await wardsVerifyWebAuthn();
+    if(ok) wardsUnlockApp();
+    else if(errEl) errEl.textContent = 'Biometric check did not match — try again.';
+  }catch(e){
+    if(errEl) errEl.textContent = 'Biometric check unavailable right now.';
+  }
+}
+function wardsUnlockApp(){ wardsLockOverlayHide(); }
+
+let wardsAppLockGateWired = false;
+function setupWardsAppLockGate(){
+  if(!wardsAppLockGateWired){
+    wardsAppLockGateWired = true;
+    const unlockBtn = document.getElementById('wards-lock-unlock-btn');
+    const pinInput = document.getElementById('wards-lock-pin-input');
+    const errEl = document.getElementById('wards-lock-error');
+    const submit = async () => {
+      const val = pinInput ? pinInput.value.trim() : '';
+      if(wardsLockMode === 'unlock'){
+        const ok = await wardsVerifyPin(val);
+        if(ok) wardsUnlockApp();
+        else if(errEl) errEl.textContent = 'Incorrect PIN.';
+      } else if(wardsLockMode === 'setup-enter'){
+        if(!/^\d{4,8}$/.test(val)){ if(errEl) errEl.textContent = 'PIN must be 4–8 digits.'; return; }
+        wardsLockFirstPin = val;
+        wardsLockMode = 'setup-confirm';
+        wardsLockOverlayShow('Confirm your PIN', 'Enter the same PIN again.', false);
+      } else if(wardsLockMode === 'setup-confirm'){
+        if(val !== wardsLockFirstPin){
+          wardsLockMode = 'setup-enter';
+          wardsLockOverlayShow('Set an app lock PIN', 'PINs did not match — enter a new 4–8 digit PIN.', false);
+          return;
+        }
+        await wardsSetupPin(val);
+        wardsLockOverlayHide();
+        const btn = document.getElementById('settings-applock-btn');
+        if(btn) btn.textContent = 'Turn off';
+        showToast && showToast('PIN app lock enabled.', 'ok');
+      }
+    };
+    if(unlockBtn) unlockBtn.addEventListener('click', submit);
+    if(pinInput) pinInput.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); submit(); } });
+    const bioBtn = document.getElementById('wards-lock-biometric-btn');
+    if(bioBtn) bioBtn.addEventListener('click', wardsAttemptBiometricUnlock);
+  }
+  if(wardsLockConfig()) wardsStartUnlock();
+}
+
 function openSettings(){
   const modal = document.getElementById('settings-modal');
   if(!modal) return;
@@ -11211,6 +11392,28 @@ function openSettings(){
 
   const nameCur = document.getElementById('settings-name-current');
   if(nameCur) nameCur.textContent = displayNameFor(currentUser);
+
+  const applockBtn = document.getElementById('settings-applock-btn');
+  if(applockBtn){
+    applockBtn.textContent = wardsLockConfig() ? 'Turn off' : 'Set up';
+    applockBtn.onclick = async () => {
+      if(wardsLockConfig()){
+        wardsLockClear();
+        applockBtn.textContent = 'Set up';
+        showToast('App lock turned off.');
+        return;
+      }
+      if(wardsWebAuthnAvailable()){
+        try{
+          await wardsSetupWebAuthn();
+          applockBtn.textContent = 'Turn off';
+          showToast('Biometric app lock enabled.', 'ok');
+          return;
+        }catch(e){ /* declined/unsupported — fall through to PIN */ }
+      }
+      wardsStartLockSetup();
+    };
+  }
 
   const sizeWrap = document.getElementById('settings-fontsize');
   if(sizeWrap){
