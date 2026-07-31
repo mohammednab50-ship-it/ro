@@ -2604,6 +2604,13 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 
       <div class="vitals-trend-alerts" id="vitals-trend-alerts" hidden></div>
 
+      <div class="vitals-io-balance" id="vitals-io-balance" hidden>
+        <div class="io-item"><span class="io-label">Intake (24h)</span><span class="io-value" id="io-24h-in">&mdash;</span></div>
+        <div class="io-item"><span class="io-label">Output (24h)</span><span class="io-value" id="io-24h-out">&mdash;</span></div>
+        <div class="io-item"><span class="io-label">Net balance (24h)</span><span class="io-value" id="io-24h-net">&mdash;</span></div>
+        <span class="vitals-dept-empty" style="margin-left:auto;">Personal I/O tally &mdash; not a substitute for the official fluid balance chart.</span>
+      </div>
+
       <form class="vitals-panel" id="vitals-entry-form" autocomplete="off" novalidate>
         <div class="vitals-form-toprow">
           <button type="button" class="vitals-btn-outline" id="vitals-fill-normal-btn" title="Fill HR/BP/RR/SpO2/Temp with typical-normal adult values as a starting point — adjust whatever's actually abnormal, then log">Fill normal values</button>
@@ -2645,6 +2652,18 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <div class="vitals-field">
             <label for="v-uop">Urine output <span>mL</span></label>
             <input id="v-uop" type="number" inputmode="numeric" min="0">
+          </div>
+          <div class="vitals-field">
+            <label for="v-intake-oral">Oral intake <span>mL &mdash; I/O</span></label>
+            <input id="v-intake-oral" type="number" inputmode="numeric" min="0">
+          </div>
+          <div class="vitals-field">
+            <label for="v-intake-iv">IV intake <span>mL &mdash; I/O</span></label>
+            <input id="v-intake-iv" type="number" inputmode="numeric" min="0">
+          </div>
+          <div class="vitals-field">
+            <label for="v-output-other">Other losses <span>mL &mdash; I/O, e.g. drains, NG, stoma</span></label>
+            <input id="v-output-other" type="number" inputmode="numeric" min="0">
           </div>
           <div class="vitals-field vitals-field-checkbox">
             <label for="v-o2sup">On supplemental O&#8322;<span> (for NEWS2)</span></label>
@@ -3349,6 +3368,7 @@ function initVitals(){
   setupEscalationTrail();
   setupProblemList();
   setupReadingIntervalSelect();
+  setupIoBalanceForm();
   renderPatientList();
   renderVitalsMain();
 }
@@ -3804,13 +3824,14 @@ function readVitalsFormEntry(){
     ts: isNaN(ts.getTime()) ? new Date().toISOString() : ts.toISOString(),
     hr: val('v-hr'), sbp: val('v-sbp'), dbp: val('v-dbp'), rr: val('v-rr'),
     spo2: val('v-spo2'), temp: val('v-temp'), gcs: val('v-gcs'), uop: val('v-uop'),
+    intakeOral: val('v-intake-oral'), intakeIv: val('v-intake-iv'), outputOther: val('v-output-other'),
     o2sup: !!(o2El && o2El.checked),
     notes: val('v-notes')
   };
 }
 
 function clearVitalsEntryFormFields(){
-  ['v-hr','v-sbp','v-dbp','v-rr','v-spo2','v-temp','v-gcs','v-uop','v-notes'].forEach(id => {
+  ['v-hr','v-sbp','v-dbp','v-rr','v-spo2','v-temp','v-gcs','v-uop','v-intake-oral','v-intake-iv','v-output-other','v-notes'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
@@ -3819,7 +3840,7 @@ function clearVitalsEntryFormFields(){
 }
 
 function vitalsEntryHasAnyVital(entry){
-  return ['hr','sbp','dbp','rr','spo2','temp','gcs','uop'].some(k => entry[k] !== '');
+  return ['hr','sbp','dbp','rr','spo2','temp','gcs','uop','intakeOral','intakeIv','outputOther'].some(k => entry[k] !== '');
 }
 
 let pendingVitalsEntry = null;
@@ -4002,7 +4023,8 @@ function setupVitalsNormalFillButton(){
 // there — a fresh timestamp, not the old reading's) from the patient's
 // most recently *logged* reading, distinct from setupVitalsNormalFillButton's
 // fixed textbook-normal preset above.
-const COPY_LAST_FIELD_IDS = { 'v-hr':'hr', 'v-sbp':'sbp', 'v-dbp':'dbp', 'v-rr':'rr', 'v-spo2':'spo2', 'v-temp':'temp', 'v-gcs':'gcs', 'v-uop':'uop' };
+const COPY_LAST_FIELD_IDS = { 'v-hr':'hr', 'v-sbp':'sbp', 'v-dbp':'dbp', 'v-rr':'rr', 'v-spo2':'spo2', 'v-temp':'temp', 'v-gcs':'gcs', 'v-uop':'uop',
+  'v-intake-oral':'intakeOral', 'v-intake-iv':'intakeIv', 'v-output-other':'outputOther' };
 
 function setupVitalsCopyLastButton(){
   const btn = document.getElementById('vitals-copy-last-btn');
@@ -4128,6 +4150,7 @@ function renderVitalsMain(){
   renderVitalsSparklines();
   renderVitalsCombinedTrend();
   renderVitalsTrendAlerts();
+  renderIoBalance();
   refreshAllVitalsDeltas();
   renderDeptSections(p);
   renderAllergyBanner(p);
@@ -4583,6 +4606,50 @@ function renderVitalsCombinedTrend(){
     (spo2Pts ? `<polyline class="ct-spo2" points="${toPolyline(spo2Pts)}"/>` : '');
 }
 
+/* ---- I/O balance — extends the pre-existing urine-output-only field into
+   a running intake-vs-output tally over the trailing 24h. A personal charting
+   aid, not the official fluid balance chart. ---- */
+function renderIoBalance(){
+  const wrap = document.getElementById('vitals-io-balance');
+  if(!wrap) return;
+  const log = activeLog();
+  const cutoff = Date.now() - 24 * 3600 * 1000;
+  const n = v => (v === '' || v === undefined || v === null) ? 0 : (parseFloat(v) || 0);
+  let intake = 0, output = 0, any = false;
+  log.forEach(e => {
+    const t = new Date(e.ts).getTime();
+    if(isNaN(t) || t < cutoff) return;
+    const oral = n(e.intakeOral), iv = n(e.intakeIv), uop = n(e.uop), other = n(e.outputOther);
+    if(e.intakeOral !== '' && e.intakeOral !== undefined) any = true;
+    if(e.intakeIv !== '' && e.intakeIv !== undefined) any = true;
+    if(e.uop !== '' && e.uop !== undefined) any = true;
+    if(e.outputOther !== '' && e.outputOther !== undefined) any = true;
+    intake += oral + iv;
+    output += uop + other;
+  });
+  if(!any){
+    wrap.hidden = true;
+    return;
+  }
+  wrap.hidden = false;
+  const net = intake - output;
+  const inEl = document.getElementById('io-24h-in');
+  const outEl = document.getElementById('io-24h-out');
+  const netEl = document.getElementById('io-24h-net');
+  if(inEl) inEl.textContent = intake + ' mL';
+  if(outEl) outEl.textContent = output + ' mL';
+  if(netEl){
+    netEl.textContent = (net > 0 ? '+' : '') + net + ' mL';
+    netEl.className = 'io-value ' + (net > 0 ? 'io-positive' : (net < 0 ? 'io-negative' : ''));
+  }
+}
+
+function setupIoBalanceForm(){
+  // The I/O fields live on the standard entry form/log — nothing extra to
+  // wire beyond the render call in renderVitalsMain(); kept as its own
+  // setup function for symmetry with the rest of initVitals()'s pattern.
+}
+
 /* ---- CSV export (local download only, nothing sent anywhere) ---- */
 
 function csvCell(v){
@@ -4594,8 +4661,8 @@ function exportActivePatientCsv(){
   const p = activePatient();
   if(!p) return;
   const log = activeLog().slice().sort((a, b) => new Date(a.ts) - new Date(b.ts));
-  const header = ['Timestamp','HR (bpm)','BP systolic','BP diastolic','RR (/min)','SpO2 (%)','Temp (C)','GCS','Urine output (mL)','Notes'];
-  const rows = log.map(e => [e.ts, e.hr, e.sbp, e.dbp, e.rr, e.spo2, e.temp, e.gcs, e.uop, e.notes]);
+  const header = ['Timestamp','HR (bpm)','BP systolic','BP diastolic','RR (/min)','SpO2 (%)','Temp (C)','GCS','Urine output (mL)','Oral intake (mL)','IV intake (mL)','Other losses (mL)','Notes'];
+  const rows = log.map(e => [e.ts, e.hr, e.sbp, e.dbp, e.rr, e.spo2, e.temp, e.gcs, e.uop, e.intakeOral, e.intakeIv, e.outputOther, e.notes]);
   const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
