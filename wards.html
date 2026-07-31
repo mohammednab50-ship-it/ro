@@ -1603,6 +1603,12 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-escalation-banner .n2-badge{font-family:var(--ff-mono);font-size:13px;font-weight:800;background:var(--caution);color:var(--shell-ink);
   padding:2px 9px;border-radius:var(--r-pill);flex-shrink:0;}
 
+/* ---- allergy banner + form ---- */
+.vitals-allergy-banner{display:flex;align-items:flex-start;gap:10px;font-family:var(--ff-sans);font-size:13.5px;font-weight:700;color:var(--caution);
+  padding:13px 16px;border:1.5px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-md);margin-bottom:var(--space-5);}
+.vitals-allergy-banner .allergy-list{font-weight:500;color:var(--ink);}
+.vitals-allergies-form{margin:0 0 var(--space-5);padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);}
+
 /* ---- trend-based deterioration badges ---- */
 .vitals-trend-alerts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:var(--space-5);}
 .vitals-trend-badge{display:inline-flex;align-items:center;gap:6px;font-family:var(--ff-sans);font-size:12px;font-weight:700;
@@ -1616,6 +1622,14 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-field-checkbox{flex-direction:row;align-items:center;gap:8px;justify-content:flex-start;}
 .vitals-field-checkbox label{order:1;}
 .vitals-field-checkbox input{width:auto;min-height:0;flex:none;order:0;}
+
+/* ---- isolation status ---- */
+.vitals-isolation-select-wrap{display:flex;align-items:center;gap:6px;font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--ink-faint);}
+.vitals-isolation-select-wrap select{border:1px solid var(--line);border-radius:var(--r-pill);padding:8px 12px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;background:var(--surface);color:var(--ink-soft);}
+.iso-badge{display:inline-flex;align-items:center;justify-content:center;font-family:var(--ff-mono);font-size:9.5px;font-weight:800;width:16px;height:16px;border-radius:50%;flex-shrink:0;margin-right:6px;}
+.iso-badge.iso-contact{background:var(--fresh-bg);color:var(--fresh);}
+.iso-badge.iso-droplet{background:var(--evidence-bg);color:var(--evidence-dark);}
+.iso-badge.iso-airborne{background:var(--caution-bg);color:var(--caution);}
 
 
 /* Department-specific charting sections (ICU / Surgery / Pediatrics) —
@@ -2356,6 +2370,16 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <p class="vitals-patient-sub" id="vitals-patient-sub"></p>
         </div>
         <div class="vitals-patient-actions">
+          <label class="vitals-isolation-select-wrap" title="Isolation / precaution status">
+            <span>Isolation</span>
+            <select id="vitals-isolation-select">
+              <option value="none">None</option>
+              <option value="contact">Contact</option>
+              <option value="droplet">Droplet</option>
+              <option value="airborne">Airborne</option>
+            </select>
+          </label>
+          <button type="button" class="vitals-btn-outline" id="vitals-allergies-btn" title="Set this patient's known allergies">Allergies</button>
           <button type="button" class="vitals-btn-outline" id="vitals-baselines-btn" title="Set this patient's own normal-range overrides">Baselines</button>
           <button type="button" class="vitals-btn-outline" id="vitals-print-btn" title="Print a one-page vitals summary">Print summary</button>
           <button type="button" class="vitals-btn-outline" id="vitals-export-btn">Export CSV</button>
@@ -2363,7 +2387,20 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         </div>
       </header>
 
+      <div class="vitals-allergy-banner" id="vitals-allergy-banner" hidden></div>
+
       <div class="vitals-escalation-banner" id="vitals-escalation-banner" hidden></div>
+
+      <div class="vitals-allergies-form" id="vitals-allergies-form" hidden>
+        <div class="vitals-field">
+          <label for="vitals-allergies-input">Known allergies <span>free text — e.g. "Penicillin, Latex"</span></label>
+          <textarea id="vitals-allergies-input" rows="2" maxlength="280"></textarea>
+        </div>
+        <div class="vitals-baselines-actions">
+          <button type="button" class="vitals-btn-primary" id="vitals-allergies-save">Save allergies</button>
+          <button type="button" class="vitals-btn-ghost" id="vitals-allergies-cancel">Close</button>
+        </div>
+      </div>
 
       <div class="vitals-baselines-form" id="vitals-baselines-form" hidden>
         <p class="vitals-baselines-note">Optional per-patient overrides for this patient's typical range — used instead of the global defaults when flagging abnormal readings below. Leave a field blank to use the global default.</p>
@@ -3160,6 +3197,8 @@ function initVitals(){
   setupVitalsLogSearch();
   setupVitalsMineFilterToggle();
   setupVitalsNews2Preview();
+  setupAllergiesForm();
+  setupIsolationSelect();
   setupMaternitySection();
   setupIcuSection();
   setupSurgerySection();
@@ -3191,7 +3230,8 @@ function renderPatientList(){
     btn.dataset.patientId = p.id;
     const readingCount = (vitalsState.logs[p.id] || []).length;
     const badge = readingCount ? `<span class="chapter-new" aria-label="${readingCount} readings">${readingCount}</span>` : '';
-    btn.innerHTML = `<span class="chapter-num">${escapeHtml(p.bed || '—')}</span><span class="chapter-name">${escapeHtml(p.name || 'Unnamed')}</span>${badge}`;
+    const isoBadge = isolationBadgeHtml(p.isolation);
+    btn.innerHTML = `<span class="chapter-num">${escapeHtml(p.bed || '—')}</span><span class="chapter-name">${isoBadge}${escapeHtml(p.name || 'Unnamed')}</span>${badge}`;
     li.appendChild(btn);
     const mineBtn = document.createElement('button');
     mineBtn.type = 'button';
@@ -3644,6 +3684,12 @@ function renderVitalsMain(){
   if(nameEl) nameEl.textContent = p.name;
   if(subEl) subEl.textContent = p.mrn ? `MRN ${p.mrn}` : '';
 
+  const isoSelect = document.getElementById('vitals-isolation-select');
+  if(isoSelect) isoSelect.value = p.isolation || 'none';
+
+  const allergiesForm = document.getElementById('vitals-allergies-form');
+  if(allergiesForm) allergiesForm.hidden = true; // avoid a stale form carrying over across patients
+
   prefillVitalsTimestamp();
   renderVitalsTable();
   renderVitalsSparklines();
@@ -3651,6 +3697,7 @@ function renderVitalsMain(){
   renderVitalsTrendAlerts();
   refreshAllVitalsDeltas();
   renderDeptSections(p);
+  renderAllergyBanner(p);
   renderEscalationBanner(p);
   updateNews2Preview();
 }
@@ -4234,6 +4281,71 @@ function setupVitalsBaselinesForm(){
     saveVitalsData();
     form.hidden = true;
     renderVitalsMain(); // baselines can shift flagging bounds and the NEWS2 SpO2 scale
+    haptic('Light');
+  });
+}
+
+/* ---- allergy banner + editable allergies ---- */
+
+function renderAllergyBanner(p){
+  const banner = document.getElementById('vitals-allergy-banner');
+  if(!banner) return;
+  const text = (p && p.allergies || '').trim();
+  if(!text){ banner.hidden = true; banner.innerHTML = ''; return; }
+  banner.hidden = false;
+  banner.innerHTML = `&#9888; Allergies: <span class="allergy-list">${escapeHtml(text)}</span>`;
+}
+
+function setupAllergiesForm(){
+  const openBtn = document.getElementById('vitals-allergies-btn');
+  const form = document.getElementById('vitals-allergies-form');
+  const input = document.getElementById('vitals-allergies-input');
+  const saveBtn = document.getElementById('vitals-allergies-save');
+  const cancelBtn = document.getElementById('vitals-allergies-cancel');
+  if(!openBtn || !form || openBtn.dataset.wired) return;
+  openBtn.dataset.wired = '1';
+
+  openBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(!p) return;
+    if(input) input.value = p.allergies || '';
+    form.hidden = !form.hidden;
+    if(!form.hidden && input) setTimeout(() => input.focus(), 30);
+  });
+  if(cancelBtn) cancelBtn.addEventListener('click', () => { form.hidden = true; });
+  if(saveBtn) saveBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(!p) return;
+    p.allergies = input ? input.value.trim() : '';
+    saveVitalsData();
+    form.hidden = true;
+    renderAllergyBanner(p);
+    renderPatientList();
+    haptic('Light');
+  });
+}
+
+/* ---- isolation / precaution status ---- */
+
+const ISOLATION_LABELS = { none: 'None', contact: 'Contact', droplet: 'Droplet', airborne: 'Airborne' };
+const ISOLATION_INITIALS = { contact: 'C', droplet: 'D', airborne: 'A' };
+
+function isolationBadgeHtml(isolation){
+  if(!isolation || isolation === 'none') return '';
+  const initial = ISOLATION_INITIALS[isolation] || '?';
+  return `<span class="iso-badge iso-${escapeHtml(isolation)}" title="${escapeHtml(ISOLATION_LABELS[isolation] || isolation)} precautions">${initial}</span>`;
+}
+
+function setupIsolationSelect(){
+  const select = document.getElementById('vitals-isolation-select');
+  if(!select || select.dataset.wired) return;
+  select.dataset.wired = '1';
+  select.addEventListener('change', () => {
+    const p = activePatient();
+    if(!p) return;
+    p.isolation = select.value === 'none' ? '' : select.value;
+    saveVitalsData();
+    renderPatientList();
     haptic('Light');
   });
 }
