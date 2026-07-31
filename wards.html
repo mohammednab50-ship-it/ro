@@ -3348,6 +3348,7 @@ function initVitals(){
   setupVitalsCopyLastButton();
   setupEscalationTrail();
   setupProblemList();
+  setupReadingIntervalSelect();
   renderPatientList();
   renderVitalsMain();
 }
@@ -3372,6 +3373,18 @@ function unseenThresholdHours(dept){
   return VITALS_UNSEEN_THRESHOLD_HOURS[dept] || VITALS_UNSEEN_THRESHOLD_HOURS.general;
 }
 
+// A per-patient custom reading interval (minutes), when set, takes
+// precedence over both VITALS_DEPT_BASELINES-style department defaults
+// and VITALS_UNSEEN_THRESHOLD_HOURS — e.g. a ICU patient someone actually
+// wants checked q15min instead of the department's blanket 2h sweep.
+function effectiveUnseenThresholdHours(p){
+  const custom = p && p.readingIntervalMinutes;
+  if(custom !== undefined && custom !== null && custom !== '' && !isNaN(parseFloat(custom)) && parseFloat(custom) > 0){
+    return parseFloat(custom) / 60;
+  }
+  return unseenThresholdHours(p && p.department);
+}
+
 function lastVitalsReadingTime(p){
   const log = vitalsState.logs[p.id] || [];
   if(!log.length) return null;
@@ -3384,7 +3397,7 @@ function lastVitalsReadingTime(p){
 // Overdue since either the last logged reading, or since the patient was
 // added if nothing's been logged for them yet.
 function isVitalsPatientOverdue(p, now){
-  const thresholdMs = unseenThresholdHours(p.department) * 3600 * 1000;
+  const thresholdMs = effectiveUnseenThresholdHours(p) * 3600 * 1000;
   const lastSeen = lastVitalsReadingTime(p);
   const since = lastSeen !== null ? lastSeen : new Date(p.createdAt || 0).getTime();
   if(isNaN(since) || !since) return false;
@@ -3424,7 +3437,7 @@ function renderPatientList(){
     const readingCount = (vitalsState.logs[p.id] || []).length;
     const badge = readingCount ? `<span class="chapter-new" aria-label="${readingCount} readings">${readingCount}</span>` : '';
     const isoBadge = isolationBadgeHtml(p.isolation);
-    const overdueDot = overdue ? `<span class="overdue-dot" title="Not seen in over ${unseenThresholdHours(p.department)}h"></span>` : '';
+    const overdueDot = overdue ? `<span class="overdue-dot" title="Not seen in over ${effectiveUnseenThresholdHours(p)}h"></span>` : '';
     btn.innerHTML = `<span class="chapter-num">${escapeHtml(p.bed || '—')}</span><span class="chapter-name">${isoBadge}${escapeHtml(p.name || 'Unnamed')}${overdueDot}</span>${badge}`;
     li.appendChild(btn);
     const mineBtn = document.createElement('button');
@@ -3563,7 +3576,7 @@ function renderVitalsBoard(){
       `<div class="vitals-board-vitals">${vitalsLine}</div>` +
       `<div class="vitals-board-flags">` +
         (n2 && n2.dataPresent ? `<span class="vitals-board-n2 n2-${n2.level}">NEWS2 ${n2.score}</span>` : '') +
-        (overdue ? `<span class="vitals-board-overdue-tag">&#9679; Not seen in over ${unseenThresholdHours(p.department)}h</span>` : '') +
+        (overdue ? `<span class="vitals-board-overdue-tag">&#9679; Not seen in over ${effectiveUnseenThresholdHours(p)}h</span>` : '') +
       `</div>`;
     grid.appendChild(card);
   });
@@ -4105,6 +4118,7 @@ function renderVitalsMain(){
 
   const isoSelect = document.getElementById('vitals-isolation-select');
   if(isoSelect) isoSelect.value = p.isolation || 'none';
+  populateReadingIntervalSelect(p);
 
   const allergiesForm = document.getElementById('vitals-allergies-form');
   if(allergiesForm) allergiesForm.hidden = true; // avoid a stale form carrying over across patients
@@ -4822,6 +4836,56 @@ function isolationBadgeHtml(isolation){
   if(!isolation || isolation === 'none') return '';
   const initial = ISOLATION_INITIALS[isolation] || '?';
   return `<span class="iso-badge iso-${escapeHtml(isolation)}" title="${escapeHtml(ISOLATION_LABELS[isolation] || isolation)} precautions">${initial}</span>`;
+}
+
+/* ---- per-patient reading-interval override ---- */
+const READING_INTERVAL_PRESETS = ['15','30','60','120','240','480'];
+
+function populateReadingIntervalSelect(p){
+  const select = document.getElementById('vitals-interval-select');
+  const customInput = document.getElementById('vitals-interval-custom');
+  if(!select) return;
+  const mins = p && p.readingIntervalMinutes;
+  if(mins === undefined || mins === null || mins === ''){
+    select.value = '';
+    if(customInput){ customInput.hidden = true; customInput.value = ''; }
+  }else if(READING_INTERVAL_PRESETS.includes(String(mins))){
+    select.value = String(mins);
+    if(customInput){ customInput.hidden = true; customInput.value = ''; }
+  }else{
+    select.value = 'custom';
+    if(customInput){ customInput.hidden = false; customInput.value = mins; }
+  }
+}
+
+function setupReadingIntervalSelect(){
+  const select = document.getElementById('vitals-interval-select');
+  const customInput = document.getElementById('vitals-interval-custom');
+  if(!select || select.dataset.wired) return;
+  select.dataset.wired = '1';
+  select.addEventListener('change', () => {
+    const p = activePatient();
+    if(!p) return;
+    if(select.value === 'custom'){
+      if(customInput){ customInput.hidden = false; customInput.focus(); }
+      return;
+    }
+    if(customInput) customInput.hidden = true;
+    p.readingIntervalMinutes = select.value === '' ? null : parseFloat(select.value);
+    saveVitalsData();
+    renderPatientList();
+    haptic('Light');
+  });
+  if(customInput){
+    customInput.addEventListener('input', () => {
+      const p = activePatient();
+      if(!p) return;
+      const v = customInput.value.trim();
+      p.readingIntervalMinutes = (v !== '' && !isNaN(parseFloat(v)) && parseFloat(v) > 0) ? parseFloat(v) : null;
+      saveVitalsData();
+      renderPatientList();
+    });
+  }
 }
 
 function setupIsolationSelect(){
