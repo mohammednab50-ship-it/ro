@@ -744,6 +744,32 @@ details.guideline-updates[open] > summary .section-chevron{transform:rotate(180d
 .ix-suggest{display:flex;flex-wrap:wrap;gap:8px;margin:var(--space-4) 0 0;}
 .ix-suggest button{border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);font-family:var(--ff-mono);font-size:11.5px;letter-spacing:var(--tracking-wide);padding:6px 13px;border-radius:var(--r-pill);cursor:pointer;transition:all var(--dur-fast) var(--ease-out);}
 .ix-suggest button:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);transform:translateY(-1px);}
+.rx-linkrow{display:flex;flex-wrap:wrap;gap:6px;margin:0 0 var(--space-3);}
+.rx-link-chip{font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--evidence-dark);background:var(--evidence-bg);border:1px solid var(--evidence);border-radius:var(--r-pill);padding:5px 12px;cursor:pointer;transition:background var(--dur-fast) var(--ease-out);}
+.rx-link-chip:hover{background:var(--evidence);color:#fff;}
+.syndrome-drug-links{margin-top:6px;font-family:var(--ff-sans);font-size:12px;line-height:1.9;}
+.syndrome-drug-links-label{color:var(--ink-faint);margin-right:4px;}
+.syndrome-drug-links .rx-link-chip{padding:3px 10px;font-size:11.5px;}
+.cmp-table-wrap{overflow-x:auto;margin-top:var(--space-6);}
+.cmp-table{width:100%;border-collapse:collapse;font-family:var(--ff-sans);font-size:13px;min-width:520px;}
+.cmp-table th,.cmp-table td{padding:10px 14px;border:1px solid var(--line-soft);vertical-align:top;text-align:left;line-height:1.5;}
+.cmp-table th{background:var(--surface-raised);font-weight:700;font-size:12px;letter-spacing:0.02em;text-transform:uppercase;color:var(--ink-soft);}
+.cmp-table td:first-child, .cmp-table th:first-child{position:sticky;left:0;background:var(--surface);font-weight:600;color:var(--ink-faint);white-space:nowrap;}
+.cmp-table th:first-child{background:var(--surface-raised);}
+.cmp-empty{color:var(--ink-faint);font-family:var(--ff-sans);font-size:13.5px;padding:20px 0;}
+.formulary-controls{display:flex;flex-wrap:wrap;align-items:center;gap:16px;margin-bottom:var(--space-5);}
+.formulary-controls input[type="search"]{flex:1;min-width:180px;border:1px solid var(--line-soft);background:var(--surface-raised);border-radius:var(--r-pill);padding:9px 16px;font-family:var(--ff-sans);font-size:13.5px;color:var(--ink);}
+.formulary-onlytoggle{display:inline-flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:13px;color:var(--ink-soft);cursor:pointer;white-space:nowrap;}
+.formulary-onlytoggle input{accent-color:var(--evidence);width:16px;height:16px;cursor:pointer;}
+.formulary-list{list-style:none;margin:0;padding:0;}
+.formulary-item{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:12px 0;border-top:1px solid var(--line-soft);}
+.formulary-item:first-child{border-top:none;}
+.formulary-item.is-dimmed{opacity:0.4;}
+.formulary-item-info{display:flex;flex-direction:column;gap:2px;min-width:0;}
+.formulary-item-name{font-family:var(--ff-serif);font-size:15px;font-weight:600;color:var(--ink);}
+.formulary-item-brand{font-family:var(--ff-sans);font-size:12px;color:var(--ink-faint);}
+.formulary-item-toggle{display:inline-flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--ink-soft);cursor:pointer;flex-shrink:0;}
+.formulary-item-toggle input{accent-color:var(--fresh);width:18px;height:18px;cursor:pointer;}
 .ix-chips{list-style:none;margin:var(--space-5) 0 0;padding:0;display:flex;flex-wrap:wrap;gap:8px;}
 .ix-chip{display:inline-flex;align-items:center;gap:8px;background:var(--evidence-bg);border:1px solid var(--evidence);color:var(--evidence-dark);border-radius:var(--r-pill);padding:6px 8px 6px 14px;font-family:var(--ff-sans);font-size:13px;font-weight:600;}
 .ix-chip button{border:none;background:none;color:var(--evidence-dark);cursor:pointer;width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-size:15px;line-height:1;transition:background var(--dur-fast) var(--ease-out);}
@@ -1152,6 +1178,16 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .global-search-item:hover{background:rgba(255,255,255,0.06);}
 .global-search-item .gs-sub{display:block;font-size:11.5px;color:var(--shell-ink-soft);margin-top:2px;}
 .global-search-empty{padding:16px 4px;color:var(--shell-ink-soft);font-family:var(--ff-sans);font-size:13px;text-align:center;}
+.uc-grid{display:flex;flex-direction:column;gap:16px;}
+.uc-row{display:flex;flex-direction:column;gap:6px;}
+.uc-label{font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--shell-ink-soft);}
+.uc-pair{display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+.uc-pair input, .uc-select{border:1px solid var(--shell-line);background:rgba(255,255,255,0.05);color:var(--shell-ink);border-radius:var(--r-sm);padding:9px 10px;font-family:var(--ff-sans);font-size:13.5px;width:88px;min-width:0;}
+.uc-select{width:auto;max-width:100%;cursor:pointer;}
+.uc-pair input:focus, .uc-select:focus{outline:none;border-color:var(--evidence);}
+.uc-unit{font-family:var(--ff-mono);font-size:11px;color:var(--shell-ink-soft);white-space:nowrap;}
+.uc-eq{color:var(--shell-ink-soft);font-weight:600;}
+@media (max-width:520px){.uc-pair input{width:76px;}}
 
 /* =====================================================================
    Responsive — tablet & phone tuning (additive overrides)
@@ -1977,6 +2013,79 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== Quick unit converter — a handful of common clinical conversions ===== -->
+<div class="rename-overlay" id="unit-converter-modal" role="dialog" aria-modal="true" aria-labelledby="unit-converter-title" hidden>
+  <div class="rename-card settings-card global-search-card" role="document">
+    <button type="button" class="onb-close" id="unit-converter-close" aria-label="Close unit converter">&times;</button>
+    <p class="onb-eyebrow">QUICK CONVERT</p>
+    <h2 class="onb-title serif" id="unit-converter-title">Unit converter</h2>
+    <p class="settings-sub" style="display:block;margin:6px 0 16px;">A handful of common clinical conversions, computed locally. Not a substitute for clinical judgment — double-check anything used for a dose or a chart entry.</p>
+    <div class="uc-grid">
+      <div class="uc-row">
+        <label class="uc-label" for="uc-kg">Weight</label>
+        <div class="uc-pair">
+          <input id="uc-kg" type="number" inputmode="decimal" step="any" placeholder="kg">
+          <span class="uc-unit">kg</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-lb" type="number" inputmode="decimal" step="any" placeholder="lb">
+          <span class="uc-unit">lb</span>
+        </div>
+      </div>
+      <div class="uc-row">
+        <label class="uc-label" for="uc-c">Temperature</label>
+        <div class="uc-pair">
+          <input id="uc-c" type="number" inputmode="decimal" step="any" placeholder="°C">
+          <span class="uc-unit">°C</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-f" type="number" inputmode="decimal" step="any" placeholder="°F">
+          <span class="uc-unit">°F</span>
+        </div>
+      </div>
+      <div class="uc-row">
+        <label class="uc-label" for="uc-ml">Volume</label>
+        <div class="uc-pair">
+          <input id="uc-ml" type="number" inputmode="decimal" step="any" placeholder="mL">
+          <span class="uc-unit">mL</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-floz" type="number" inputmode="decimal" step="any" placeholder="fl oz">
+          <span class="uc-unit">fl oz (US)</span>
+        </div>
+      </div>
+      <div class="uc-row">
+        <label class="uc-label" for="uc-mg">Mass</label>
+        <div class="uc-pair">
+          <input id="uc-mcg" type="number" inputmode="decimal" step="any" placeholder="mcg">
+          <span class="uc-unit">mcg</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-mg" type="number" inputmode="decimal" step="any" placeholder="mg">
+          <span class="uc-unit">mg</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-g" type="number" inputmode="decimal" step="any" placeholder="g">
+          <span class="uc-unit">g</span>
+        </div>
+      </div>
+      <div class="uc-row uc-row-electrolyte">
+        <label class="uc-label" for="uc-electrolyte">Electrolyte</label>
+        <div class="uc-pair">
+          <select id="uc-electrolyte" class="uc-select">
+            <option value="23">Sodium (Na⁺, 23 g/mol)</option>
+            <option value="39.1">Potassium (K⁺, 39.1 g/mol)</option>
+            <option value="40.08">Calcium (Ca²⁺, 40.08 g/mol)</option>
+            <option value="24.3">Magnesium (Mg²⁺, 24.3 g/mol)</option>
+            <option value="31">Phosphorus (as P, 31 g/mol)</option>
+          </select>
+          <input id="uc-elec-mg" type="number" inputmode="decimal" step="any" placeholder="mg">
+          <span class="uc-unit">mg</span>
+          <span class="uc-eq" aria-hidden="true">=</span>
+          <input id="uc-elec-mmol" type="number" inputmode="decimal" step="any" placeholder="mmol">
+          <span class="uc-unit">mmol</span>
+        </div>
+        <p class="settings-sub" style="display:block;margin-top:4px;">mmol only — for mEq of a divalent ion (Ca²⁺, Mg²⁺), double the mmol value.</p>
+      </div>
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="header-inner">
     <a class="brand" href="#" aria-label="Rounds — home">
@@ -1995,6 +2104,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <input id="search-input" type="search" placeholder='Search topics, drugs, or trials…' autocomplete="off" spellcheck="false">
       <button id="search-btn" class="btn-search" type="button">Search</button>
       <button id="search-everywhere-btn" class="btn-search-everywhere" type="button" title="Search everywhere — Literature, Drugs, Conditions, Advances, Trials at once">Everywhere</button>
+      <button id="unit-converter-btn" class="btn-search-everywhere" type="button" title="Quick unit converter — kg/lb, °C/°F, mL/fl oz, mg/mmol">Convert</button>
     </form>
     <div class="header-actions">
     <span id="welcome-greeting" class="welcome-greeting" hidden></span>
@@ -2115,6 +2225,8 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <button type="button" class="syndrome-toggle-btn" data-sub="label" aria-pressed="true">Label lookup</button>
       <button type="button" class="syndrome-toggle-btn" data-sub="calc" aria-pressed="false">Dosage calculator</button>
       <button type="button" class="syndrome-toggle-btn" data-sub="interactions" aria-pressed="false">Interaction checker</button>
+      <button type="button" class="syndrome-toggle-btn" data-sub="compare" aria-pressed="false">Compare</button>
+      <button type="button" class="syndrome-toggle-btn" data-sub="formulary" aria-pressed="false">My formulary</button>
       <button type="button" class="syndrome-toggle-btn" data-sub="approvals" aria-pressed="false">Approvals</button>
     </div>
 
@@ -2137,7 +2249,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </section>
 
     <section id="drug-sub-calc" class="drug-sub" hidden>
-      <p class="drug-generic" style="margin-bottom:24px;font-style:normal;font-family:var(--ff-sans);font-size:13px;max-width:64ch;">Drug-based dosing. Pick an agent and regimen, enter patient weight, and the calculator applies that drug's per-kg dose to give you a recommended dose, per-dose split, daily cap, and renal note. These are aids, not prescriptions &mdash; verify every result against the label and your institution's protocols.</p>
+      <p class="drug-generic" style="margin-bottom:24px;font-style:normal;font-family:var(--ff-sans);font-size:13px;max-width:64ch;">Drug-based dosing. Pick an agent and regimen, enter patient weight and (optionally) estimated renal function, and the calculator applies that drug's per-kg dose and renal-adjustment threshold to give you a recommended dose, per-dose split, daily cap, and renal guidance for drugs with a renal-adjusted regimen. These are aids, not prescriptions &mdash; verify every result, especially renal-adjusted doses, against the label and your institution's protocols/pharmacy.</p>
 
       <div class="rx-panel">
         <div class="rx-field" style="margin-bottom:var(--space-5);">
@@ -2170,6 +2282,10 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
           <div class="rx-field">
             <label for="rx-weight">Patient weight <span style="font-family:var(--ff-mono);font-weight:400;color:var(--ink-faint);">kg</span></label>
             <input id="rx-weight" type="number" inputmode="decimal" min="0" step="any" placeholder="70">
+          </div>
+          <div class="rx-field">
+            <label for="rx-crcl">Estimated renal function <span style="font-family:var(--ff-mono);font-weight:400;color:var(--ink-faint);">CrCl/eGFR, mL/min</span></label>
+            <input id="rx-crcl" type="number" inputmode="decimal" min="0" step="any" placeholder="optional, e.g. 45">
           </div>
         </div>
         <div class="rx-out" id="rx-out" aria-live="polite"></div>
@@ -2302,6 +2418,40 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
         </div>
       </div>
       <div class="ix-results" id="ix-results" aria-live="polite"></div>
+    </section>
+
+    <section id="drug-sub-compare" class="drug-sub" hidden>
+      <p class="drug-generic" style="margin-bottom:20px;font-style:normal;font-family:var(--ff-sans);font-size:13px;max-width:64ch;">Pick up to 4 drugs from this app's dosing reference to see their key fields side by side. Covers only what's in that reference &mdash; not a full label comparison.</p>
+      <div class="ix-panel">
+        <div class="ix-field">
+          <label for="cmp-search">Add a drug <span style="font-family:var(--ff-mono);font-weight:400;color:var(--ink-faint);">generic or brand</span></label>
+          <div class="ix-addrow">
+            <input id="cmp-search" type="search" list="cmp-datalist" autocomplete="off" placeholder="Type a drug and press Add, e.g. lisinopril, metformin…">
+            <datalist id="cmp-datalist"></datalist>
+            <button id="cmp-add" class="btn-look-up" type="button">Add</button>
+          </div>
+          <p class="rx-search-note" id="cmp-note"></p>
+        </div>
+        <ul class="ix-chips" id="cmp-chips" aria-label="Drugs being compared"></ul>
+        <div class="ix-actions">
+          <button id="cmp-clear" class="ix-clear-btn" type="button" hidden>Clear all</button>
+        </div>
+      </div>
+      <div class="cmp-table-wrap" id="cmp-results" aria-live="polite"></div>
+    </section>
+
+    <section id="drug-sub-formulary" class="drug-sub" hidden>
+      <p class="drug-generic" style="margin-bottom:20px;font-style:normal;font-family:var(--ff-sans);font-size:13px;max-width:64ch;">Mark which drugs from this app's dosing reference are actually stocked at your institution. Saved on this device only. Not stocked ≠ unsafe or unavailable elsewhere &mdash; it's just a personal filter.</p>
+      <div class="formulary-controls">
+        <label for="formulary-search" class="sr-only" style="position:absolute;left:-9999px;">Search formulary</label>
+        <input id="formulary-search" type="search" placeholder="Filter by name…" autocomplete="off">
+        <label class="formulary-onlytoggle">
+          <input type="checkbox" id="formulary-only">
+          <span>Show only my formulary</span>
+        </label>
+        <span class="count" id="formulary-count" aria-live="polite"></span>
+      </div>
+      <ul class="formulary-list" id="formulary-list" aria-live="polite"></ul>
     </section>
 
     <section id="drug-sub-approvals" class="drug-sub" hidden>
@@ -7657,9 +7807,17 @@ function initSyndromes(){
 
 function syndromeRowHtml(s){
   const src = `https://medlineplus.gov/search/?query=${encodeURIComponent(s.name)}`;
+  const links = conditionLinksFor(s.name);
+  const drugLinksHtml = links.length ? `<div class="syndrome-drug-links">${links.map(l => {
+    const chips = l.drugs.map(id => {
+      const dr = RX_DRUGS.find(d => d.id === id);
+      return dr ? `<button type="button" class="rx-link-chip" data-drug="${escapeHtml(id)}" title="${escapeHtml(l.relation)}">${escapeHtml(dr.generic)}</button>` : '';
+    }).join('');
+    return `<span class="syndrome-drug-links-label">${escapeHtml(l.relation)}:</span> ${chips}`;
+  }).join('<br>')}</div>` : '';
   return `<li class="syndrome-row" data-condition="${escapeHtml(s.name)}">
     <span class="syndrome-name">${escapeHtml(s.name)}</span>
-    <span class="syndrome-desc">${escapeHtml(s.desc)}</span>
+    <span class="syndrome-desc">${escapeHtml(s.desc)}${drugLinksHtml}</span>
     <span class="syndrome-actions">
       <button type="button" class="syndrome-evidence-btn" aria-expanded="false">Recent research <span class="chev" aria-hidden="true">▾</span></button>
       <a class="syndrome-src" href="${src}" target="_blank" rel="noopener">Look up →</a>
@@ -7722,6 +7880,8 @@ function setupConditionEvidence(){
   if(!view || view.dataset.evidenceWired) return;
   view.dataset.evidenceWired = '1';
   view.addEventListener('click', e => {
+    const drugChip = e.target.closest('.rx-link-chip[data-drug]');
+    if(drugChip){ jumpToRxDrugCalc(drugChip.dataset.drug); return; }
     const btn = e.target.closest('.syndrome-evidence-btn');
     if(!btn) return;
     const row = btn.closest('.syndrome-row');
@@ -8795,11 +8955,13 @@ function setupDrugSubnav(){
     btn.onclick = () => {
       const sub = btn.dataset.sub;
       btns.forEach(b => b.setAttribute('aria-pressed', b === btn ? 'true' : 'false'));
-      ['label','calc','interactions','approvals'].forEach(s => {
+      ['label','calc','interactions','compare','formulary','approvals'].forEach(s => {
         const el = document.getElementById('drug-sub-' + s);
         if(el) el.hidden = s !== sub;
       });
       if(sub === 'approvals' && !approvalsState.init){ initApprovals(); }
+      if(sub === 'compare' && !compareState.init){ initCompareDrugs(); }
+      if(sub === 'formulary' && !formularyState.init){ initFormulary(); }
     };
   });
 }
@@ -8834,21 +8996,21 @@ const RX_DRUGS = [
     ]
   },
   {
-    id:'enoxaparin', brand:'Lovenox', generic:'Enoxaparin', ref:'FDA label', renalFlagCrCl:30,
+    id:'enoxaparin', brand:'Lovenox', generic:'Enoxaparin', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: reduce to 1 mg/kg SC once daily (treatment) or 30 mg SC once daily (prophylaxis), instead of the usual q12h/40 mg dosing.',
     regimens:[
       { id:'treat', label:'Treatment (VTE)', perKg:[1,1], basis:'dose', freq:2, unit:'mg', note:'1 mg/kg SC q12h. Renal (CrCl <30): 1 mg/kg q24h.' },
       { id:'prophy', label:'Prophylaxis', fixed:[40], freq:1, unit:'mg', note:'40 mg SC once daily (fixed). Renal (CrCl <30): 30 mg q24h.' }
     ]
   },
   {
-    id:'gentamicin', brand:'Garamycin', generic:'Gentamicin', ref:'FDA label', renalFlagCrCl:60,
+    id:'gentamicin', brand:'Garamycin', generic:'Gentamicin', ref:'FDA label', renalFlagCrCl:60, renalAdjust:'CrCl <60: extend the dosing interval (e.g. q36–48h) and dose by trough/peak levels; consider a pharmacokinetic dosing consult.',
     regimens:[
       { id:'od', label:'Extended-interval (adult)', perKg:[5,7], basis:'dose', freq:1, unit:'mg', note:'5–7 mg/kg q24h, adjust by levels & renal function.' },
       { id:'peds', label:'Conventional (peds)', perKg:[2,2.5], basis:'dose', freq:3, unit:'mg', note:'2–2.5 mg/kg q8h. Monitor levels.' }
     ]
   },
   {
-    id:'vancomycin', brand:'Vancocin', generic:'Vancomycin', ref:'ASHP/IDSA 2020', renalFlagCrCl:50,
+    id:'vancomycin', brand:'Vancocin', generic:'Vancomycin', ref:'ASHP/IDSA 2020', renalFlagCrCl:50, renalAdjust:'CrCl <50: extend the dosing interval and target AUC-guided levels; consider a pharmacokinetic dosing consult.',
     regimens:[
       { id:'iv', label:'IV, serious infection', perKg:[15,20], basis:'dose', freq:2, maxDose:2000, unit:'mg', note:'15–20 mg/kg q8–12h (actual body weight). Target AUC-guided; max ~2 g/dose.' }
     ]
@@ -8932,21 +9094,21 @@ const RX_DRUGS = [
     ]
   },
   {
-    id:'cotrimoxazole', brand:'Bactrim', generic:'Trimethoprim-sulfamethoxazole', ref:'FDA label', renalFlagCrCl:30,
+    id:'cotrimoxazole', brand:'Bactrim', generic:'Trimethoprim-sulfamethoxazole', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl 15–30: reduce the dose by 50%. CrCl <15 (not on dialysis): avoid.',
     regimens:[
       { id:'peds', label:'Infection (peds, TMP component)', perKg:[8,12], basis:'day', freq:2, unit:'mg', note:'8–12 mg/kg/day of TMP divided q12h.' },
       { id:'adult', label:'Adult, DS tab', fixed:[160,160], freq:2, unit:'mg', note:'1 DS tab (160 mg TMP) q12h (fixed).' }
     ]
   },
   {
-    id:'ciprofloxacin', brand:'Cipro', generic:'Ciprofloxacin', ref:'FDA label', renalFlagCrCl:30,
+    id:'ciprofloxacin', brand:'Cipro', generic:'Ciprofloxacin', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: reduce the dose or extend the interval (commonly by ~50%).',
     regimens:[
       { id:'adult-po', label:'Adult PO', fixed:[500,750], freq:2, unit:'mg', note:'500–750 mg PO q12h (fixed).' },
       { id:'adult-iv', label:'Adult IV', fixed:[400,400], freq:2, unit:'mg', note:'400 mg IV q8–12h (fixed).' }
     ]
   },
   {
-    id:'levofloxacin', brand:'Levaquin', generic:'Levofloxacin', ref:'FDA label', renalFlagCrCl:50,
+    id:'levofloxacin', brand:'Levaquin', generic:'Levofloxacin', ref:'FDA label', renalFlagCrCl:50, renalAdjust:'CrCl <50: reduce the dose and/or extend the interval per the label\'s renal dosing table.',
     regimens:[
       { id:'adult', label:'Adult', fixed:[500,750], freq:1, unit:'mg', note:'500–750 mg once daily (fixed).' }
     ]
@@ -9021,7 +9183,7 @@ const RX_DRUGS = [
     ]
   },
   {
-    id:'ranitidine-alt', brand:'Pepcid', generic:'Famotidine', ref:'FDA label', renalFlagCrCl:50,
+    id:'ranitidine-alt', brand:'Pepcid', generic:'Famotidine', ref:'FDA label', renalFlagCrCl:50, renalAdjust:'CrCl <50: reduce the dose or extend the interval (e.g. from q24h to q36–48h).',
     regimens:[
       { id:'peds', label:'GERD (peds)', perKg:[0.5,1], basis:'day', freq:2, maxDose:40, unit:'mg', note:'0.5–1 mg/kg/day divided BID, max 40 mg/dose.' },
       { id:'adult', label:'Adult', fixed:[20,40], freq:2, unit:'mg', note:'20–40 mg BID (fixed).' }
@@ -9079,7 +9241,7 @@ const RX_DRUGS = [
     ]
   },
 
-  { id:'metformin', brand:'Glucophage', generic:'Metformin', ref:'FDA label', renalFlagCrCl:30,
+  { id:'metformin', brand:'Glucophage', generic:'Metformin', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl 30–45: cap at 1000 mg/day and avoid starting new therapy. CrCl <30: contraindicated — do not use.',
     regimens:[
       { id:'adult', label:'Type 2 diabetes (adult)', fixed:[500,1000], freq:2, hardMaxDay:2550, unit:'mg', note:'Start 500 mg BID, titrate. Max 2550 mg/day. Hold if CrCl <30 or contrast.' }
     ] },
@@ -9117,7 +9279,7 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Hypertension (adult)', fixed:[12.5,50], freq:1, unit:'mg', note:'12.5–50 mg once daily. Monitor Na⁺/K⁺.' } ] },
   { id:'spironolactone', brand:'Aldactone', generic:'Spironolactone', ref:'FDA label',
     regimens:[ { id:'adult', label:'Adult', fixed:[25,100], freq:1, unit:'mg', note:'25–100 mg/day. Monitor K⁺ (hyperkalemia risk).' } ] },
-  { id:'digoxin', brand:'Lanoxin', generic:'Digoxin', ref:'FDA label', renalFlagCrCl:50,
+  { id:'digoxin', brand:'Lanoxin', generic:'Digoxin', ref:'FDA label', renalFlagCrCl:50, renalAdjust:'CrCl <50: reduce the maintenance dose (commonly by ~30–50%) and check a level before further titration.',
     regimens:[ { id:'adult', label:'Rate control / HF (adult)', fixed:[0.125,0.25], freq:1, unit:'mg', note:'0.125–0.25 mg once daily. Narrow therapeutic index — monitor levels.' } ] },
   { id:'amiodarone', brand:'Cordarone', generic:'Amiodarone', ref:'FDA label',
     regimens:[ { id:'adult', label:'Maintenance (adult)', fixed:[100,400], freq:1, unit:'mg', note:'Load then 100–400 mg/day. Many interactions (CYP/QT).' } ] },
@@ -9129,9 +9291,9 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Anticoagulation (adult)', fixed:[2,10], freq:1, unit:'mg', note:'Individualize to INR target. Many food/drug interactions.' } ] },
   { id:'apixaban', brand:'Eliquis', generic:'Apixaban', ref:'FDA label',
     regimens:[ { id:'afib', label:'AF stroke prevention', fixed:[2.5,5], freq:2, unit:'mg', note:'5 mg BID; 2.5 mg BID if ≥2 of age≥80, wt≤60 kg, Cr≥1.5.' } ] },
-  { id:'rivaroxaban', brand:'Xarelto', generic:'Rivaroxaban', ref:'FDA label', renalFlagCrCl:30,
+  { id:'rivaroxaban', brand:'Xarelto', generic:'Rivaroxaban', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl 15–50: reduce the dose per indication (e.g. 15 mg once daily for AF stroke prevention). CrCl <15: avoid.',
     regimens:[ { id:'afib', label:'AF stroke prevention', fixed:[15,20], freq:1, unit:'mg', note:'20 mg daily with food; 15 mg if CrCl 15–50.' } ] },
-  { id:'dabigatran', brand:'Pradaxa', generic:'Dabigatran', ref:'FDA label', renalFlagCrCl:30,
+  { id:'dabigatran', brand:'Pradaxa', generic:'Dabigatran', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl 15–30: reduce to 75 mg BID. CrCl <15 or on dialysis: avoid.',
     regimens:[ { id:'afib', label:'AF stroke prevention', fixed:[110,150], freq:2, unit:'mg', note:'150 mg BID; 110 mg BID if high bleed risk.' } ] },
   { id:'atorvastatin', brand:'Lipitor', generic:'Atorvastatin', ref:'FDA label',
     regimens:[ { id:'adult', label:'Dyslipidemia (adult)', fixed:[10,80], freq:1, unit:'mg', note:'10–80 mg once daily.' } ] },
@@ -9145,7 +9307,7 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Type 2 diabetes (adult)', fixed:[1,8], freq:1, unit:'mg', note:'1–8 mg once daily with breakfast.' } ] },
   { id:'glipizide', brand:'Glucotrol', generic:'Glipizide', ref:'FDA label',
     regimens:[ { id:'adult', label:'Type 2 diabetes (adult)', fixed:[5,40], freq:1, unit:'mg', note:'5–40 mg/day. Hypoglycemia risk.' } ] },
-  { id:'sitagliptin', brand:'Januvia', generic:'Sitagliptin', ref:'FDA label', renalFlagCrCl:45,
+  { id:'sitagliptin', brand:'Januvia', generic:'Sitagliptin', ref:'FDA label', renalFlagCrCl:45, renalAdjust:'CrCl 30–45: reduce to 50 mg once daily. CrCl <30: reduce to 25 mg once daily.',
     regimens:[ { id:'adult', label:'Type 2 diabetes (adult)', fixed:[100,100], freq:1, unit:'mg', note:'100 mg once daily; reduce in renal impairment.' } ] },
   { id:'empagliflozin', brand:'Jardiance', generic:'Empagliflozin', ref:'FDA label',
     regimens:[ { id:'adult', label:'Type 2 diabetes / HF (adult)', fixed:[10,25], freq:1, unit:'mg', note:'10–25 mg once daily in the morning.' } ] },
@@ -9185,9 +9347,9 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Psychosis (adult)', fixed:[5,20], freq:1, unit:'mg', note:'5–20 mg once daily. Metabolic monitoring.' } ] },
   { id:'haloperidol', brand:'Haldol', generic:'Haloperidol', ref:'FDA label',
     regimens:[ { id:'adult', label:'Agitation (adult)', fixed:[0.5,5], freq:3, unit:'mg', note:'0.5–5 mg PO/IM. QT prolongation; EPS.' } ] },
-  { id:'gabapentin', brand:'Neurontin', generic:'Gabapentin', ref:'FDA label', renalFlagCrCl:60,
+  { id:'gabapentin', brand:'Neurontin', generic:'Gabapentin', ref:'FDA label', renalFlagCrCl:60, renalAdjust:'CrCl 30–59: reduce the total daily dose by roughly half; reduce further and extend the interval as CrCl falls.',
     regimens:[ { id:'adult', label:'Neuropathic pain (adult)', fixed:[300,1200], freq:3, hardMaxDay:3600, unit:'mg', note:'Titrate 300 mg → up to 3600 mg/day divided. Renal adjust.' } ] },
-  { id:'pregabalin', brand:'Lyrica', generic:'Pregabalin', ref:'FDA label', renalFlagCrCl:60,
+  { id:'pregabalin', brand:'Lyrica', generic:'Pregabalin', ref:'FDA label', renalFlagCrCl:60, renalAdjust:'CrCl 30–60: reduce the total daily dose by roughly half; reduce further at lower CrCl.',
     regimens:[ { id:'adult', label:'Neuropathic pain (adult)', fixed:[75,300], freq:2, hardMaxDay:600, unit:'mg', note:'75–300 mg BID. Renal adjust.' } ] },
   { id:'phenytoin', brand:'Dilantin', generic:'Phenytoin', ref:'FDA label',
     regimens:[ { id:'load', label:'Loading dose (IV)', perKg:[15,20], basis:'dose', freq:1, unit:'mg', note:'15–20 mg/kg IV load (≤50 mg/min). Narrow index; monitor levels.' } ] },
@@ -9215,13 +9377,13 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Adult', perKg:[10,13], basis:'day', freq:2, unit:'mg', note:'~10 mg/kg/day. Narrow index; monitor levels; many interactions.' } ] },
   { id:'fluconazole', brand:'Diflucan', generic:'Fluconazole', ref:'FDA label', renalFlagCrCl:50,
     regimens:[ { id:'adult', label:'Candidiasis (adult)', fixed:[100,400], freq:1, unit:'mg', note:'Load 200–400 mg then 100–400 mg daily. CYP inhibitor; QT.' } ] },
-  { id:'acyclovir', brand:'Zovirax', generic:'Acyclovir', ref:'FDA label', renalFlagCrCl:50,
+  { id:'acyclovir', brand:'Zovirax', generic:'Acyclovir', ref:'FDA label', renalFlagCrCl:50, renalAdjust:'CrCl <50: extend the dosing interval per the label\'s renal dosing table; ensure adequate hydration.',
     regimens:[ { id:'peds', label:'HSV (peds, IV)', perKg:[10,20], basis:'dose', freq:3, unit:'mg', note:'10–20 mg/kg/dose IV q8h. Maintain hydration; renal adjust.' } ] },
-  { id:'oseltamivir', brand:'Tamiflu', generic:'Oseltamivir', ref:'FDA label', renalFlagCrCl:60,
+  { id:'oseltamivir', brand:'Tamiflu', generic:'Oseltamivir', ref:'FDA label', renalFlagCrCl:60, renalAdjust:'CrCl 30–60: reduce to 30 mg BID (from 75 mg BID); reduce further at lower CrCl.',
     regimens:[ { id:'adult', label:'Influenza (adult)', fixed:[75,75], freq:2, unit:'mg', note:'75 mg BID × 5 days. Renal adjust.' } ] },
   { id:'doxycycline', brand:'Vibramycin', generic:'Doxycycline', ref:'FDA label',
     regimens:[ { id:'adult', label:'Adult', fixed:[100,100], freq:2, unit:'mg', note:'100 mg BID. Avoid in young children/pregnancy.' } ] },
-  { id:'nitrofurantoin', brand:'Macrobid', generic:'Nitrofurantoin', ref:'FDA label', renalFlagCrCl:30,
+  { id:'nitrofurantoin', brand:'Macrobid', generic:'Nitrofurantoin', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: avoid — inadequate urinary concentration and higher toxicity risk.',
     regimens:[ { id:'adult', label:'UTI (adult)', fixed:[100,100], freq:2, unit:'mg', note:'100 mg BID × 5 days. Avoid if CrCl <30.' } ] },
   { id:'hydralazine', brand:'Apresoline', generic:'Hydralazine', ref:'FDA label',
     regimens:[ { id:'adult', label:'Hypertension (adult)', fixed:[10,50], freq:4, unit:'mg', note:'10–50 mg QID. IV for hypertensive emergency.' } ] },
@@ -9287,11 +9449,11 @@ const RX_DRUGS = [
     regimens:[ { id:'adult', label:'Adult', fixed:[50], freq:3, hardMaxDay:150, unit:'mg', note:'50 mg q8h. Max 150 mg/day.' } ] },
   { id:'celecoxib', brand:'Celebrex', generic:'Celecoxib', ref:'FDA label',
     regimens:[ { id:'adult', label:'Adult', fixed:[100,200], freq:2, hardMaxDay:400, unit:'mg', note:'100–200 mg q12h.' } ] },
-  { id:'colchicine', brand:'Colcrys', generic:'Colchicine', ref:'FDA label', renalFlagCrCl:30,
+  { id:'colchicine', brand:'Colcrys', generic:'Colchicine', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: reduce the dose and avoid repeat dosing within 14 days; also avoid with strong CYP3A4/P-gp inhibitors.',
     regimens:[ { id:'gout', label:'Acute gout (adult)', fixed:[500], freq:2, hardMaxDay:1500, unit:'mcg', note:'0.5 mg q12h. Reduce with CYP3A4/P-gp inhibitors & renal impairment.' } ] },
-  { id:'allopurinol', brand:'Zyloprim', generic:'Allopurinol', ref:'FDA label', renalFlagCrCl:30,
+  { id:'allopurinol', brand:'Zyloprim', generic:'Allopurinol', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: start at a lower dose (e.g. 50–100 mg/day) and titrate slowly to urate target.',
     regimens:[ { id:'gout', label:'Gout prophylaxis', fixed:[100,300], freq:1, unit:'mg', note:'Start 100 mg daily, titrate to urate target. Reduce in renal impairment.' } ] },
-  { id:'baclofen', brand:'Lioresal', generic:'Baclofen', ref:'FDA label', renalFlagCrCl:30,
+  { id:'baclofen', brand:'Lioresal', generic:'Baclofen', ref:'FDA label', renalFlagCrCl:30, renalAdjust:'CrCl <30: reduce the starting dose and titrate cautiously — risk of accumulation and toxicity.',
     regimens:[ { id:'adult', label:'Spasticity (adult)', fixed:[5,10], freq:3, unit:'mg', note:'Start 5 mg q8h, titrate. Renal dose adjustment needed.' } ] },
   { id:'tranexamic', brand:'Cyklokapron', generic:'Tranexamic acid', ref:'FDA label',
     regimens:[
@@ -9412,6 +9574,67 @@ const RX_DRUGS = [
   { id:'loratadine', brand:'Claritin', generic:'Loratadine', ref:'FDA label',
     regimens:[ { id:'allergy', label:'Allergy (adult)', fixed:[10], freq:1, unit:'mg', note:'10 mg once daily.' } ] }
 ];
+
+/* ============================================================
+   Drug ↔ Condition cross-reference — curated pairs linking RX_DRUGS
+   ids to SYNDROMES condition names already present in this app.
+   Only pairs with a clear causative/treatment relationship. Not
+   exhaustive — many real associations aren't captured here.
+   ============================================================ */
+const CONDITION_DRUG_LINKS = [
+  { condition:'Serotonin syndrome', relation:'Causative agents (serotonergic drugs)',
+    drugs:['sertraline','fluoxetine','escitalopram','citalopram','venlafaxine','duloxetine','mirtazapine','amitriptyline','tramadol','ondansetron','linezolid','fentanyl','methadone'] },
+  { condition:'Neuroleptic malignant syndrome', relation:'Causative agents (antipsychotics)',
+    drugs:['haloperidol','quetiapine','risperidone','olanzapine','prochlorperazine'] },
+  { condition:'Long QT syndrome', relation:'QT-prolonging drugs to review/avoid',
+    drugs:['amiodarone','citalopram','escitalopram','haloperidol','ondansetron','fluconazole','levofloxacin','ciprofloxacin','azithromycin','clarithromycin','erythromycin','quetiapine','methadone','prochlorperazine'] },
+  { condition:'SIADH', relation:'Drugs that can precipitate SIADH',
+    drugs:['citalopram','escitalopram','sertraline','fluoxetine','venlafaxine','duloxetine','carbamazepine','hydrochlorothiazide'] },
+  { condition:'Tumor lysis syndrome', relation:'Prevention/treatment',
+    drugs:['allopurinol'] },
+  { condition:'Stevens-Johnson syndrome', relation:'High-risk causative drugs',
+    drugs:['allopurinol','carbamazepine','phenytoin','cotrimoxazole'] },
+  { condition:'Toxic epidermal necrolysis', relation:'High-risk causative drugs',
+    drugs:['allopurinol','carbamazepine','phenytoin','cotrimoxazole'] },
+  { condition:'Reye syndrome', relation:'Causative agent — avoid in febrile children/teens with viral illness',
+    drugs:['aspirin'] },
+  { condition:'Metabolic syndrome', relation:'Drugs used to manage components',
+    drugs:['metformin','atorvastatin','rosuvastatin','simvastatin','lisinopril','losartan'] },
+  { condition:'Compartment syndrome', relation:'Anticoagulants that raise bleeding/compartment risk',
+    drugs:['enoxaparin','heparin','warfarin','rivaroxaban','dabigatran'] }
+];
+function conditionLinksFor(name){ return CONDITION_DRUG_LINKS.filter(l => l.condition === name); }
+function drugLinksFor(drugId){ return CONDITION_DRUG_LINKS.filter(l => l.drugs.indexOf(drugId) !== -1); }
+
+function jumpToRxDrugCalc(drugId){
+  switchView('drug');
+  const nav = document.getElementById('drug-subnav');
+  const btn = nav && nav.querySelector('.syndrome-toggle-btn[data-sub="calc"]');
+  if(btn) btn.click();
+  const dr = RX_DRUGS.find(d => d.id === drugId);
+  const search = document.getElementById('rx-search');
+  if(search && dr){
+    search.value = dr.generic;
+    search.dispatchEvent(new Event('input'));
+  }
+  recordRecentlyViewed('drug', dr ? dr.generic : drugId);
+}
+function jumpToCondition(name){
+  switchView('syndromes');
+  const search = document.getElementById('syndrome-search');
+  if(search){
+    search.value = name;
+    syndromesState.query = name.toLowerCase();
+    renderSyndromeGroups();
+  }
+  recordRecentlyViewed('condition', name);
+}
+function conditionLinksHtml(drugId){
+  const links = drugLinksFor(drugId);
+  if(!links.length) return '';
+  const chips = links.map(l => `<button type="button" class="rx-link-chip" data-condition="${escapeHtml(l.condition)}" title="${escapeHtml(l.relation)}">${escapeHtml(l.condition)}</button>`).join('');
+  return `<p class="rx-meta"><strong>Related conditions in this app:</strong></p><p class="rx-linkrow">${chips}</p>`;
+}
 
 /* ============================================================
    Drug interaction checker — curated pairs + class rules
@@ -9691,10 +9914,171 @@ function setupInteractions(){
   render();
 }
 
+/* ============================================================
+   Formulary — personal "is this drug stocked here" flags,
+   saved to localStorage only. Filters/dims the compare and
+   dosing-calc drug lists elsewhere.
+   ============================================================ */
+const FORMULARY_KEY = 'rounds_formulary_v1';
+let formularyState = { init:false, query:'', onlyMine:false };
+
+function getFormulary(){
+  try{ return JSON.parse(localStorage.getItem(FORMULARY_KEY) || '{}'); }catch(e){ return {}; }
+}
+function setFormularyFlag(id, on){
+  const f = getFormulary();
+  if(on) f[id] = true; else delete f[id];
+  try{ localStorage.setItem(FORMULARY_KEY, JSON.stringify(f)); }catch(e){}
+}
+function isInFormulary(id){ return !!getFormulary()[id]; }
+
+function initFormulary(){
+  formularyState.init = true;
+  const search = document.getElementById('formulary-search');
+  const onlyBox = document.getElementById('formulary-only');
+  if(search) search.oninput = () => { formularyState.query = search.value.trim().toLowerCase(); renderFormularyList(); };
+  if(onlyBox) onlyBox.onchange = () => { formularyState.onlyMine = onlyBox.checked; renderFormularyList(); };
+  renderFormularyList();
+}
+
+function renderFormularyList(){
+  const wrap = document.getElementById('formulary-list');
+  const countEl = document.getElementById('formulary-count');
+  if(!wrap) return;
+  const q = formularyState.query || '';
+  const formulary = getFormulary();
+  let sorted = RX_DRUGS.slice().sort((a,b) => a.generic.localeCompare(b.generic));
+  if(q) sorted = sorted.filter(d => d.generic.toLowerCase().includes(q) || d.brand.toLowerCase().includes(q));
+  const stockedCount = RX_DRUGS.filter(d => formulary[d.id]).length;
+  if(countEl) countEl.textContent = `${stockedCount} of ${RX_DRUGS.length} marked stocked`;
+  const visible = formularyState.onlyMine ? sorted.filter(d => formulary[d.id]) : sorted;
+  if(!visible.length){
+    wrap.innerHTML = `<li class="cmp-empty">${formularyState.onlyMine ? 'No drugs marked as stocked yet.' : `No drugs match “${escapeHtml(q)}”.`}</li>`;
+    return;
+  }
+  wrap.innerHTML = visible.map(d => {
+    const on = !!formulary[d.id];
+    return `<li class="formulary-item${(!formularyState.onlyMine && !on) ? ' is-dimmed' : ''}">
+      <span class="formulary-item-info">
+        <span class="formulary-item-name">${escapeHtml(d.generic)}</span>
+        <span class="formulary-item-brand">${escapeHtml(d.brand)}</span>
+      </span>
+      <label class="formulary-item-toggle">
+        <input type="checkbox" data-drug="${escapeHtml(d.id)}" ${on ? 'checked' : ''}>
+        <span>${on ? 'Stocked' : 'Not stocked'}</span>
+      </label>
+    </li>`;
+  }).join('');
+  wrap.querySelectorAll('input[type="checkbox"][data-drug]').forEach(cb => {
+    cb.addEventListener('change', () => {
+      setFormularyFlag(cb.dataset.drug, cb.checked);
+      renderFormularyList();
+    });
+  });
+}
+
+/* ============================================================
+   Compare drugs — side-by-side view of RX_DRUGS fields.
+   ============================================================ */
+let compareState = { init:false };
+const CMP_MAX = 4;
+
+function initCompareDrugs(){
+  compareState.init = true;
+  const searchEl = document.getElementById('cmp-search');
+  const dataList = document.getElementById('cmp-datalist');
+  const addBtn   = document.getElementById('cmp-add');
+  const noteEl   = document.getElementById('cmp-note');
+  const chipsEl  = document.getElementById('cmp-chips');
+  const clearBtn = document.getElementById('cmp-clear');
+  const resultsEl= document.getElementById('cmp-results');
+  if(!searchEl || !chipsEl || !resultsEl) return;
+
+  const norm = s => (s || '').toLowerCase().trim();
+  const selected = [];
+
+  const sorted = RX_DRUGS.slice().sort((a,b) => a.generic.localeCompare(b.generic));
+  if(dataList){
+    sorted.forEach(dr => {
+      const g = document.createElement('option'); g.value = dr.generic; g.label = dr.brand; dataList.appendChild(g);
+      if(dr.brand && norm(dr.brand) !== norm(dr.generic)){
+        const b = document.createElement('option'); b.value = dr.brand; b.label = dr.generic; dataList.appendChild(b);
+      }
+    });
+  }
+
+  function findDrug(q){
+    const n = norm(q);
+    if(!n) return null;
+    return RX_DRUGS.find(d => norm(d.generic) === n || norm(d.brand) === n)
+        || RX_DRUGS.find(d => norm(d.generic).startsWith(n) || norm(d.brand).startsWith(n))
+        || RX_DRUGS.find(d => norm(d.generic).includes(n) || norm(d.brand).includes(n));
+  }
+  function setNote(msg, kind){ if(noteEl){ noteEl.textContent = msg || ''; noteEl.className = 'rx-search-note' + (kind ? ' ' + kind : ''); } }
+
+  function addDrug(q){
+    const dr = findDrug(q);
+    if(!dr){ setNote(`No match for “${String(q).trim()}” in the reference list.`, 'miss'); return; }
+    if(selected.indexOf(dr.id) !== -1){ setNote(`${dr.generic} is already added.`, 'hit'); return; }
+    if(selected.length >= CMP_MAX){ setNote(`You can compare up to ${CMP_MAX} drugs at once.`, 'miss'); return; }
+    selected.push(dr.id);
+    setNote(`Added ${dr.generic}.`, 'hit');
+    searchEl.value = '';
+    render();
+  }
+  function removeDrug(id){ const i = selected.indexOf(id); if(i !== -1){ selected.splice(i,1); render(); } }
+
+  function classesFor(id){
+    return Object.keys(IX_CLASSES).filter(cls => ixInClass(id, cls));
+  }
+
+  function regimenSummary(dr){
+    return dr.regimens.map(r => {
+      const doseStr = r.fixed ? `${r.fixed[0]}${r.fixed[1] && r.fixed[1] !== r.fixed[0] ? '–' + r.fixed[1] : ''} ${r.unit}` : (r.perKg ? `${r.perKg[0]}${r.perKg[1] !== r.perKg[0] ? '–' + r.perKg[1] : ''} ${r.unit}/kg` : '');
+      return `<div class="cmp-regimen"><strong>${escapeHtml(r.label)}:</strong> ${escapeHtml(doseStr)}${r.freq ? ` × ${r.freq}/day` : ''}</div>`;
+    }).join('');
+  }
+
+  function render(){
+    chipsEl.innerHTML = selected.map(id => {
+      const dr = RX_DRUGS.find(d => d.id === id);
+      return `<li class="ix-chip" data-drug="${id}">${escapeHtml(dr.generic)}<button type="button" aria-label="Remove ${escapeHtml(dr.generic)}" data-remove="${id}">&times;</button></li>`;
+    }).join('');
+    chipsEl.querySelectorAll('button[data-remove]').forEach(b => b.addEventListener('click', () => removeDrug(b.dataset.remove)));
+    clearBtn.hidden = selected.length === 0;
+
+    if(selected.length < 2){
+      resultsEl.innerHTML = `<p class="cmp-empty">Add at least two drugs to compare.</p>`;
+      return;
+    }
+    const drugs = selected.map(id => RX_DRUGS.find(d => d.id === id));
+    const rows = [
+      { label:'Brand', get:d => d.brand },
+      { label:'Reference source', get:d => d.ref },
+      { label:'Indications / regimens', get:d => regimenSummary(d) },
+      { label:'Renal adjustment', get:d => d.renalFlagCrCl ? `Needed if CrCl &lt; ${d.renalFlagCrCl} mL/min${d.renalAdjust ? ' — ' + escapeHtml(d.renalAdjust) : ''}` : 'No flagged threshold in this reference' },
+      { label:'Drug-class membership', get:d => { const cls = classesFor(d.id); return cls.length ? cls.map(c => escapeHtml(c.replace(/_/g,' '))).join(', ') : '—'; } },
+      { label:'Interactions in this app', get:d => { const hits = IX_RULES.filter(r => (r.a.id === d.id || r.b.id === d.id) || (r.a.cls && ixInClass(d.id, r.a.cls)) || (r.b.cls && ixInClass(d.id, r.b.cls))); return hits.length ? `${hits.length} rule(s) reference this drug or its class — see the Interaction checker` : 'None matched'; } },
+      { label:'In my formulary', get:d => isInFormulary(d.id) ? 'Stocked' : 'Not marked' },
+      { label:'Related conditions', get:d => { const links = drugLinksFor(d.id); return links.length ? links.map(l => escapeHtml(l.condition)).join(', ') : '—'; } }
+    ];
+    const head = `<tr><th>Field</th>${drugs.map(d => `<th>${escapeHtml(d.generic)}</th>`).join('')}</tr>`;
+    const body = rows.map(r => `<tr><td>${escapeHtml(r.label)}</td>${drugs.map(d => `<td>${r.get(d)}</td>`).join('')}</tr>`).join('');
+    resultsEl.innerHTML = `<table class="cmp-table">${head}${body}</table><p class="rx-ref">Fields shown are limited to what's captured in this app's dosing/interaction reference — not a full label comparison. Verify against the label before acting on anything here.</p>`;
+  }
+
+  addBtn.addEventListener('click', () => addDrug(searchEl.value));
+  searchEl.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); addDrug(searchEl.value); } });
+  clearBtn && clearBtn.addEventListener('click', () => { selected.length = 0; setNote(''); render(); });
+
+  render();
+}
+
 function setupDrugDosing(){
   const drugSel = document.getElementById('rx-drug');
   const regSel  = document.getElementById('rx-regimen');
   const wEl      = document.getElementById('rx-weight');
+  const crclEl   = document.getElementById('rx-crcl');
   const out      = document.getElementById('rx-out');
   const searchEl = document.getElementById('rx-search');
   const dataList = document.getElementById('rx-datalist');
@@ -9878,9 +10262,19 @@ function setupDrugDosing(){
     }
 
     if(dr.renalFlagCrCl){
-      body += `<p class="rx-meta" style="color:var(--fresh);"><strong>Renal:</strong> dose adjustment needed if CrCl &lt; ${dr.renalFlagCrCl} mL/min — see the CrCl tool below.</p>`;
+      const crcl = parseFloat(crclEl && crclEl.value);
+      if(crcl > 0){
+        if(crcl < dr.renalFlagCrCl){
+          body += `<p class="rx-flag"><strong>Renal adjustment needed</strong> — entered CrCl/eGFR ${fmt(crcl,0)} mL/min is below this drug's ${dr.renalFlagCrCl} mL/min threshold. ${escapeHtml(dr.renalAdjust || 'Reduce dose and/or extend the interval per the label and institutional protocol.')}</p>`;
+        } else {
+          body += `<p class="rx-meta" style="color:var(--fresh);"><strong>Renal:</strong> entered CrCl/eGFR ${fmt(crcl,0)} mL/min is at or above the ${dr.renalFlagCrCl} mL/min adjustment threshold — standard dosing above applies. Re-check if renal function changes.</p>`;
+        }
+      } else {
+        body += `<p class="rx-meta" style="color:var(--fresh);"><strong>Renal:</strong> dose adjustment needed if CrCl &lt; ${dr.renalFlagCrCl} mL/min. Enter the patient's CrCl/eGFR above, or use the Creatinine clearance tool below, to see specific guidance.</p>`;
+      }
     }
 
+    body += conditionLinksHtml(dr.id);
     body += `<p class="rx-ref">Reference: ${dr.ref} · educational aid — verify against the label.</p>`;
     out.innerHTML = head + body;
   }
@@ -9888,12 +10282,17 @@ function setupDrugDosing(){
   drugSel.addEventListener('change', () => { setNote(''); fillRegimens(); compute(); });
   regSel.addEventListener('change', compute);
   wEl.addEventListener('input', compute);
+  if(crclEl) crclEl.addEventListener('input', compute);
   if(searchEl){
     searchEl.addEventListener('input', handleSearch);
-    searchEl.addEventListener('change', handleSearch);
   }
   if(customDose) customDose.addEventListener('input', compute);
   if(customFreq) customFreq.addEventListener('input', compute);
+  out.addEventListener('mousedown', e => { if(e.target.closest('.rx-link-chip')) e.preventDefault(); });
+  out.addEventListener('click', e => {
+    const chip = e.target.closest('.rx-link-chip');
+    if(chip) jumpToCondition(chip.dataset.condition);
+  });
 
   fillRegimens();
   compute();
@@ -10043,6 +10442,7 @@ function init(){
   restoreLastTab();
   setupKeyboardShortcuts();
   setupGlobalSearch();
+  setupUnitConverter();
 }
 
 function restoreLastSpecialty(){
@@ -10790,6 +11190,79 @@ function setupGlobalSearch(){
     const inp = document.getElementById('search-input');
     openGlobalSearch(inp ? inp.value : '');
   };
+}
+
+/* ============================================================
+   Quick unit converter — toolbar modal, bidirectional linked
+   inputs. Client-side only, a handful of common conversions.
+   ============================================================ */
+function ucBindLinear(aId, bId, aToB){
+  const a = document.getElementById(aId), b = document.getElementById(bId);
+  if(!a || !b) return;
+  a.addEventListener('input', () => {
+    const v = parseFloat(a.value);
+    b.value = isFinite(v) ? String(Math.round(aToB(v) * 10000) / 10000) : '';
+  });
+  b.addEventListener('input', () => {
+    const v = parseFloat(b.value);
+    a.value = isFinite(v) ? String(Math.round((v / aToB(1)) * 10000) / 10000) : '';
+  });
+}
+function setupUnitConverter(){
+  const btn = document.getElementById('unit-converter-btn');
+  const modal = document.getElementById('unit-converter-modal');
+  if(!btn || !modal) return;
+
+  ucBindLinear('uc-kg', 'uc-lb', kg => kg * 2.20462);
+  ucBindLinear('uc-ml', 'uc-floz', ml => ml / 29.5735);
+  ucBindLinear('uc-mg', 'uc-g', mg => mg / 1000);
+  ucBindLinear('uc-mcg', 'uc-mg', mcg => mcg / 1000);
+
+  const cEl = document.getElementById('uc-c'), fEl = document.getElementById('uc-f');
+  if(cEl && fEl){
+    cEl.addEventListener('input', () => {
+      const v = parseFloat(cEl.value);
+      fEl.value = isFinite(v) ? String(Math.round((v * 9/5 + 32) * 100) / 100) : '';
+    });
+    fEl.addEventListener('input', () => {
+      const v = parseFloat(fEl.value);
+      cEl.value = isFinite(v) ? String(Math.round(((v - 32) * 5/9) * 100) / 100) : '';
+    });
+  }
+
+  const elecSel = document.getElementById('uc-electrolyte');
+  const mgEl = document.getElementById('uc-elec-mg'), mmolEl = document.getElementById('uc-elec-mmol');
+  if(elecSel && mgEl && mmolEl){
+    const molarMass = () => parseFloat(elecSel.value) || 1;
+    mgEl.addEventListener('input', () => {
+      const v = parseFloat(mgEl.value);
+      mmolEl.value = isFinite(v) ? String(Math.round((v / molarMass()) * 10000) / 10000) : '';
+    });
+    mmolEl.addEventListener('input', () => {
+      const v = parseFloat(mmolEl.value);
+      mgEl.value = isFinite(v) ? String(Math.round((v * molarMass()) * 10000) / 10000) : '';
+    });
+    elecSel.addEventListener('change', () => {
+      if(mgEl.value){ mgEl.dispatchEvent(new Event('input')); }
+      else if(mmolEl.value){ mmolEl.dispatchEvent(new Event('input')); }
+    });
+  }
+
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  btn.onclick = () => {
+    haptic('Light');
+    modal.hidden = false;
+    document.addEventListener('keydown', onKey);
+    const first = document.getElementById('uc-kg');
+    if(first) setTimeout(() => first.focus(), 30);
+  };
+  const closeBtn = document.getElementById('unit-converter-close');
+  if(closeBtn) closeBtn.onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
 }
 
 function setupKeyboardShortcuts(){
