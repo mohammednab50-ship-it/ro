@@ -2159,6 +2159,45 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== Teaching cases — curated vignettes plus a "quiz yourself" stem
+     generator built from Conditions/Drugs already in the app ===== -->
+<div class="rename-overlay" id="cases-modal" role="dialog" aria-modal="true" aria-labelledby="cases-title" hidden>
+  <div class="rename-card settings-card global-search-card cases-card" role="document">
+    <button type="button" class="onb-close" id="cases-close" aria-label="Close cases">&times;</button>
+    <p class="onb-eyebrow">TEACHING CASES</p>
+    <h2 class="onb-title serif" id="cases-title">Case vignettes</h2>
+    <p class="settings-sub" style="display:block;margin:6px 0 10px;">Short educational vignettes for self-study — not real patient data, and not a diagnostic tool. Verify anything clinical against primary sources.</p>
+    <div class="seg cases-mode-seg" role="tablist">
+      <button type="button" class="seg-btn seg-btn-text active" data-casemode="curated" aria-pressed="true">Curated cases</button>
+      <button type="button" class="seg-btn seg-btn-text" data-casemode="own" aria-pressed="false">Quiz yourself</button>
+    </div>
+    <div id="cases-curated">
+      <div class="quiz-progress" id="case-progress"></div>
+      <div class="quiz-flashcard">
+        <span class="quiz-type-tag" id="case-specialty-tag"></span>
+        <h3 class="case-title" id="case-title"></h3>
+        <p class="quiz-question case-stem" id="case-stem"></p>
+        <div class="quiz-answer" id="case-reveal" hidden></div>
+      </div>
+      <button type="button" class="results-export-btn" id="case-reveal-btn">Reveal diagnosis &amp; key points</button>
+      <div class="quiz-rate-row">
+        <button type="button" class="quiz-rate-btn" id="case-prev-btn">&larr; Previous</button>
+        <button type="button" class="quiz-rate-btn quiz-rate-good" id="case-next-btn">Next &rarr;</button>
+      </div>
+    </div>
+    <div id="cases-own" hidden>
+      <p class="settings-sub" style="display:block;margin-bottom:10px;">Generates a simple stem from a random Condition or Drug in this app's reference data — a lighter companion to the full quiz above.</p>
+      <div class="quiz-flashcard">
+        <span class="quiz-type-tag" id="own-type-tag"></span>
+        <p class="quiz-question" id="own-stem"></p>
+        <div class="quiz-answer" id="own-reveal" hidden></div>
+      </div>
+      <button type="button" class="results-export-btn" id="own-reveal-btn">Reveal</button>
+      <button type="button" class="results-export-btn" id="own-next-btn">New stem</button>
+    </div>
+  </div>
+</div>
+
 <header>
   <div class="header-inner">
     <a class="brand" href="#" aria-label="Rounds — home">
@@ -2179,6 +2218,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <button id="search-everywhere-btn" class="btn-search-everywhere" type="button" title="Search everywhere — Literature, Drugs, Conditions, Advances, Trials at once">Everywhere</button>
       <button id="unit-converter-btn" class="btn-search-everywhere" type="button" title="Quick unit converter — kg/lb, °C/°F, mL/fl oz, mg/mmol">Convert</button>
       <button id="quiz-btn" class="btn-search-everywhere" type="button" title="Spaced-repetition quiz from your bookmarks">Quiz</button>
+      <button id="cases-btn" class="btn-search-everywhere" type="button" title="Case vignettes for self-study">Cases</button>
     </form>
     <div class="header-actions">
     <span id="welcome-greeting" class="welcome-greeting" hidden></span>
@@ -10562,6 +10602,7 @@ function init(){
   setupUnitConverter();
   setupConditionBookmarks();
   setupQuiz();
+  setupCases();
 }
 
 function restoreLastSpecialty(){
@@ -11101,7 +11142,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
@@ -11550,6 +11591,234 @@ function setupQuiz(){
   document.querySelectorAll('.quiz-rate-btn[data-rate]').forEach(btn => {
     btn.onclick = () => rateQuizCard(btn.dataset.rate);
   });
+}
+
+/* ============================================================
+   Teaching cases — curated vignettes for self-study, plus a "quiz
+   yourself" stem generator built from this app's own Condition/Drug
+   reference data. Educational aids only — not real patient data and
+   not a diagnostic tool; verify anything clinical against primary
+   sources (matches the tone of the interaction checker's disclaimer).
+   ============================================================ */
+const CASES = [
+  {
+    title: 'Sudden headache and a seizure on the ward',
+    specialty: 'Nephrology · Neurology',
+    stem: 'A 34-year-old woman on the medical ward, admitted three days ago for post-operative ileus and treated with intravenous dextrose-saline, develops a sudden severe headache followed by a witnessed generalised seizure. On arrival she is drowsy and confused.',
+    diagnosis: 'Severe symptomatic hyponatremia (acute) — a monitored-care emergency',
+    points: [
+      'Seizure plus reduced consciousness here is a "severe symptom" red flag regardless of the exact sodium value — treat urgently rather than waiting for a formal severity classification.',
+      'Send an urgent serum sodium; recent hypotonic IV fluids plus post-operative pain/nausea is a classic euvolemic-hyponatremia setup (non-osmotic vasopressin release).',
+      'Escalate immediately for senior/critical-care input and a hypertonic-saline protocol — this is not managed with routine fluid restriction.',
+      'Correction still has a ceiling once symptoms improve (≤10 mmol/L in the first 24h) — rapid correction risks osmotic demyelination.'
+    ],
+    relatedCondition: 'Hyponatremia', relatedDrugs: []
+  },
+  {
+    title: 'Deep breathing and vomiting in a known diabetic',
+    specialty: 'Endocrinology',
+    stem: 'A 58-year-old man with known type 2 diabetes is brought in unwell for two days with vomiting, deep sighing breaths and abdominal pain. He looks dehydrated; his capillary glucose reads "HI".',
+    diagnosis: 'Diabetic ketoacidosis (DKA)',
+    points: [
+      'Kussmaul breathing, vomiting and very high glucose in a known diabetic should trigger an immediate VBG, ketones and electrolytes.',
+      'Confirm the triad — hyperglycaemia, ketosis/ketonaemia and metabolic acidosis — before labelling it DKA rather than simple hyperglycaemia.',
+      'Start fluid resuscitation, then a fixed-rate IV insulin infusion; check potassium before and during insulin, since insulin drives K+ intracellularly and can precipitate dangerous hypokalaemia.',
+      'Look for and treat the precipitant (infection, missed insulin, new diagnosis) — DKA rarely happens without one.'
+    ],
+    relatedCondition: 'Diabetic ketoacidosis', relatedDrugs: []
+  },
+  {
+    title: 'Fever, confusion and a low blood pressure',
+    specialty: 'Emergency medicine · Infectious disease',
+    stem: 'A 62-year-old woman is brought from a nursing home with two days of fever, cough and confusion. She is tachypnoeic, hypotensive (88/54) with a lactate of 4.2 mmol/L, and has signs of right basal consolidation.',
+    diagnosis: 'Community-acquired pneumonia complicated by septic shock',
+    points: [
+      'This meets sepsis criteria (infection plus organ dysfunction — hypotension, raised lactate): start the sepsis bundle immediately — cultures, broad-spectrum antibiotics within the hour, and IV fluids.',
+      'Empirical antibiotics should cover typical and atypical CAP organisms — ceftriaxone plus azithromycin is one commonly used combination for severe CAP (verify against local protocol/antibiogram).',
+      'Reassess perfusion after the initial fluid bolus — persistent hypotension after fluids is when vasopressor support and ICU/HDU escalation come into play.',
+      "Confusion in an older adult with sepsis is itself a marker of severity — don't dismiss it as baseline dementia without checking."
+    ],
+    relatedCondition: 'Community-acquired pneumonia', relatedDrugs: ['ceftriaxone', 'azithromycin']
+  },
+  {
+    title: 'Falling urine output on IV antibiotics',
+    specialty: 'Nephrology · Pharmacology',
+    stem: 'A 45-year-old man on gentamicin for a complicated UTI develops reduced urine output and rising creatinine on day 3 of admission. He has also had several episodes of vomiting and diarrhoea.',
+    diagnosis: 'Acute kidney injury — likely pre-renal (volume loss) with a nephrotoxic drug contributing',
+    points: [
+      'Stage the AKI by the rise in creatinine / fall in urine output, and look for reversible pre-renal causes first — here, ongoing GI losses point to volume depletion.',
+      "Review every nephrotoxic and renally-cleared drug on the chart — gentamicin needs an extended interval or level-guided dosing once renal function drops (this app's renal dosing calculator flags that threshold).",
+      'Recheck fluid balance, weight and postural vitals; correcting volume status and adjusting the drug should happen together, not sequentially.',
+      "Trend creatinine and urine output over the next 24–48h — an AKI that doesn't improve with volume correction needs a broader work-up."
+    ],
+    relatedCondition: 'Acute kidney injury', relatedDrugs: ['gentamicin']
+  },
+  {
+    title: 'Bleeding gums after a bite in the paddy field',
+    specialty: 'Emergency medicine · Toxinology',
+    stem: 'A farmer presents with a painful swollen leg after a suspected snakebite while working in a paddy field two hours ago. He now has bleeding gums, and his blood fails to clot in a bedside 20-minute whole blood clotting test.',
+    diagnosis: 'Snakebite envenomation with systemic (haemotoxic) envenoming — likely a viper bite',
+    points: [
+      'A positive 20-minute whole blood clotting test at the bedside is a simple, validated way to detect venom-induced consumption coagulopathy when lab coagulation studies are not immediately available.',
+      'Local swelling plus systemic bleeding indicates systemic envenoming — this patient needs antivenom, not just wound care.',
+      'Do not incise, suction, or apply a tight tourniquet to the bite site — immobilise the limb below heart level and transport urgently.',
+      'Watch for anaphylaxis to antivenom itself — have adrenaline immediately available before and during administration.'
+    ],
+    relatedCondition: 'Snakebite envenomation', relatedDrugs: []
+  },
+  {
+    title: 'Vomiting blood in a patient with cirrhosis',
+    specialty: 'Gastroenterology',
+    stem: 'A 55-year-old man with known cirrhosis presents with two episodes of large-volume haematemesis and dark, tarry stools. He is tachycardic and mildly hypotensive.',
+    diagnosis: 'Acute upper gastrointestinal bleeding — likely variceal, given his cirrhosis',
+    points: [
+      'Resuscitate first: two large-bore IV lines, crossmatch blood, and a restrictive transfusion target (roughly Hb 7–8 g/dL) rather than over-transfusing, which can worsen portal pressure.',
+      'In known or suspected cirrhosis, start empirical therapy for variceal bleeding early — a vasoactive drug plus prophylactic antibiotics, before endoscopy confirms the source.',
+      'Correct coagulopathy and consider early airway protection if there is ongoing haematemesis or reduced consciousness, given aspiration risk.',
+      'Endoscopy within 12–24 hours (sooner if unstable) both confirms the diagnosis and allows band ligation or sclerotherapy for varices.'
+    ],
+    relatedCondition: 'Upper GI bleeding', relatedDrugs: []
+  },
+  {
+    title: 'Swelling and wheeze minutes after a dose',
+    specialty: 'Allergy · Paediatrics',
+    stem: 'A child is given a dose of amoxicillin for otitis media. Fifteen minutes later she develops facial swelling, an urticarial rash and audible wheeze, and becomes floppy.',
+    diagnosis: 'Anaphylaxis (drug-induced, amoxicillin)',
+    points: [
+      "This is anaphylaxis until proven otherwise: rapid onset, skin/mucosal signs plus respiratory compromise after a known allergen exposure — treat immediately, don't wait for hypotension to appear.",
+      'First-line treatment is intramuscular adrenaline in the anterolateral thigh, repeated every 5 minutes if needed — antihistamines and steroids are adjuncts, not substitutes.',
+      'Lay the child flat with legs raised (or sitting up if breathing is the main problem) and give high-flow oxygen while adrenaline is drawn up.',
+      'Document the reaction clearly as a penicillin allergy going forward, and observe for a biphasic reaction for several hours after treatment.'
+    ],
+    relatedCondition: 'Anaphylaxis', relatedDrugs: ['amoxicillin']
+  },
+  {
+    title: 'Creatinine climbing on IV vancomycin',
+    specialty: 'Nephrology · Pharmacology',
+    stem: 'An elderly woman being treated with IV vancomycin for MRSA bacteraemia has her creatinine rise over three days of therapy, with a falling estimated CrCl.',
+    diagnosis: 'Vancomycin-associated nephrotoxicity requiring dose/interval adjustment',
+    points: [
+      'Vancomycin is renally cleared and nephrotoxic — falling renal function needs the interval extended and dosing re-targeted to AUC-guided levels rather than continuing the original regimen unchanged.',
+      'Check for other contributing nephrotoxins (e.g. concurrent NSAIDs, contrast, other antibiotics) and hydration status — nephrotoxicity is often multifactorial in unwell inpatients.',
+      "Don't stop treatment for confirmed MRSA bacteraemia outright — adjust the dose/interval and involve pharmacy/ID for AUC-guided monitoring rather than under-treating a bloodstream infection.",
+      'Trend creatinine daily while renal function is unstable, and reassess the ongoing need for vancomycin against culture/sensitivity results as they return.'
+    ],
+    relatedCondition: 'Acute kidney injury', relatedDrugs: ['vancomycin']
+  }
+];
+
+let casesState = { idx: 0, revealed: false, mode: 'curated', own: null };
+
+function renderCase(){
+  const c = CASES[casesState.idx];
+  document.getElementById('case-progress').textContent = `Case ${casesState.idx + 1} of ${CASES.length}`;
+  document.getElementById('case-specialty-tag').textContent = c.specialty;
+  document.getElementById('case-title').textContent = c.title;
+  document.getElementById('case-stem').textContent = c.stem;
+  const revealEl = document.getElementById('case-reveal');
+  const btn = document.getElementById('case-reveal-btn');
+  if(casesState.revealed){
+    revealEl.hidden = false;
+    btn.hidden = true;
+    const related = [];
+    if(c.relatedCondition) related.push(`Condition reference: ${c.relatedCondition}`);
+    (c.relatedDrugs || []).forEach(id => {
+      const d = RX_DRUGS.find(x => x.id === id);
+      if(d) related.push(`Drug reference: ${d.generic} (${d.brand})`);
+    });
+    revealEl.innerHTML = `<p><strong>${escapeHtml(c.diagnosis)}</strong></p><ul>${c.points.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>` +
+      (related.length ? `<p class="quiz-sub">${related.map(escapeHtml).join(' · ')} — look these up in Drugs/Conditions for the full reference.</p>` : '');
+  } else {
+    revealEl.hidden = true;
+    btn.hidden = false;
+  }
+}
+function caseStep(dir){
+  casesState.idx = (casesState.idx + dir + CASES.length) % CASES.length;
+  casesState.revealed = false;
+  renderCase();
+  haptic('Light');
+}
+
+function randomOwnStem(){
+  const pool = SYNDROMES.map(c => ({ kind: 'condition', c })).concat(RX_DRUGS.map(d => ({ kind: 'drug', d })));
+  const pick = pool[Math.floor(Math.random() * pool.length)];
+  if(pick.kind === 'condition'){
+    const c = pick.c;
+    return {
+      tag: 'Condition · ' + (SYNDROME_SYSTEMS[c.system] || c.system || ''),
+      stem: `${c.name} — what's the key definition/feature?`,
+      answerHtml: `<p>${escapeHtml(c.desc || '')}</p>`
+    };
+  }
+  const d = pick.d;
+  return {
+    tag: 'Drug',
+    stem: `${d.generic} (${d.brand}) — what class/indication is this, and how is it dosed?`,
+    answerHtml: `<ul>${d.regimens.map(r => `<li><strong>${escapeHtml(r.label)}:</strong> ${escapeHtml(r.note || '')}</li>`).join('')}</ul>`
+  };
+}
+function newOwnStem(){
+  const s = randomOwnStem();
+  casesState.own = s;
+  document.getElementById('own-type-tag').textContent = s.tag;
+  document.getElementById('own-stem').textContent = s.stem;
+  const revealEl = document.getElementById('own-reveal');
+  revealEl.innerHTML = s.answerHtml;
+  revealEl.hidden = true;
+  document.getElementById('own-reveal-btn').hidden = false;
+  haptic('Light');
+}
+
+function onCasesKey(e){ if(e.key === 'Escape') closeCases(); }
+function closeCases(){
+  const modal = document.getElementById('cases-modal');
+  if(modal) modal.hidden = true;
+  document.removeEventListener('keydown', onCasesKey);
+}
+function openCases(){
+  const modal = document.getElementById('cases-modal');
+  if(!modal) return;
+  casesState.revealed = false;
+  renderCase();
+  modal.hidden = false;
+  document.addEventListener('keydown', onCasesKey);
+}
+function setCasesMode(mode){
+  casesState.mode = mode;
+  document.querySelectorAll('.cases-mode-seg .seg-btn').forEach(b => {
+    const on = b.dataset.casemode === mode;
+    b.classList.toggle('active', on);
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+  });
+  document.getElementById('cases-curated').hidden = mode !== 'curated';
+  document.getElementById('cases-own').hidden = mode !== 'own';
+  if(mode === 'own' && !casesState.own) newOwnStem();
+}
+function setupCases(){
+  const openBtn = document.getElementById('cases-btn');
+  if(openBtn) openBtn.onclick = () => { haptic('Light'); openCases(); };
+  const closeBtn = document.getElementById('cases-close');
+  if(closeBtn) closeBtn.onclick = closeCases;
+  const modal = document.getElementById('cases-modal');
+  if(modal) modal.onclick = (e) => { if(e.target === modal) closeCases(); };
+  const revealBtn = document.getElementById('case-reveal-btn');
+  if(revealBtn) revealBtn.onclick = () => { casesState.revealed = true; haptic('Light'); renderCase(); };
+  const nextBtn = document.getElementById('case-next-btn');
+  if(nextBtn) nextBtn.onclick = () => caseStep(1);
+  const prevBtn = document.getElementById('case-prev-btn');
+  if(prevBtn) prevBtn.onclick = () => caseStep(-1);
+  document.querySelectorAll('.cases-mode-seg .seg-btn[data-casemode]').forEach(btn => {
+    btn.onclick = () => setCasesMode(btn.dataset.casemode);
+  });
+  const ownRevealBtn = document.getElementById('own-reveal-btn');
+  if(ownRevealBtn) ownRevealBtn.onclick = () => {
+    document.getElementById('own-reveal').hidden = false;
+    ownRevealBtn.hidden = true;
+    haptic('Light');
+  };
+  const ownNextBtn = document.getElementById('own-next-btn');
+  if(ownNextBtn) ownNextBtn.onclick = newOwnStem;
 }
 
 function setupKeyboardShortcuts(){
