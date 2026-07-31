@@ -38,6 +38,14 @@ rules_version = '2';
 //     shows for it — a per-patient tag, not a separate collection, since
 //     one ward group can hold patients from any mix of departments.
 //   wardGroups/{groupId}/invites/{emailKey}  { email, invitedBy, invitedAt } — pending invite for a not-yet-registered email
+//   wardGroups/{groupId}/auditLog/{entryId}  { action, patientId, patientName, detail, uid, email, ts }
+//     — append-only audit trail. Any member can create an entry (Wards does,
+//     for patient add/remove, a new vitals reading, and an escalation
+//     logged); nobody can update one once written, and delete is
+//     super-admin only. Readable by a group admin or above (via the
+//     existing isGroupAdminPath/isAboveGroupPath helpers) — a rank-and-file
+//     member can write history but not browse it, matching "who did what"
+//     being an oversight tool rather than a general-purpose feed.
 //   groupMemberships/{uid}_{groupId}    { uid, groupId, role, groupName, joinedAt }
 //     — a flat join-collection purely so a signed-in user can list "which
 //     groups am I in" via a simple `where('uid','==',myUid)` query
@@ -212,6 +220,20 @@ match /databases/{database}/documents {
       allow list: if signedIn(); // a newly-registered user scans for invites matching their own email client-side
       allow create, delete: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
         || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
+    }
+
+    // Append-only audit trail — any member can add an entry (Wards writes
+    // one for patient add/remove, a new reading, and an escalation logged),
+    // but nobody can edit or erase history: only read/delete by a group
+    // admin or above, and even then only read — delete is super-admin only,
+    // matching this collection's "audit trail" purpose.
+    match /auditLog/{entryId} {
+      allow read: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
+        || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
+      allow create: if isMemberPath(/databases/$(database)/documents/wardGroups/$(groupId))
+        || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
+      allow update: if false;
+      allow delete: if isSuperAdmin();
     }
   }
 

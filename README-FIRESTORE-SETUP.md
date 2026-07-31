@@ -68,12 +68,38 @@ scheduled server-side backup would need a paid Firebase plan (Blaze) plus a
 Cloud Function on a Cloud Scheduler trigger — possible later if it turns out
 to matter, but out of scope for the client-only build happening now.
 
-## What's still pending
+## Status: Wards is now wired to Firestore (optional, opt-in)
 
-The rules above describe the target data model, but the app's actual data
-layer (Vitals/Maternity, moving to a standalone "Wards" app) hasn't been
-migrated from local-only storage to Firestore yet, the department tier has
-no UI yet, and the Google Drive backup feature described above hasn't been
-built. Nothing in the app will use these collections until that migration
-lands, so it's safe to publish these rules now; they won't affect anything
-currently working.
+Wards now has its own sign-in (same Firebase project/accounts as Rounds —
+email/password or Google) and, once signed in, a "Ward group" selector in
+the cloud-sync panel (the icon next to Display settings in the header). A
+user with no ward group selected keeps using Wards exactly as before —
+100% local, no account required. Selecting a group makes new patients
+sync to `wardGroups/{groupId}/patients/{patientId}` in real time
+(`onSnapshot`, with Firestore's own offline persistence turned on via
+`enablePersistence`), and writes a lightweight audit entry to
+`wardGroups/{groupId}/auditLog` for patient add/remove, a new vitals
+reading, and an escalation logged. A small dot on the cloud-sync icon
+shows sync status (grey = not syncing, amber pulsing = writes pending,
+green = synced, red = error), driven by Firestore's own
+`SnapshotMetadata.hasPendingWrites` rather than a hand-rolled queue.
+
+**Re-publish `firestore.rules`** (step 1 above) if you haven't since the
+`auditLog` subcollection rules were added — repeat the copy/paste/Publish
+steps whenever this file changes.
+
+**What's still pending:**
+- Rounds (`index.html`) has Firebase Auth but its own bookmarks are not
+  yet synced to Firestore — that's a separate, not-yet-built piece of work
+  distinct from the Wards patient-sync work described above.
+- The department tier (department admins, `departments/{deptId}`) has no
+  in-app UI yet — only the ward-group tier (create/join/select a group) is
+  wired up. A department admin or super-admin still has to be set up by
+  hand in the Firestore console for now.
+- Invites (`wardGroups/{groupId}/invites`) have rules but no in-app UI —
+  for now, adding a teammate to a ward group's `members` map has to be
+  done by hand in the Firestore console (or by whoever built this next).
+- The Google Drive backup feature described below hasn't been built.
+- Both apps have an optional app-level lock (WebAuthn platform
+  authenticator with a salted-PIN fallback, in Settings) — separate from
+  Firebase sign-in, gating the UI itself rather than server access.
