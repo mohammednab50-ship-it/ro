@@ -1914,6 +1914,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
         <button type="button" class="seg-btn" data-size="small">A-</button>
         <button type="button" class="seg-btn" data-size="normal">A</button>
         <button type="button" class="seg-btn" data-size="large">A+</button>
+        <button type="button" class="seg-btn" data-size="xlarge">A++</button>
       </div>
     </div>
 
@@ -6603,7 +6604,7 @@ async function shareArticle(a){
 }
 
 /* ---- Font size (accessibility) ---- */
-const FONT_SCALES = { small: '0.92', normal: '1', large: '1.12' };
+const FONT_SCALES = { small: '0.92', normal: '1', large: '1.12', xlarge: '1.32' };
 // `zoom` reflows correctly on Chrome/Android/desktop and modern iOS (16.4+),
 // but is a no-op on older iOS Safari/WKWebView. Feature-detect it, and fall
 // back to a CSS custom property that scales the root font-size — supported on
