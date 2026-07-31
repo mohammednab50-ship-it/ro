@@ -294,6 +294,21 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .app-toast-undo{flex-shrink:0;border:1px solid var(--shell-line,rgba(244,241,234,0.28));background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;padding:3px 10px;border-radius:var(--r-pill);margin-left:2px;}
 .app-toast-undo:hover{background:rgba(244,241,234,0.14);}
 
+/* ---- "On this day" bookmark resurfacing card — a gentle, dismissable,
+   non-blocking corner card, not a modal. ---- */
+.on-this-day-card{position:fixed;right:20px;bottom:20px;z-index:1350;max-width:300px;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-md);
+  box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,0.25));padding:16px 18px;
+  opacity:0;transform:translateY(14px);pointer-events:none;
+  transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
+.on-this-day-card.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+.otd-eyebrow{font-family:var(--ff-sans);font-size:10.5px;font-weight:700;letter-spacing:0.06em;color:var(--evidence-dark, var(--ink-faint));margin-bottom:4px;}
+.otd-label{font-family:var(--ff-sans);font-size:13.5px;font-weight:600;color:var(--ink);line-height:1.4;margin-bottom:12px;}
+.otd-actions{display:flex;gap:8px;}
+.otd-btn{border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);border-radius:var(--r-pill);
+  padding:6px 14px;font-family:var(--ff-sans);font-size:12px;font-weight:600;cursor:pointer;}
+.otd-btn-primary{background:var(--cta-bg);color:var(--cta-ink);border-color:transparent;}
+
 /* ---- app footer / version ---- */
 .app-footer{max-width:1280px;margin:0 auto;padding:28px 40px 40px;display:flex;flex-wrap:wrap;gap:6px 16px;
   align-items:center;justify-content:center;text-align:center;border-top:1px solid var(--line-soft);}
@@ -10842,6 +10857,67 @@ function init(){
   setupQuiz();
   setupCases();
   setupStudyExport();
+  maybeShowOnThisDay();
+}
+
+/* ============================================================
+   "On this day" — gently resurface one random previously-saved item,
+   once per calendar day, to reinforce recall. Never blocking — a
+   dismissable card, not a modal.
+   ============================================================ */
+const ON_THIS_DAY_KEY = 'rounds_on_this_day_v1';
+function onThisDayCandidates(){
+  const items = [];
+  Object.values(getBookmarks()).forEach(a => {
+    if(a && a.title) items.push({ kind: 'article', label: a.title, ref: a });
+  });
+  Object.values(getConditionBookmarks()).forEach(cb => {
+    if(cb && cb.name) items.push({ kind: 'condition', label: cb.name, ref: cb });
+  });
+  return items;
+}
+function maybeShowOnThisDay(){
+  try{
+    const today = new Date().toISOString().slice(0, 10);
+    if(localStorage.getItem(ON_THIS_DAY_KEY) === today) return;
+    const items = onThisDayCandidates();
+    if(!items.length) return;
+    const pick = items[Math.floor(Math.random() * items.length)];
+    localStorage.setItem(ON_THIS_DAY_KEY, today);
+    showOnThisDayCard(pick);
+  }catch(e){}
+}
+function showOnThisDayCard(item){
+  const el = document.createElement('div');
+  el.className = 'on-this-day-card';
+  el.innerHTML = `
+    <div class="otd-eyebrow">REVISIT THIS</div>
+    <div class="otd-label"></div>
+    <div class="otd-actions">
+      <button type="button" class="otd-btn otd-btn-primary">Open</button>
+      <button type="button" class="otd-btn" aria-label="Dismiss">Dismiss</button>
+    </div>`;
+  el.querySelector('.otd-label').textContent = item.label;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  const dismiss = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  el.querySelector('.otd-btn-primary').addEventListener('click', () => {
+    haptic('Light');
+    if(item.kind === 'article'){
+      switchView('literature');
+    } else if(item.kind === 'condition'){
+      switchView('syndromes');
+      const search = document.getElementById('syndrome-search');
+      if(search){
+        search.value = item.label;
+        if(typeof syndromesState !== 'undefined'){ syndromesState.query = item.label.toLowerCase(); }
+        if(typeof renderSyndromeGroups === 'function') renderSyndromeGroups();
+      }
+    }
+    dismiss();
+  });
+  el.querySelectorAll('.otd-btn:not(.otd-btn-primary)').forEach(b => b.addEventListener('click', dismiss));
+  setTimeout(dismiss, 12000);
 }
 
 function restoreLastSpecialty(){
