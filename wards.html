@@ -3396,6 +3396,7 @@ function initVitals(){
   setupReadingIntervalSelect();
   setupIoBalanceForm();
   setupMarSection();
+  setupSbarButtons();
   renderPatientList();
   renderVitalsMain();
 }
@@ -4171,6 +4172,8 @@ function renderVitalsMain(){
 
   const allergiesForm = document.getElementById('vitals-allergies-form');
   if(allergiesForm) allergiesForm.hidden = true; // avoid a stale form carrying over across patients
+  const sbarPanel = document.getElementById('vitals-sbar-panel');
+  if(sbarPanel) sbarPanel.hidden = true; // avoid a stale summary carrying over across patients
 
   prefillVitalsTimestamp();
   renderVitalsTable();
@@ -4764,6 +4767,145 @@ function setupVitalsPrintButton(){
   if(!btn || btn.dataset.wired) return;
   btn.dataset.wired = '1';
   btn.addEventListener('click', printVitalsSummary);
+}
+
+/* ---- SBAR shift handover export — pulls together the last reading +
+   NEWS2, allergies, isolation, active problems, latest note and escalation
+   trail into a printable/copyable Situation-Background-Assessment-
+   Recommendation summary. Reuses the print-summary swap pattern from
+   printVitalsSummary() above. ---- */
+function generateSbarForPatient(p){
+  const latest = latestVitalsEntryFor(p);
+  const n2 = latest ? computeNews2(latest, p) : null;
+  const activeProblems = ((p.problems || []).filter(pr => !pr.resolvedAt));
+  const meds = p.medications || [];
+  const escalations = (p.escalations || []).slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  const notesEntries = (vitalsState.logs[p.id] || []).filter(e => (e.notes || '').trim()).sort((a, b) => new Date(b.ts) - new Date(a.ts));
+
+  const lines = [];
+  lines.push(`SBAR HANDOVER — ${p.name || 'Unnamed'} (Bed ${p.bed || '—'}${p.mrn ? ', MRN ' + p.mrn : ''})`);
+  lines.push(`Department: ${DEPT_LABELS[p.department || 'general']}`);
+  lines.push(`Generated: ${new Date().toLocaleString()}`);
+  lines.push('');
+
+  lines.push('SITUATION');
+  if(latest && n2 && n2.dataPresent){
+    lines.push(`  NEWS2 ${n2.score} (${news2LevelLabel(n2.level)}), last reading ${fmtVitalsTime(latest.ts)}`);
+  }else{
+    lines.push('  No vitals logged yet.');
+  }
+  if(p.isolation) lines.push(`  Isolation: ${ISOLATION_LABELS[p.isolation] || p.isolation} precautions`);
+  lines.push('');
+
+  lines.push('BACKGROUND');
+  lines.push(`  Allergies: ${(p.allergies || '').trim() || 'None recorded'}`);
+  lines.push(`  Active problems: ${activeProblems.length ? activeProblems.map(pr => pr.text).join('; ') : 'None recorded'}`);
+  if(meds.length) lines.push(`  Medications: ${meds.map(m => `${m.name}${m.dose ? ' ' + m.dose : ''} (${MAR_FREQ_LABELS[m.freq] || m.freq})`).join('; ')}`);
+  lines.push('');
+
+  lines.push('ASSESSMENT');
+  if(latest){
+    const bp = (latest.sbp || latest.dbp) ? `${latest.sbp || '—'}/${latest.dbp || '—'}` : '—';
+    lines.push(`  HR ${latest.hr || '—'} · BP ${bp} · RR ${latest.rr || '—'} · SpO2 ${latest.spo2 || '—'}% · Temp ${latest.temp || '—'}°C · GCS ${latest.gcs || '—'}`);
+  }else{
+    lines.push('  No readings logged.');
+  }
+  const worseningTrends = Object.keys(TREND_WORSENING_DIRECTION)
+    .map(field => { const t = detectVitalTrend(field); return (t && t.worsening) ? TREND_LABELS[field] : null; })
+    .filter(Boolean);
+  if(worseningTrends.length) lines.push(`  Worsening trend: ${worseningTrends.join(', ')}`);
+  if(notesEntries.length) lines.push(`  Most recent note (${fmtVitalsTime(notesEntries[0].ts)}): ${notesEntries[0].notes}`);
+  lines.push('');
+
+  lines.push('RECOMMENDATION');
+  if(n2 && n2.dataPresent && (n2.score >= 5 || n2.anySingle3)){
+    lines.push('  Escalate — urgent review needed (NEWS2 threshold met). Use clinical judgement.');
+  }else{
+    lines.push('  Continue routine monitoring per department protocol.');
+  }
+  if(escalations.length) lines.push(`  Escalation trail: ${escalations.map(e => `notified ${ESCALATION_ROLE_LABELS[e.role] || e.role} at ${fmtVitalsTime(e.ts)}`).join('; ')}`);
+  lines.push('');
+  lines.push('Personal charting aid — verify against the official chart before acting.');
+  return lines.join('\n');
+}
+
+function generateSbarForMinePatients(){
+  const mine = vitalsState.patients.filter(p => p.mine);
+  if(!mine.length) return 'No patients are currently marked as "mine" this shift.';
+  return mine.map(generateSbarForPatient).join('\n\n' + '='.repeat(48) + '\n\n');
+}
+
+function openSbarPanel(text){
+  const panel = document.getElementById('vitals-sbar-panel');
+  const textarea = document.getElementById('vitals-sbar-text');
+  if(!panel || !textarea) return;
+  textarea.value = text;
+  panel.hidden = false;
+}
+
+function printSbarText(text){
+  const container = document.getElementById('vitals-print-summary');
+  if(!container) return;
+  container.innerHTML = `<pre style="white-space:pre-wrap;font-family:var(--ff-mono,monospace);font-size:12px;">${escapeHtml(text)}</pre>`;
+  document.body.classList.add('vitals-print-summary');
+  const cleanup = () => { document.body.classList.remove('vitals-print-summary'); window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
+  window.print();
+  setTimeout(cleanup, 1500);
+}
+
+function copySbarText(){
+  const textarea = document.getElementById('vitals-sbar-text');
+  if(!textarea) return;
+  const done = () => showToast('Copied to clipboard.');
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(textarea.value).then(done).catch(() => {
+      textarea.select();
+      document.execCommand('copy');
+      done();
+    });
+  }else{
+    textarea.select();
+    document.execCommand('copy');
+    done();
+  }
+}
+
+function setupSbarButtons(){
+  const btn = document.getElementById('vitals-sbar-btn');
+  const allBtn = document.getElementById('vitals-sbar-all-btn');
+  const closeBtn = document.getElementById('vitals-sbar-close-btn');
+  const copyBtn = document.getElementById('vitals-sbar-copy-btn');
+  const printBtn = document.getElementById('vitals-sbar-print-btn');
+  const panel = document.getElementById('vitals-sbar-panel');
+
+  if(btn && !btn.dataset.wired){
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => {
+      const p = activePatient();
+      if(!p) return;
+      openSbarPanel(generateSbarForPatient(p));
+    });
+  }
+  if(allBtn && !allBtn.dataset.wired){
+    allBtn.dataset.wired = '1';
+    allBtn.addEventListener('click', () => openSbarPanel(generateSbarForMinePatients()));
+  }
+  if(closeBtn && !closeBtn.dataset.wired){
+    closeBtn.dataset.wired = '1';
+    closeBtn.addEventListener('click', () => { if(panel) panel.hidden = true; });
+  }
+  if(copyBtn && !copyBtn.dataset.wired){
+    copyBtn.dataset.wired = '1';
+    copyBtn.addEventListener('click', copySbarText);
+  }
+  if(printBtn && !printBtn.dataset.wired){
+    printBtn.dataset.wired = '1';
+    printBtn.addEventListener('click', () => {
+      const textarea = document.getElementById('vitals-sbar-text');
+      if(textarea) printSbarText(textarea.value);
+    });
+  }
 }
 
 /* ---- per-patient baseline overrides ---- */
