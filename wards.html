@@ -1660,6 +1660,16 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-problem-add-row{display:flex;gap:8px;}
 .vitals-problem-add-row input{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--ink);font-family:var(--ff-sans);font-size:13.5px;}
 
+/* ---- voice-to-text mic button — wraps a field, absolutely positions
+   a mic toggle in its corner; only injected where SpeechRecognition
+   is actually supported (see attachVoiceInput). ---- */
+.voice-field-wrap{position:relative;}
+.voice-mic-btn{position:absolute;top:6px;right:6px;width:26px;height:26px;border:none;border-radius:50%;background:var(--surface-2, rgba(127,127,127,.18));color:var(--ink-soft);display:grid;place-items:center;cursor:pointer;transition:background .15s,color .15s;padding:0;}
+.voice-mic-btn:hover{background:var(--cta-bg);color:var(--cta-ink);}
+.voice-mic-btn.listening{background:#e0453c;color:#fff;animation:voiceMicPulse 1.1s ease-in-out infinite;}
+.voice-mic-btn svg{width:14px;height:14px;}
+@keyframes voiceMicPulse{0%,100%{box-shadow:0 0 0 0 rgba(224,69,60,.5);}50%{box-shadow:0 0 0 6px rgba(224,69,60,0);}}
+
 /* ---- reading-interval override ---- */
 .vitals-isolation-select-wrap input[type="number"]{border:1px solid var(--line);border-radius:var(--r-pill);padding:7px 9px;font-family:var(--ff-sans);font-size:12.5px;background:var(--surface);color:var(--ink-soft);}
 
@@ -3340,12 +3350,12 @@ function setupWardsSettingsUI(){
 
   const localeSel = document.getElementById('wards-locale-select');
   if(localeSel){
-    localeSel.value = getWardsLocale();
+    localeSel.value = (typeof window.getWardsLocale === 'function') ? window.getWardsLocale() : 'device';
     localeSel.addEventListener('change', () => {
-      setWardsLocale(localeSel.value);
+      if(typeof window.setWardsLocale === 'function') window.setWardsLocale(localeSel.value);
       haptic('Light');
-      if(typeof renderPatientList === 'function') renderPatientList();
-      if(typeof renderVitalsTable === 'function') renderVitalsTable();
+      if(typeof window.renderPatientList === 'function') window.renderPatientList();
+      if(typeof window.renderVitalsTable === 'function') window.renderVitalsTable();
     });
   }
 
@@ -3679,12 +3689,82 @@ function initVitals(){
   setupIoBalanceForm();
   setupMarSection();
   setupSbarButtons();
+  setupVoiceInputForNotesFields();
   renderPatientList();
   if(getDefaultVitalsView() === 'board' && vitalsState.patients.length){
     setVitalsBoardActive(true);
   }else{
     renderVitalsMain();
   }
+}
+
+/* ============================================================
+   Voice-to-text for notes fields — mic button dictates into a
+   textarea/input via the Web Speech API. Feature-detected; the
+   button is simply never created where unsupported (iOS Safari has
+   partial/no support for SpeechRecognition).
+   ============================================================ */
+const VoiceRecognitionCtor = (typeof window !== 'undefined') ? (window.SpeechRecognition || window.webkitSpeechRecognition) : null;
+
+function attachVoiceInput(fieldEl){
+  if(!fieldEl || !VoiceRecognitionCtor || fieldEl.dataset.voiceWired) return;
+  fieldEl.dataset.voiceWired = '1';
+
+  const wrap = document.createElement('div');
+  wrap.className = 'voice-field-wrap';
+  fieldEl.parentNode.insertBefore(wrap, fieldEl);
+  wrap.appendChild(fieldEl);
+
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'voice-mic-btn';
+  btn.setAttribute('aria-label', 'Dictate into this field');
+  btn.title = 'Dictate (Web Speech API — check locally, nothing is sent anywhere but the browser\'s recognition service)';
+  btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></svg>';
+  wrap.appendChild(btn);
+
+  let recognizer = null;
+  let listening = false;
+  let baseValue = '';
+
+  function stop(){
+    listening = false;
+    btn.classList.remove('listening');
+    if(recognizer){ try{ recognizer.stop(); }catch(e){} }
+  }
+
+  btn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if(listening){ stop(); return; }
+    recognizer = new VoiceRecognitionCtor();
+    recognizer.lang = (navigator.language || 'en-US');
+    recognizer.continuous = true;
+    recognizer.interimResults = false;
+    baseValue = fieldEl.value;
+    listening = true;
+    btn.classList.add('listening');
+    recognizer.onresult = (ev) => {
+      let text = '';
+      for(let i = ev.resultIndex; i < ev.results.length; i++){
+        if(ev.results[i].isFinal) text += ev.results[i][0].transcript;
+      }
+      if(text){
+        const sep = baseValue && !/\s$/.test(baseValue) ? ' ' : '';
+        baseValue = baseValue + sep + text.trim();
+        fieldEl.value = baseValue;
+        fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    };
+    recognizer.onerror = () => { stop(); };
+    recognizer.onend = () => { stop(); };
+    try{ recognizer.start(); }catch(e){ stop(); }
+  });
+}
+
+function setupVoiceInputForNotesFields(){
+  ['v-notes', 'mat-f-ctg-notes', 'mat-f-notes', 'vitals-problem-input'].forEach(id => {
+    attachVoiceInput(document.getElementById(id));
+  });
 }
 
 /* ============================================================
@@ -6557,6 +6637,10 @@ function setupPediatricsSection(){
 window.initVitals = initVitals;
 window.getDefaultVitalsView = getDefaultVitalsView;
 window.setDefaultVitalsView = setDefaultVitalsView;
+window.getWardsLocale = getWardsLocale;
+window.setWardsLocale = setWardsLocale;
+window.renderPatientList = renderPatientList;
+window.renderVitalsTable = renderVitalsTable;
 })();
 
 /* ============================================================
