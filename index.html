@@ -1185,6 +1185,15 @@ body.locked{overflow:hidden;}
 .crashlog-time{display:block;font-family:var(--ff-mono);font-size:10.5px;color:var(--ink-faint);margin-bottom:3px;}
 .crashlog-msg{font-family:var(--ff-mono);font-size:12px;color:var(--shell-ink);word-break:break-word;white-space:pre-wrap;margin:0;}
 .crashlog-actions{display:flex;gap:8px;}
+.usage-stats-tiles{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:16px;}
+.usage-stats-tile{flex:1;min-width:110px;border:1px solid var(--shell-line);border-radius:var(--r-md);padding:12px 14px;text-align:center;}
+.usage-stats-tile strong{display:block;font-family:var(--ff-display);font-size:24px;font-weight:800;color:var(--shell-ink);}
+.usage-stats-tile span{display:block;font-family:var(--ff-sans);font-size:11.5px;color:var(--ink-faint);margin-top:2px;}
+.usage-stats-h{font-family:var(--ff-sans);font-size:12px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--ink-faint);margin:16px 0 8px;}
+.usage-stats-list{list-style:none;margin:0;padding:0;border:1px solid var(--shell-line);border-radius:var(--r-md);overflow:hidden;}
+.usage-stats-list li{display:flex;justify-content:space-between;gap:10px;padding:8px 12px;font-family:var(--ff-sans);font-size:13px;color:var(--shell-ink);border-bottom:1px solid var(--shell-line);}
+.usage-stats-list li:last-child{border-bottom:none;}
+.usl-count{color:var(--ink-faint);white-space:nowrap;}
 .shortcuts-table{width:100%;border-collapse:collapse;font-family:var(--ff-sans);font-size:13.5px;}
 .shortcuts-table td{padding:8px 4px;border-bottom:1px solid var(--shell-line);color:var(--shell-ink-soft);}
 .shortcuts-table tr:last-child td{border-bottom:none;}
@@ -1984,6 +1993,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Your activity</strong><span class="settings-sub">Personal usage insight — local only</span></div>
+      <button type="button" class="settings-btn" id="settings-view-usage-stats">View</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>What's new</strong><span class="settings-sub">Recent changes to Rounds</span></div>
       <button type="button" class="settings-btn" id="settings-view-whatsnew">View</button>
     </div>
@@ -2060,6 +2074,15 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <h2 class="onb-title serif" id="recent-title">Recently viewed</h2>
     <p class="settings-sub" style="display:block;margin:-4px 0 14px;">Your last drug lookups, condition research, advances, and trials — across all four tabs.</p>
     <div class="crashlog-list" id="recent-list"></div>
+  </div>
+</div>
+
+<div class="rename-overlay" id="usage-stats-modal" role="dialog" aria-modal="true" aria-labelledby="usage-stats-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="usage-stats-close" aria-label="Close your activity">&times;</button>
+    <p class="onb-eyebrow">YOUR ACTIVITY</p>
+    <h2 class="onb-title serif" id="usage-stats-title">Your activity</h2>
+    <div id="usage-stats-body"></div>
   </div>
 </div>
 
@@ -6516,6 +6539,79 @@ function recordRecentlyViewed(category, label, url){
     if(list.length > RECENTLY_VIEWED_MAX) list = list.slice(0, RECENTLY_VIEWED_MAX);
     localStorage.setItem(RECENTLY_VIEWED_KEY, JSON.stringify(list));
   }catch(e){}
+  bumpLookupCount(category, label);
+}
+
+/* ============================================================
+   Personal usage stats — self-only counts derived from data already
+   stored locally (lookup counts piggyback on recordRecentlyViewed
+   above; quiz/cases counts are bumped at session-complete/open).
+   Nothing here is sent anywhere.
+   ============================================================ */
+const LOOKUP_COUNTS_KEY = 'rounds_lookup_counts_v1';
+const USAGE_STATS_KEY = 'rounds_usage_stats_v1';
+function bumpLookupCount(category, label){
+  if(category !== 'drug' && category !== 'condition') return;
+  try{
+    const counts = JSON.parse(localStorage.getItem(LOOKUP_COUNTS_KEY) || '{}');
+    const key = category + ':' + label;
+    counts[key] = (counts[key] || 0) + 1;
+    localStorage.setItem(LOOKUP_COUNTS_KEY, JSON.stringify(counts));
+  }catch(e){}
+}
+function getLookupCounts(){
+  try{ const v = JSON.parse(localStorage.getItem(LOOKUP_COUNTS_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; }
+  catch(e){ return {}; }
+}
+function getUsageStats(){
+  try{ const v = JSON.parse(localStorage.getItem(USAGE_STATS_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; }
+  catch(e){ return {}; }
+}
+function bumpUsageStat(key){
+  try{
+    const stats = getUsageStats();
+    stats[key] = (stats[key] || 0) + 1;
+    localStorage.setItem(USAGE_STATS_KEY, JSON.stringify(stats));
+  }catch(e){}
+}
+function topLookupEntries(category, n){
+  const counts = getLookupCounts();
+  return Object.keys(counts)
+    .filter(k => k.startsWith(category + ':'))
+    .map(k => ({ label: k.slice(category.length + 1), count: counts[k] }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, n);
+}
+function openUsageStats(){
+  const modal = document.getElementById('usage-stats-modal');
+  const body = document.getElementById('usage-stats-body');
+  if(!modal || !body) return;
+  const stats = getUsageStats();
+  const bookmarkCount = Object.keys(getBookmarks()).length;
+  const condBookmarkCount = Object.keys(getConditionBookmarks()).length;
+  const topDrugs = topLookupEntries('drug', 5);
+  const topConditions = topLookupEntries('condition', 5);
+  const listHtml = (items) => items.length
+    ? '<ol class="usage-stats-list">' + items.map(it => `<li><span class="usl-label">${escapeHtml(it.label)}</span><span class="usl-count">${it.count}&times;</span></li>`).join('') + '</ol>'
+    : '<p class="crashlog-empty" style="padding:10px 0;">Nothing looked up yet.</p>';
+  body.innerHTML = `
+    <div class="usage-stats-tiles">
+      <div class="usage-stats-tile"><strong>${bookmarkCount + condBookmarkCount}</strong><span>Bookmarks saved</span></div>
+      <div class="usage-stats-tile"><strong>${stats.quizSessions || 0}</strong><span>Quiz sessions completed</span></div>
+      <div class="usage-stats-tile"><strong>${stats.casesViewed || 0}</strong><span>Teaching cases viewed</span></div>
+    </div>
+    <h3 class="usage-stats-h">Most looked up drugs</h3>
+    ${listHtml(topDrugs)}
+    <h3 class="usage-stats-h">Most looked up conditions</h3>
+    ${listHtml(topConditions)}
+    <p class="settings-sub" style="display:block;margin-top:6px;">Personal insight only, computed entirely from what's stored on this device — nothing here is sent anywhere.</p>
+  `;
+  modal.hidden = false;
+  function close(){ modal.hidden = true; document.removeEventListener('keydown', onKey); }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('usage-stats-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  document.addEventListener('keydown', onKey);
 }
 const CBER_LAST_REVIEWED = '2026-07-19';
 
@@ -11106,6 +11202,9 @@ function openSettings(){
   const recentViewBtn = document.getElementById('settings-view-recent');
   if(recentViewBtn) recentViewBtn.onclick = () => { haptic('Light'); openRecentlyViewed(); };
 
+  const usageStatsBtn = document.getElementById('settings-view-usage-stats');
+  if(usageStatsBtn) usageStatsBtn.onclick = () => { haptic('Light'); openUsageStats(); };
+
   const whatsNewBtn = document.getElementById('settings-view-whatsnew');
   if(whatsNewBtn) whatsNewBtn.onclick = () => { haptic('Light'); openWhatsNew(); };
 
@@ -11355,7 +11454,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
@@ -11754,6 +11853,7 @@ function renderQuizCard(){
     const rc = quizSession ? quizSession.resultCounts : { again: 0, hard: 0, good: 0, easy: 0 };
     const total = quizSession ? quizSession.total : 0;
     summaryEl.innerHTML = `<strong>Session complete</strong>Reviewed ${total} card${total === 1 ? '' : 's'} · Again ${rc.again} · Hard ${rc.hard} · Good ${rc.good} · Easy ${rc.easy}<br><br>Come back later — cards you rated lower will resurface sooner.`;
+    if(quizSession && quizSession.total > 0) bumpUsageStat('quizSessions');
     quizSession = null;
     return;
   }
@@ -11950,6 +12050,7 @@ function caseStep(dir){
   casesState.idx = (casesState.idx + dir + CASES.length) % CASES.length;
   casesState.revealed = false;
   renderCase();
+  bumpUsageStat('casesViewed');
   haptic('Light');
 }
 
@@ -11994,6 +12095,7 @@ function openCases(){
   if(!modal) return;
   casesState.revealed = false;
   renderCase();
+  bumpUsageStat('casesViewed');
   modal.hidden = false;
   document.addEventListener('keydown', onCasesKey);
 }
