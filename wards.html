@@ -1646,6 +1646,10 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-mar-status.mar-prn{background:var(--evidence-bg);color:var(--evidence-dark);}
 .vitals-mar-give-btn{margin-left:auto;}
 .vitals-mar-last{font-size:11.5px;color:var(--ink-faint);white-space:nowrap;}
+.vitals-mar-section{margin:var(--space-6) 0;border-top:1px solid var(--line);padding-top:var(--space-5);}
+.vitals-mar-add-row{display:flex;flex-wrap:wrap;gap:8px;}
+.vitals-mar-add-row input,.vitals-mar-add-row select{padding:9px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--ink);font-family:var(--ff-sans);font-size:13px;flex:1 1 120px;min-width:0;}
+.vitals-mar-delete{margin-left:6px;}
 
 /* ---- allergy banner + form ---- */
 .vitals-allergy-banner{display:flex;align-items:flex-start;gap:10px;font-family:var(--ff-sans);font-size:13.5px;font-weight:700;color:var(--caution);
@@ -2701,6 +2705,28 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <p class="vitals-table-empty" id="vitals-table-empty">No readings logged yet for this patient.</p>
         <p class="vitals-table-empty" id="vitals-table-nomatch" hidden>No readings match that search.</p>
       </div>
+
+      <div class="vitals-mar-section" id="vitals-mar-section">
+        <p class="vitals-dept-subtitle">Medication administration record</p>
+        <p class="vitals-dept-empty" style="margin-bottom:10px;">Lightweight personal charting aid only — not a substitute for your institution's official eMAR/drug chart. Always administer and countersign there.</p>
+        <div id="vitals-mar-rows"></div>
+        <p class="vitals-dept-empty" id="vitals-mar-empty" hidden>No medications added yet.</p>
+        <div class="vitals-mar-add-row">
+          <input type="text" id="vitals-mar-name" maxlength="60" placeholder="Drug name">
+          <input type="text" id="vitals-mar-dose" maxlength="30" placeholder="Dose e.g. 500mg">
+          <input type="text" id="vitals-mar-route" maxlength="20" placeholder="Route e.g. PO, IV">
+          <select id="vitals-mar-freq">
+            <option value="240">q4h</option>
+            <option value="360">q6h</option>
+            <option value="480">q8h</option>
+            <option value="720">q12h</option>
+            <option value="1440">q24h</option>
+            <option value="prn">PRN</option>
+          </select>
+          <button type="button" class="vitals-btn-outline" id="vitals-mar-add-btn">+ Add medication</button>
+        </div>
+      </div>
+
       <!-- ===== Department-specific charting sections. Exactly one is
            visible at a time, chosen by the open patient's `department`.
            General has none — the generic vitals form/log above is common
@@ -3369,6 +3395,7 @@ function initVitals(){
   setupProblemList();
   setupReadingIntervalSelect();
   setupIoBalanceForm();
+  setupMarSection();
   renderPatientList();
   renderVitalsMain();
 }
@@ -4155,6 +4182,7 @@ function renderVitalsMain(){
   renderDeptSections(p);
   renderAllergyBanner(p);
   renderProblemList(p);
+  renderMarSection(p);
   renderEscalationBanner(p);
   renderEscalationList(p);
   updateNews2Preview();
@@ -4890,6 +4918,108 @@ function setupProblemList(){
       saveVitalsData();
       renderProblemList(p);
       haptic('Light');
+    });
+  }
+}
+
+/* ---- medication administration record (MAR) — a lightweight personal
+   charting aid, explicitly not a substitute for the institution's real
+   eMAR/drug chart (see the disclaimer rendered alongside it). ---- */
+const MAR_FREQ_LABELS = { '240':'q4h', '360':'q6h', '480':'q8h', '720':'q12h', '1440':'q24h', 'prn':'PRN' };
+
+function ensureMedications(p){
+  if(!Array.isArray(p.medications)) p.medications = [];
+  return p.medications;
+}
+
+function marDoseStatus(med){
+  if(med.freq === 'prn') return { cls: 'mar-prn', label: 'PRN' };
+  const doses = med.doses || [];
+  if(!doses.length) return { cls: 'mar-due', label: 'Due now — never given' };
+  const last = doses.slice().sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+  const freqMs = parseFloat(med.freq) * 60 * 1000;
+  const dueAt = new Date(last.ts).getTime() + freqMs;
+  const now = Date.now();
+  if(now >= dueAt){
+    const overdueHours = Math.round((now - dueAt) / 3600000 * 10) / 10;
+    return overdueHours > 0.05
+      ? { cls: 'mar-overdue', label: `Overdue by ${overdueHours}h` }
+      : { cls: 'mar-due', label: 'Due now' };
+  }
+  return { cls: 'mar-notdue', label: 'Not due yet' };
+}
+
+function renderMarSection(p){
+  const wrap = document.getElementById('vitals-mar-rows');
+  const empty = document.getElementById('vitals-mar-empty');
+  if(!wrap) return;
+  const meds = ensureMedications(p);
+  if(!meds.length){
+    wrap.innerHTML = '';
+    if(empty) empty.hidden = false;
+    return;
+  }
+  if(empty) empty.hidden = true;
+  wrap.innerHTML = meds.map(med => {
+    const status = marDoseStatus(med);
+    const doses = (med.doses || []).slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+    const lastGiven = doses.length ? `Last given ${escapeHtml(fmtVitalsTime(doses[0].ts))}` : 'Never given';
+    return `<div class="vitals-mar-row" data-med-id="${med.id}">` +
+      `<span class="vitals-mar-name">${escapeHtml(med.name)}</span>` +
+      `<span class="vitals-mar-detail">${escapeHtml(med.dose || '')} ${escapeHtml(med.route || '')} &middot; ${escapeHtml(MAR_FREQ_LABELS[med.freq] || med.freq)}</span>` +
+      `<span class="vitals-mar-status ${status.cls}">${escapeHtml(status.label)}</span>` +
+      `<span class="vitals-mar-last">${escapeHtml(lastGiven)}</span>` +
+      `<button type="button" class="vitals-btn-primary vitals-mar-give-btn" data-mar-give="${med.id}">Given</button>` +
+      `<button type="button" class="vitals-row-delete vitals-mar-delete" data-mar-delete="${med.id}" aria-label="Remove medication">&times;</button>` +
+      `</div>`;
+  }).join('');
+}
+
+function setupMarSection(){
+  const addBtn = document.getElementById('vitals-mar-add-btn');
+  const wrap = document.getElementById('vitals-mar-rows');
+  if(!addBtn || addBtn.dataset.wired) return;
+  addBtn.dataset.wired = '1';
+
+  addBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(!p) return;
+    const name = document.getElementById('vitals-mar-name').value.trim();
+    if(!name) return;
+    const dose = document.getElementById('vitals-mar-dose').value.trim();
+    const route = document.getElementById('vitals-mar-route').value.trim();
+    const freq = document.getElementById('vitals-mar-freq').value;
+    ensureMedications(p).push({ id: genVitalsId('med'), name, dose, route, freq, doses: [] });
+    saveVitalsData();
+    ['vitals-mar-name','vitals-mar-dose','vitals-mar-route'].forEach(id => { document.getElementById(id).value = ''; });
+    renderMarSection(p);
+    haptic('Light');
+  });
+
+  if(wrap && !wrap.dataset.wired){
+    wrap.dataset.wired = '1';
+    wrap.addEventListener('click', e => {
+      const p = activePatient();
+      if(!p) return;
+      const meds = ensureMedications(p);
+      const giveBtn = e.target.closest('[data-mar-give]');
+      if(giveBtn){
+        const med = meds.find(m => m.id === giveBtn.dataset.marGive);
+        if(med){
+          med.doses = med.doses || [];
+          med.doses.push({ id: genVitalsId('dose'), ts: new Date().toISOString() });
+          saveVitalsData();
+          renderMarSection(p);
+          haptic('Light');
+        }
+        return;
+      }
+      const delBtn = e.target.closest('[data-mar-delete]');
+      if(delBtn){
+        p.medications = meds.filter(m => m.id !== delBtn.dataset.marDelete);
+        saveVitalsData();
+        renderMarSection(p);
+      }
     });
   }
 }
