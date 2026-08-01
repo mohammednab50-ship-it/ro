@@ -1188,9 +1188,11 @@ body.locked{overflow:hidden;}
 .header-actions{display:flex;align-items:center;gap:10px;}
 .welcome-greeting{font-family:var(--ff-sans);font-size:13px;font-weight:500;color:var(--ink-soft);white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px;padding:4px 6px;}
 .welcome-greeting strong{color:var(--evidence-dark);font-weight:600;text-transform:uppercase;letter-spacing:0.03em;}
+.welcome-greeting .greet-suffix{color:var(--ink-faint);font-weight:400;}
 @media (max-width:680px){
   .welcome-greeting{max-width:150px;padding:4px;}
   .welcome-greeting .greet-prefix{display:none;}
+  .welcome-greeting .greet-suffix{display:none;}
 }
 
 /* =====================================================================
@@ -12317,11 +12319,35 @@ function displayNameFor(user){
   return 'Doctor';
 }
 
+// Time-of-day prefix, plus a light "it's been a while" acknowledgment when
+// the gap since the last visit is large — reusing DIGEST_LAST_VISIT_KEY
+// (already recorded every open for the "what's new since last visit"
+// digest) rather than tracking a second last-visit timestamp. Must run
+// before maybeShowDigest() overwrites that key for the current visit.
+function greetingTimeOfDayPrefix(){
+  const h = new Date().getHours();
+  if(h < 5) return 'Still up, ';
+  if(h < 12) return 'Good morning, ';
+  if(h < 17) return 'Good afternoon, ';
+  if(h < 22) return 'Good evening, ';
+  return 'Still up, ';
+}
+const GREETING_GAP_MS = 14 * 24 * 60 * 60 * 1000;
+function greetingGapSuffix(){
+  try{
+    const lastVisit = parseInt(localStorage.getItem(DIGEST_LAST_VISIT_KEY), 10);
+    if(!lastVisit || isNaN(lastVisit)) return '';
+    if(Date.now() - lastVisit >= GREETING_GAP_MS) return ' — it’s been a while';
+  }catch(e){}
+  return '';
+}
 function refreshGreeting(){
   const greet = document.getElementById('welcome-greeting');
   if(!greet) return;
   const name = displayNameFor(currentUser);
-  greet.innerHTML = '<span class="greet-prefix">Welcome, </span><strong>' + escapeHtml(name) + '</strong>';
+  const prefix = greetingTimeOfDayPrefix();
+  const suffix = greetingGapSuffix();
+  greet.innerHTML = '<span class="greet-prefix">' + escapeHtml(prefix) + '</span><strong>' + escapeHtml(name) + '</strong>' + (suffix ? '<span class="greet-suffix">' + escapeHtml(suffix) + '</span>' : '');
   greet.hidden = false;
 }
 
