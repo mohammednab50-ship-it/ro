@@ -370,6 +370,8 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
   padding:3px 10px;font-family:var(--ff-sans);font-size:11.5px;font-weight:600;cursor:pointer;}
 .collection-assign-chip.is-member{border-style:solid;border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
 
+.shortcut-remap-btn.is-listening{background:var(--cta-bg);color:var(--cta-ink);border-color:transparent;}
+
 /* ---- "Case of the day" mystery vignette — same gentle corner-card
    pattern, top-right so it can coexist with the bottom corner cards. ---- */
 .case-of-day-card{position:fixed;top:20px;right:20px;z-index:1340;width:320px;max-width:calc(100vw - 40px);
@@ -2270,6 +2272,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Keyboard shortcuts</strong><span class="settings-sub">Remap tab/search/help keys</span></div>
+      <button type="button" class="settings-btn" id="settings-view-shortcuts-remap">Customize</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Demo mode</strong><span class="settings-sub">Sample bookmarks, for showing colleagues</span></div>
       <button type="button" class="settings-btn" id="settings-demo-toggle">Try demo mode</button>
     </div>
@@ -2411,6 +2418,18 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== Keyboard shortcut remapping (Settings > Keyboard shortcuts) ===== -->
+<div class="rename-overlay" id="shortcuts-remap-modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-remap-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="shortcuts-remap-close" aria-label="Close">&times;</button>
+    <p class="onb-eyebrow">KEYBOARD SHORTCUTS</p>
+    <h2 class="onb-title serif" id="shortcuts-remap-title">Customize shortcuts</h2>
+    <p class="settings-sub" style="display:block;margin:-4px 0 12px;">Click a key, then press the new key you want for it. Doesn't apply while typing in a text field.</p>
+    <div id="shortcuts-remap-list"></div>
+    <button type="button" class="settings-btn" id="shortcuts-remap-reset" style="margin-top:12px;">Reset to defaults</button>
+  </div>
+</div>
+
 <!-- ===== Bookmark collections (Settings > Collections) ===== -->
 <div class="rename-overlay" id="collections-modal" role="dialog" aria-modal="true" aria-labelledby="collections-title" hidden>
   <div class="rename-card settings-card" role="document">
@@ -2486,18 +2505,9 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <p class="onb-eyebrow">SHORTCUTS</p>
     <h2 class="onb-title serif" id="shortcuts-title">Keyboard shortcuts</h2>
     <table class="shortcuts-table">
-      <tbody>
-        <tr><td><kbd>1</kbd></td><td>Literature</td></tr>
-        <tr><td><kbd>2</kbd></td><td>Drugs</td></tr>
-        <tr><td><kbd>3</kbd></td><td>Conditions</td></tr>
-        <tr><td><kbd>4</kbd></td><td>Advances</td></tr>
-        <tr><td><kbd>5</kbd></td><td>Trials</td></tr>
-        <tr><td><kbd>/</kbd></td><td>Focus the search bar</td></tr>
-        <tr><td><kbd>Esc</kbd></td><td>Close the open dialog</td></tr>
-        <tr><td><kbd>?</kbd></td><td>Show this list</td></tr>
-      </tbody>
+      <tbody id="shortcuts-table-body"></tbody>
     </table>
-    <p class="settings-sub" style="display:block;margin-top:12px;">Number keys and <kbd>/</kbd> only act when you're not typing in a text field.</p>
+    <p class="settings-sub" style="display:block;margin-top:12px;">Shortcuts only act when you're not typing in a text field. Customize them from Settings &gt; Keyboard shortcuts.</p>
   </div>
 </div>
 
@@ -13189,6 +13199,9 @@ function openSettings(){
   const collectionsBtn = document.getElementById('settings-view-collections');
   if(collectionsBtn) collectionsBtn.onclick = () => { haptic('Light'); openCollectionsManager(); };
 
+  const shortcutsRemapBtn = document.getElementById('settings-view-shortcuts-remap');
+  if(shortcutsRemapBtn) shortcutsRemapBtn.onclick = () => { haptic('Light'); openShortcutsRemap(); };
+
   const demoBtn = document.getElementById('settings-demo-toggle');
   function syncDemoBtn(){
     if(!demoBtn) return;
@@ -13568,26 +13581,121 @@ function openRecentlyViewed(){
 /* ============================================================
    Keyboard shortcuts
    ============================================================ */
-const SHORTCUT_TAB_KEYS = {'1':'literature', '2':'drug', '3':'syndromes', '4':'advances', '5':'trials'};
+/* ============================================================
+   Customizable keyboard shortcuts — same bindings as before by default,
+   remappable from Settings > Keyboard shortcuts, persisted locally.
+   ============================================================ */
+const SHORTCUT_ACTION_DEFS = [
+  { id:'literature', label:'Literature', key:'1' },
+  { id:'drug', label:'Drugs', key:'2' },
+  { id:'syndromes', label:'Conditions', key:'3' },
+  { id:'advances', label:'Advances', key:'4' },
+  { id:'trials', label:'Trials', key:'5' },
+  { id:'search', label:'Focus the search bar', key:'/' },
+  { id:'help', label:'Show this list', key:'?' }
+];
+const SHORTCUTS_KEY = 'rounds_shortcuts_v1';
+function getShortcutOverrides(){
+  try{ const v = JSON.parse(localStorage.getItem(SHORTCUTS_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; }
+  catch(e){ return {}; }
+}
+function getShortcutBindings(){
+  const overrides = getShortcutOverrides();
+  const map = {};
+  SHORTCUT_ACTION_DEFS.forEach(a => { map[a.id] = overrides[a.id] || a.key; });
+  return map;
+}
+function setShortcutBinding(actionId, key){
+  const overrides = getShortcutOverrides();
+  overrides[actionId] = key;
+  try{ localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(overrides)); }catch(e){}
+}
+function resetShortcutsToDefault(){
+  try{ localStorage.removeItem(SHORTCUTS_KEY); }catch(e){}
+}
+function renderShortcutsHelpTable(){
+  const body = document.getElementById('shortcuts-table-body');
+  if(!body) return;
+  const bindings = getShortcutBindings();
+  const rows = SHORTCUT_ACTION_DEFS.map(a => `<tr><td><kbd>${escapeHtml(bindings[a.id])}</kbd></td><td>${escapeHtml(a.label)}</td></tr>`).join('');
+  body.innerHTML = rows + '<tr><td><kbd>Esc</kbd></td><td>Close the open dialog</td></tr>';
+}
 function isTypingTarget(el){
   if(!el) return false;
   const tag = (el.tagName || '').toLowerCase();
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','drill-modal','cases-modal','ask-modal','graph-modal','passport-modal','threeam-modal','collections-modal']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','shortcuts-remap-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','drill-modal','cases-modal','ask-modal','graph-modal','passport-modal','threeam-modal','collections-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
   const modal = document.getElementById('shortcuts-modal');
   if(!modal) return;
+  renderShortcutsHelpTable();
   function close(){
     modal.hidden = true;
     document.removeEventListener('keydown', onKey);
   }
-  function onKey(e){ if(e.key === 'Escape' || e.key === '?') close(); }
+  function onKey(e){ if(e.key === 'Escape' || e.key === getShortcutBindings().help) close(); }
   document.getElementById('shortcuts-close').onclick = close;
   modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+
+function shortcutKeyLabel(key){
+  if(key === ' ') return 'Space';
+  return key;
+}
+function renderShortcutsRemapList(){
+  const wrap = document.getElementById('shortcuts-remap-list');
+  if(!wrap) return;
+  const bindings = getShortcutBindings();
+  wrap.innerHTML = SHORTCUT_ACTION_DEFS.map(a => `
+    <div class="settings-row">
+      <div class="settings-label"><strong>${escapeHtml(a.label)}</strong></div>
+      <button type="button" class="settings-btn shortcut-remap-btn" data-action="${escapeHtml(a.id)}">${escapeHtml(shortcutKeyLabel(bindings[a.id]))}</button>
+    </div>`).join('');
+  wrap.querySelectorAll('.shortcut-remap-btn').forEach(btn => {
+    btn.onclick = () => {
+      const original = btn.textContent;
+      btn.textContent = 'Press a key…';
+      btn.classList.add('is-listening');
+      function capture(e){
+        e.preventDefault();
+        e.stopPropagation();
+        document.removeEventListener('keydown', capture, true);
+        btn.classList.remove('is-listening');
+        if(e.key === 'Escape'){ btn.textContent = original; return; }
+        setShortcutBinding(btn.dataset.action, e.key);
+        haptic('Light');
+        renderShortcutsRemapList();
+      }
+      document.addEventListener('keydown', capture, true);
+    };
+  });
+}
+function openShortcutsRemap(){
+  const modal = document.getElementById('shortcuts-remap-modal');
+  if(!modal) return;
+  renderShortcutsRemapList();
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape' && !document.querySelector('.shortcut-remap-btn.is-listening')) close(); }
+  document.getElementById('shortcuts-remap-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  const resetBtn = document.getElementById('shortcuts-remap-reset');
+  if(resetBtn){
+    resetBtn.onclick = () => {
+      resetShortcutsToDefault();
+      haptic('Medium');
+      renderShortcutsRemapList();
+      showToast('Shortcuts reset to defaults', 'ok');
+    };
+  }
   modal.hidden = false;
   document.addEventListener('keydown', onKey);
 }
@@ -15491,20 +15599,21 @@ function setupKeyboardShortcuts(){
   document.addEventListener('keydown', (e) => {
     if(e.metaKey || e.ctrlKey || e.altKey) return;
     if(isTypingTarget(e.target)) return;
-    if(e.key === '?'){
+    const bindings = getShortcutBindings();
+    if(e.key === bindings.help){
       if(anyOverlayOpen()) return;
       e.preventDefault();
       openShortcuts();
       return;
     }
     if(anyOverlayOpen()) return;
-    if(e.key === '/'){
+    if(e.key === bindings.search){
       const inp = document.getElementById('search-input');
       if(inp){ e.preventDefault(); inp.focus(); }
       return;
     }
-    const view = SHORTCUT_TAB_KEYS[e.key];
-    if(view) switchView(view);
+    const tabAction = SHORTCUT_ACTION_DEFS.find(a => ['literature','drug','syndromes','advances','trials'].includes(a.id) && bindings[a.id] === e.key);
+    if(tabAction) switchView(tabAction.id);
   });
 }
 
