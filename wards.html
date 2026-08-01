@@ -2475,6 +2475,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-settings-panel .ws-sub{font-size:10.5px; font-weight:500; color:var(--ink-faint);}
 .wards-settings-panel .qh-note{margin-bottom:12px;}
 .wards-settings-panel .qh-note:last-child{margin-bottom:0;}
+.ws-shift-presets{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
+.ws-shift-preset-row{display:flex;align-items:center;gap:8px;font-size:12.5px;}
+.ws-shift-preset-name{flex:1;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ws-shift-preset-del{border:none;background:none;color:var(--ink-faint);font-size:16px;line-height:1;cursor:pointer;padding:2px 4px;}
+.ws-shift-preset-del:hover{color:var(--caution);}
 .wards-settings-panel input[type="email"],.wards-settings-panel input[type="password"]{
   font-family:var(--ff-sans);font-size:13px;padding:8px 10px;border-radius:8px;border:1px solid var(--line);
   background:var(--surface);color:var(--ink);width:100%;
@@ -2484,6 +2489,18 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-sync-dot[data-state="synced"]{background:#2e7d32;}
 .wards-sync-dot[data-state="syncing"]{background:#c4750a;animation:wardsSyncPulse 1s ease-in-out infinite;}
 .wards-sync-dot[data-state="error"]{background:#c62828;}
+.wards-quicknote-btn{position:relative;}
+.wards-quicknote-badge{position:absolute;top:-4px;right:-4px;min-width:16px;height:16px;padding:0 3px;border-radius:8px;background:var(--caution);color:#fff;font-family:var(--ff-sans);font-size:10px;font-weight:800;line-height:16px;text-align:center;}
+.wards-quicknote-badge[hidden]{display:none;}
+.wards-quicknote-card{max-width:420px;text-align:left;}
+.wards-quicknote-card textarea{width:100%;min-height:70px;padding:9px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-family:var(--ff-sans);font-size:13.5px;resize:vertical;box-sizing:border-box;}
+.wards-quicknote-inbox{margin-top:14px;max-height:38vh;overflow-y:auto;}
+.wards-quicknote-item{border-top:1px solid var(--line);padding:10px 0;}
+.wards-quicknote-item:first-child{border-top:none;}
+.wards-quicknote-item p{margin:0 0 6px;font-family:var(--ff-sans);font-size:13px;color:var(--ink);white-space:pre-wrap;}
+.wards-quicknote-item .wq-time{font-size:10.5px;color:var(--ink-faint);display:block;margin-bottom:4px;}
+.wards-quicknote-item .wq-actions{display:flex;gap:6px;align-items:center;flex-wrap:wrap;}
+.wards-quicknote-item select{flex:1;min-width:120px;padding:6px 8px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-size:12.5px;}
 @keyframes wardsSyncPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
 .wards-lock-overlay{position:fixed;inset:0;z-index:900;display:none;place-items:center;background:var(--bg,#0b0d10);padding:20px;}
@@ -2581,6 +2598,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         </div>
       </div>
     </div>
+    <button id="wards-quicknote-btn" class="theme-toggle wards-quicknote-btn" type="button" aria-label="Snapshot before I forget — quick note" title="Snapshot before I forget — quick note, triage to a patient later">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20h9" stroke-linecap="round"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      <span class="wards-quicknote-badge" id="wards-quicknote-badge" hidden></span>
+    </button>
     <button id="wards-export-all" class="theme-toggle" type="button" aria-label="Export all Wards data" title="Export all Wards data (Vitals + Maternity backup)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
@@ -2651,6 +2672,15 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <label><input type="checkbox" data-flow-col="news2" checked> NEWS2</label>
           <label><input type="checkbox" data-flow-col="notes" checked> Notes</label>
         </div>
+        <div class="ws-row">
+          <span class="ws-label">Shift presets<span class="ws-sub">Open-on-launch, board/bed-map view &amp; flowsheet columns — save the combo, apply in one tap</span></span>
+        </div>
+        <div class="ws-shift-presets" id="wards-shift-presets"></div>
+        <div class="ws-row" style="gap:8px;">
+          <input type="text" id="wards-shift-preset-name" class="settings-select" maxlength="24" placeholder="Preset name, e.g. Night ICU" style="flex:1;">
+          <button type="button" class="settings-btn" id="wards-shift-preset-save-btn">Save current</button>
+        </div>
+        <p class="qh-note">Up to 4 presets. Does not include department/patient data, only display settings.</p>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-cbsafe-toggle"> Colour-blind-safe palette</label>
         <p class="qh-note">Shifts status colours (NEWS2 bands, trend badges, isolation flags) off a red/green-only scheme and adds icon/label redundancy.</p>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-battery-saver-toggle"> Battery saver</label>
@@ -2674,6 +2704,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <label>After <input type="number" id="wards-retention-days" min="7" max="3650" step="1" value="90" style="width:70px;"> days since archived</label>
         </div>
         <p class="qh-note">Off by default. When on, archived/discharged patients are permanently deleted from this device once they've been archived longer than this — checked each time the app opens. Does not affect active patients.</p>
+        <label class="qh-row ws-row"><input type="checkbox" id="wards-critical-sound-toggle"> Escalation alert sound</label>
+        <label class="qh-row ws-row"><input type="checkbox" id="wards-critical-vibration-toggle"> Escalation alert vibration</label>
+        <p class="qh-note">Off by default. When a newly logged reading crosses the NEWS2 escalation threshold, plays a short synthesised alarm tone and/or a distinct double-pulse vibration &mdash; separate from the routine save feedback &mdash; so it can be felt/heard without looking at the screen. This tab needs to be open to fire; it's a convenience, not a monitor.</p>
       </div>
     </div>
   </div>
@@ -3454,6 +3487,21 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   </div>
 </div>
 
+<div class="wards-qr-modal" id="wards-quicknote-modal" hidden>
+  <div class="wards-qr-card wards-quicknote-card" role="dialog" aria-modal="true" aria-labelledby="wards-quicknote-title">
+    <button type="button" class="mat-lb-close" id="wards-quicknote-close" aria-label="Close">&times;</button>
+    <h3 id="wards-quicknote-title">Snapshot before I forget</h3>
+    <textarea id="wards-quicknote-text" maxlength="500" placeholder="Quick thought — which patient it's about, sort out later…"></textarea>
+    <div class="ws-row" style="margin-top:8px;">
+      <button type="button" class="settings-btn" id="wards-quicknote-save-btn" style="width:100%;">Save to inbox</button>
+    </div>
+    <p class="wards-qr-disclaimer">Not tied to a patient yet — triage each note below into a patient's notes, or discard it. Not a substitute for charting directly once you know who it's about.</p>
+    <div class="wards-quicknote-inbox" id="wards-quicknote-inbox">
+      <p class="vitals-dept-empty">Inbox is empty.</p>
+    </div>
+  </div>
+</div>
+
 <div class="wards-qr-modal" id="wards-history-modal" hidden>
   <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-history-title" style="max-width:420px;text-align:left;">
     <button type="button" class="mat-lb-close" id="wards-history-close" aria-label="Close">&times;</button>
@@ -3973,7 +4021,129 @@ function showToast(msg, kind, action){
   toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, action ? 7000 : 2200);
 }
 
-
+/* ---- "Snapshot before I forget" quick-note capture — reachable from the
+   header on every view, not tied to any one patient. Saved to a small
+   local inbox; triaged later into a specific patient's notes (as a
+   notes-only vitals log entry — the same shape the entry form already
+   writes when only the notes field is filled in) or discarded. ---- */
+const WARDS_QUICKNOTES_KEY = 'wards_quicknotes_v1';
+function getQuickNotes(){
+  try{
+    const raw = localStorage.getItem(WARDS_QUICKNOTES_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function saveQuickNotes(list){
+  try{ localStorage.setItem(WARDS_QUICKNOTES_KEY, JSON.stringify(list)); }catch(e){}
+}
+function updateQuickNoteBadge(){
+  const badge = document.getElementById('wards-quicknote-badge');
+  if(!badge) return;
+  const n = getQuickNotes().length;
+  badge.textContent = n > 9 ? '9+' : String(n);
+  badge.hidden = n === 0;
+}
+function renderQuickNoteInbox(){
+  const wrap = document.getElementById('wards-quicknote-inbox');
+  if(!wrap) return;
+  const notes = getQuickNotes().slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  if(!notes.length){ wrap.innerHTML = '<p class="vitals-dept-empty">Inbox is empty.</p>'; updateQuickNoteBadge(); return; }
+  const patientOptions = vitalsState.patients.filter(isPatientActive)
+    .map(p => `<option value="${p.id}">${escapeHtml(p.bed || '—')} — ${escapeHtml(p.name || 'Unnamed')}</option>`).join('');
+  wrap.innerHTML = notes.map(n =>
+    `<div class="wards-quicknote-item">` +
+      `<span class="wq-time">${escapeHtml(fmtVitalsTime(n.ts))}</span>` +
+      `<p>${escapeHtml(n.text)}</p>` +
+      `<div class="wq-actions">` +
+        `<select data-note-patient="${n.id}"><option value="">Triage to…</option>${patientOptions}</select>` +
+        `<button type="button" class="settings-btn" data-triage-note="${n.id}">Triage</button>` +
+        `<button type="button" class="ws-shift-preset-del" data-discard-note="${n.id}" aria-label="Discard note">&times;</button>` +
+      `</div>` +
+    `</div>`
+  ).join('');
+  updateQuickNoteBadge();
+}
+function triageQuickNote(noteId, patientId){
+  const notes = getQuickNotes();
+  const note = notes.find(n => n.id === noteId);
+  const p = vitalsState.patients.find(pt => pt.id === patientId);
+  if(!note || !p) return;
+  if(!vitalsState.logs[p.id]) vitalsState.logs[p.id] = [];
+  vitalsState.logs[p.id].push({
+    id: genVitalsId('vr'), ts: new Date().toISOString(),
+    hr: '', sbp: '', dbp: '', rr: '', spo2: '', temp: '', gcs: '', uop: '',
+    intakeOral: '', intakeIv: '', outputOther: '', o2sup: false,
+    notes: note.text
+  });
+  saveVitalsData();
+  if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('quicknote_triaged', p, note.text.slice(0, 120));
+  saveQuickNotes(notes.filter(n => n.id !== noteId));
+  renderQuickNoteInbox();
+  renderPatientList();
+  if(activePatient() && activePatient().id === p.id) renderVitalsMain();
+  showToast(`Added to ${p.name || 'patient'}'s notes.`, 'ok');
+  haptic('Light');
+}
+function setupQuickNoteCapture(){
+  const btn = document.getElementById('wards-quicknote-btn');
+  const modal = document.getElementById('wards-quicknote-modal');
+  const closeBtn = document.getElementById('wards-quicknote-close');
+  const saveBtn = document.getElementById('wards-quicknote-save-btn');
+  const textArea = document.getElementById('wards-quicknote-text');
+  const inbox = document.getElementById('wards-quicknote-inbox');
+  updateQuickNoteBadge();
+  if(textArea) attachVoiceInput(textArea);
+  const close = () => { if(modal){ modal.hidden = true; modal.classList.remove('show'); } };
+  if(btn && !btn.dataset.wired){
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => {
+      if(!modal) return;
+      renderQuickNoteInbox();
+      modal.hidden = false;
+      modal.classList.add('show');
+      if(textArea) setTimeout(() => textArea.focus(), 30);
+    });
+  }
+  if(closeBtn && !closeBtn.dataset.wired){ closeBtn.dataset.wired = '1'; closeBtn.addEventListener('click', close); }
+  if(modal && !modal.dataset.wired){
+    modal.dataset.wired = '1';
+    modal.addEventListener('click', e => { if(e.target === modal) close(); });
+  }
+  if(saveBtn && !saveBtn.dataset.wired){
+    saveBtn.dataset.wired = '1';
+    saveBtn.addEventListener('click', () => {
+      const text = (textArea && textArea.value.trim()) || '';
+      if(!text) return;
+      const notes = getQuickNotes();
+      notes.push({ id: genVitalsId('qn'), text, ts: new Date().toISOString() });
+      saveQuickNotes(notes);
+      if(textArea) textArea.value = '';
+      renderQuickNoteInbox();
+      haptic('Light');
+      showToast('Saved to inbox.', 'ok');
+    });
+  }
+  if(inbox && !inbox.dataset.wired){
+    inbox.dataset.wired = '1';
+    inbox.addEventListener('click', e => {
+      const triageBtn = e.target.closest('[data-triage-note]');
+      if(triageBtn){
+        const noteId = triageBtn.dataset.triageNote;
+        const select = inbox.querySelector(`select[data-note-patient="${noteId}"]`);
+        const patientId = select ? select.value : '';
+        if(!patientId){ if(select) select.focus(); return; }
+        triageQuickNote(noteId, patientId);
+        return;
+      }
+      const discardBtn = e.target.closest('[data-discard-note]');
+      if(discardBtn){
+        saveQuickNotes(getQuickNotes().filter(n => n.id !== discardBtn.dataset.discardNote));
+        renderQuickNoteInbox();
+      }
+    });
+  }
+}
 
 function escapeHtml(s){
   if(s == null) return '';
@@ -4973,6 +5143,7 @@ function initVitals(){
   setupPatientTimeline();
   setupFlowsheetColumnSettings();
   applyFlowsheetColumnVisibility();
+  setupShiftPresets();
   setupVitalsEndShiftToggle();
   setupVitalsImport();
   setupReadingIntervalSelect();
@@ -4987,6 +5158,7 @@ function initVitals(){
   setupPatientScan();
   setupRetentionSettings();
   runRetentionSweep();
+  setupCriticalAlertSettings();
   renderPatientList();
   if(getDefaultVitalsView() === 'board' && vitalsState.patients.length){
     setVitalsBoardActive(true);
@@ -5634,6 +5806,103 @@ function setupRetentionSettings(){
   });
 }
 
+/* ---- Configurable critical-alert sound/vibration — a distinct cue for a
+   NEWS2 escalation-threshold reading (score >=5, or any single parameter
+   scoring 3 — same test as the escalation banner), separate from the
+   routine haptic('Light') already fired on every save. Both channels are
+   feature-detected and off by default; nothing here is relied on for
+   safety, it's a "don't have to be staring at the screen" convenience. ---- */
+const WARDS_CRITICAL_ALERT_KEY = 'wards_critical_alert_v1';
+function getCriticalAlertPrefs(){
+  try{
+    const raw = localStorage.getItem(WARDS_CRITICAL_ALERT_KEY);
+    if(!raw) return { sound: false, vibration: false };
+    const parsed = JSON.parse(raw);
+    return { sound: !!parsed.sound, vibration: !!parsed.vibration };
+  }catch(e){ return { sound: false, vibration: false }; }
+}
+function saveCriticalAlertPrefs(prefs){
+  try{ localStorage.setItem(WARDS_CRITICAL_ALERT_KEY, JSON.stringify(prefs)); }catch(e){}
+}
+
+const WardsAudioCtxCtor = (typeof window !== 'undefined') ? (window.AudioContext || window.webkitAudioContext) : null;
+let wardsAudioCtx = null;
+// A short two-tone alarm, synthesised entirely — no embedded/external audio
+// asset. Deliberately distinct in timbre (square wave, two falling tones)
+// from anything else in the app, since there's nothing else to confuse it with.
+function playCriticalAlertTone(){
+  if(!WardsAudioCtxCtor) return;
+  try{
+    if(!wardsAudioCtx) wardsAudioCtx = new WardsAudioCtxCtor();
+    if(wardsAudioCtx.state === 'suspended') wardsAudioCtx.resume();
+    const ctx = wardsAudioCtx;
+    const now = ctx.currentTime;
+    [[880, 0], [660, 0.24]].forEach(([freq, delay]) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'square';
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now + delay);
+      gain.gain.exponentialRampToValueAtTime(0.2, now + delay + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + delay + 0.2);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + delay);
+      osc.stop(now + delay + 0.22);
+    });
+  }catch(e){}
+}
+
+// Distinct from haptic()'s single short buzz — two heavy pulses, still a
+// no-op during quiet hours (see haptic() above) and wherever neither
+// Capacitor Haptics nor the Vibration API is available.
+function criticalAlertVibrate(){
+  if(isQuietHoursNow()) return;
+  try{
+    const cap = window.Capacitor;
+    const H = cap && cap.Plugins && cap.Plugins.Haptics;
+    if(H && typeof H.impact === 'function'){
+      H.impact({ style: 'Heavy' });
+      setTimeout(() => { try{ H.impact({ style: 'Heavy' }); }catch(e){} }, 220);
+      return;
+    }
+    if(navigator.vibrate) navigator.vibrate([90, 70, 90, 70, 220]);
+  }catch(e){}
+}
+
+function fireCriticalAlertIfEnabled(){
+  const prefs = getCriticalAlertPrefs();
+  if(prefs.sound) playCriticalAlertTone();
+  if(prefs.vibration) criticalAlertVibrate();
+}
+
+function setupCriticalAlertSettings(){
+  const soundToggle = document.getElementById('wards-critical-sound-toggle');
+  const vibrationToggle = document.getElementById('wards-critical-vibration-toggle');
+  const prefs = getCriticalAlertPrefs();
+  if(soundToggle){
+    soundToggle.checked = prefs.sound;
+    if(!WardsAudioCtxCtor){ soundToggle.disabled = true; }
+  }
+  if(vibrationToggle){
+    vibrationToggle.checked = prefs.vibration;
+    if(!navigator.vibrate && !(window.Capacitor && window.Capacitor.Plugins && window.Capacitor.Plugins.Haptics)){
+      vibrationToggle.disabled = true;
+    }
+  }
+  [soundToggle, vibrationToggle].forEach(el => {
+    if(!el || el.dataset.wired) return;
+    el.dataset.wired = '1';
+    el.addEventListener('change', () => {
+      saveCriticalAlertPrefs({
+        sound: soundToggle ? soundToggle.checked : false,
+        vibration: vibrationToggle ? vibrationToggle.checked : false
+      });
+      if(el === soundToggle && el.checked) playCriticalAlertTone();
+      if(el === vibrationToggle && el.checked) criticalAlertVibrate();
+    });
+  });
+}
+
 /* ---- CSV/JSON bulk import — parses, validates and previews rows before
    anything is committed; reuses findPossibleDuplicatePatient() (defined
    below, after this module loads — see setup wiring) for the duplicate
@@ -6219,6 +6488,8 @@ function finalizeVitalsEntrySave(p, entry){
   saveVitalsData();
   if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('reading_added', p, `HR ${entry.hr||'—'} SpO2 ${entry.spo2||'—'} RR ${entry.rr||'—'}`);
   haptic('Light');
+  const entryNews2 = computeNews2(entry, p);
+  if(entryNews2.dataPresent && (entryNews2.score >= 5 || entryNews2.anySingle3)) fireCriticalAlertIfEnabled();
   clearVitalsEntryFormFields();
   clearNotePhotoInput('v-notes-photo', 'v-notes-photo-label', 'v-notes-photo-name');
   hideVitalsSanityBanner();
@@ -6963,6 +7234,99 @@ function setupFlowsheetColumnSettings(){
     saveHiddenFlowsheetCols(Array.from(current));
     applyFlowsheetColumnVisibility();
   });
+}
+
+/* ---- Shift template presets — a saved combo of a few personal display
+   settings (open-on-launch, board/bed-map view, flowsheet columns shown),
+   applied with one tap instead of reconfiguring each individually. A few
+   named slots is the point, not unlimited storage. ---- */
+const WARDS_SHIFT_PRESETS_KEY = 'wards_shift_presets_v1';
+const WARDS_SHIFT_PRESETS_MAX = 4;
+function getShiftPresets(){
+  try{
+    const raw = localStorage.getItem(WARDS_SHIFT_PRESETS_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function saveShiftPresets(list){
+  try{ localStorage.setItem(WARDS_SHIFT_PRESETS_KEY, JSON.stringify(list)); }catch(e){}
+}
+function currentShiftSettingsSnapshot(){
+  return {
+    defaultView: getDefaultVitalsView(),
+    viewMode: vitalsBoardActive ? 'board' : (vitalsMapViewActive ? 'bedmap' : 'detail'),
+    hiddenFlowsheetCols: getHiddenFlowsheetCols()
+  };
+}
+function applyShiftPreset(preset){
+  if(!preset) return;
+  setDefaultVitalsView(preset.defaultView === 'board' ? 'board' : 'last');
+  const viewSel = document.getElementById('wards-default-view-select');
+  if(viewSel) viewSel.value = getDefaultVitalsView();
+  const hidden = Array.isArray(preset.hiddenFlowsheetCols) ? preset.hiddenFlowsheetCols : [];
+  saveHiddenFlowsheetCols(hidden);
+  const colsWrap = document.getElementById('wards-flowsheet-cols');
+  if(colsWrap) colsWrap.querySelectorAll('[data-flow-col]').forEach(cb => { cb.checked = !hidden.includes(cb.dataset.flowCol); });
+  applyFlowsheetColumnVisibility();
+  setVitalsArchiveActive(false);
+  if(preset.viewMode === 'board'){ setVitalsMapViewActive(false); setVitalsBoardActive(true); }
+  else if(preset.viewMode === 'bedmap'){ setVitalsBoardActive(false); setVitalsMapViewActive(true); }
+  else { setVitalsBoardActive(false); setVitalsMapViewActive(false); }
+  haptic('Light');
+  showToast(`Applied preset "${preset.name}".`, 'ok');
+}
+function renderShiftPresets(){
+  const wrap = document.getElementById('wards-shift-presets');
+  if(!wrap) return;
+  const presets = getShiftPresets();
+  if(!presets.length){ wrap.innerHTML = '<p class="vitals-dept-empty">No presets saved yet.</p>'; return; }
+  wrap.innerHTML = presets.map(pr =>
+    `<div class="ws-shift-preset-row">` +
+      `<span class="ws-shift-preset-name">${escapeHtml(pr.name)}</span>` +
+      `<button type="button" class="settings-btn" data-apply-preset="${pr.id}">Apply</button>` +
+      `<button type="button" class="ws-shift-preset-del" data-del-preset="${pr.id}" aria-label="Delete preset ${escapeHtml(pr.name)}">&times;</button>` +
+    `</div>`
+  ).join('');
+}
+function setupShiftPresets(){
+  const saveBtn = document.getElementById('wards-shift-preset-save-btn');
+  const nameInput = document.getElementById('wards-shift-preset-name');
+  const wrap = document.getElementById('wards-shift-presets');
+  renderShiftPresets();
+  if(saveBtn && !saveBtn.dataset.wired){
+    saveBtn.dataset.wired = '1';
+    saveBtn.addEventListener('click', () => {
+      const name = (nameInput && nameInput.value.trim()) || '';
+      if(!name){ if(nameInput) nameInput.focus(); return; }
+      const presets = getShiftPresets();
+      if(presets.length >= WARDS_SHIFT_PRESETS_MAX){
+        showToast(`Up to ${WARDS_SHIFT_PRESETS_MAX} presets — delete one first.`);
+        return;
+      }
+      presets.push(Object.assign({ id: genVitalsId('preset'), name: name.slice(0, 24) }, currentShiftSettingsSnapshot()));
+      saveShiftPresets(presets);
+      if(nameInput) nameInput.value = '';
+      renderShiftPresets();
+      showToast('Preset saved.', 'ok');
+      haptic('Light');
+    });
+  }
+  if(wrap && !wrap.dataset.wired){
+    wrap.dataset.wired = '1';
+    wrap.addEventListener('click', e => {
+      const applyBtn = e.target.closest('[data-apply-preset]');
+      if(applyBtn){
+        applyShiftPreset(getShiftPresets().find(pr => pr.id === applyBtn.dataset.applyPreset));
+        return;
+      }
+      const delBtn = e.target.closest('[data-del-preset]');
+      if(delBtn){
+        saveShiftPresets(getShiftPresets().filter(pr => pr.id !== delBtn.dataset.delPreset));
+        renderShiftPresets();
+      }
+    });
+  }
 }
 
 function renderVitalsTable(){
