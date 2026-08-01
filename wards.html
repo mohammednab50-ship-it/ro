@@ -2656,6 +2656,15 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div id="wards-sync-signed-in" hidden>
           <p class="ws-label" style="margin-bottom:8px;">Signed in as <span id="wards-sync-user-email"></span></p>
           <div class="ws-row">
+            <span class="ws-label">Hospital<span class="ws-sub">Ward groups you create belong to this hospital</span></span>
+          </div>
+          <select id="wards-sync-hospital-select" class="settings-select" style="width:100%;margin-bottom:8px;">
+            <option value="">No hospital selected</option>
+          </select>
+          <div class="ws-row" style="gap:8px;margin-bottom:8px;">
+            <button type="button" class="settings-btn" id="wards-sync-newhospital-btn">Create hospital…</button>
+          </div>
+          <div class="ws-row">
             <span class="ws-label">Ward group<span class="ws-sub">Patients in the selected group sync live</span></span>
           </div>
           <select id="wards-sync-group-select" class="settings-select" style="width:100%;margin-bottom:8px;">
@@ -3627,6 +3636,17 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   </div>
 </div>
 
+<div class="wards-qr-modal" id="wards-newhospital-modal" hidden>
+  <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-newhospital-title">
+    <button type="button" class="mat-lb-close" id="wards-newhospital-close" aria-label="Close">&times;</button>
+    <h3 id="wards-newhospital-title">Create a hospital</h3>
+    <div class="ws-row"><input type="text" id="wards-newhospital-name" class="settings-select" placeholder="e.g. St. Mary's General Hospital" style="width:100%;"></div>
+    <p class="login-error" id="wards-newhospital-error" role="alert"></p>
+    <button type="button" class="settings-btn" id="wards-newhospital-create-btn" style="width:100%;">Create</button>
+    <p class="wards-qr-disclaimer">You'll be this hospital's admin — the only way in this app to manage its departments and ward groups. This replaces any manual setup; there's no console step needed.</p>
+  </div>
+</div>
+
 <div class="wards-qr-modal" id="wards-newgroup-modal" hidden>
   <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-newgroup-title">
     <button type="button" class="mat-lb-close" id="wards-newgroup-close" aria-label="Close">&times;</button>
@@ -3634,7 +3654,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <div class="ws-row"><input type="text" id="wards-newgroup-name" class="settings-select" placeholder="e.g. ICU Ward A" style="width:100%;"></div>
     <p class="login-error" id="wards-newgroup-error" role="alert"></p>
     <button type="button" class="settings-btn" id="wards-newgroup-create-btn" style="width:100%;">Create</button>
-    <p class="wards-qr-disclaimer">You'll be the group's admin and can invite teammates later from the Firebase console until an in-app invite flow is added.</p>
+    <p class="wards-qr-disclaimer">You'll be the group's admin and can invite teammates later from the Firebase console until an in-app invite flow is added. Belongs to the hospital currently selected above.</p>
   </div>
 </div>
 
@@ -4692,6 +4712,8 @@ const WARDS_FIREBASE_SDK = [
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js'
 ];
 const WARDS_SYNC_GROUP_KEY = 'wards_sync_group_id';
+const WARDS_MY_HOSPITALS_KEY = 'wards_my_hospitals_v1';
+const WARDS_SELECTED_HOSPITAL_KEY = 'wards_selected_hospital_id';
 
 function wardsLoadScript(src){
   return new Promise((resolve, reject) => {
@@ -4729,6 +4751,8 @@ let currentWardsUser = null;
 let wardsMyGroups = [];
 let activeSyncGroupId = null;
 let wardsGroupsUnsub = null;
+let wardsMyHospitals = [];
+let activeHospitalId = null;
 let wardsPatientsUnsub = null;
 let wardsLastPushedIds = new Set();
 let wardsSyncPushTimer = null;
@@ -4794,6 +4818,79 @@ function wardsAuthErrorMessage(err){
   return map[code] || (err && err.message) || 'Something went wrong. Please try again.';
 }
 
+/* ---- hospitals: the tenancy root (see firestore.rules) — creating one
+   IS how a user becomes its admin, replacing the old manual "bootstrap
+   superAdmin via console" step entirely. There is no flat index
+   collection for "hospitals I administer" (mirroring how departments
+   has none either) — rules never let one tenant browse another's
+   hospitals, so this app remembers, per signed-in account, which
+   hospital ids it created/selected before (localStorage), then
+   re-verifies each against the live doc (still admin, doc still
+   exists) before trusting it for the picker. ---- */
+function wardsMyHospitalsStorageKey(uid){ return WARDS_MY_HOSPITALS_KEY + '_' + uid; }
+
+function wardsLoadMyHospitalsCache(uid){
+  try{
+    const raw = localStorage.getItem(wardsMyHospitalsStorageKey(uid));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(e){ return []; }
+}
+function wardsSaveMyHospitalsCache(uid, list){
+  try{ localStorage.setItem(wardsMyHospitalsStorageKey(uid), JSON.stringify(list)); }catch(e){}
+}
+function wardsRememberHospital(uid, hospitalId, name){
+  const list = wardsLoadMyHospitalsCache(uid).filter(h => h.id !== hospitalId);
+  list.push({ id: hospitalId, name: name || hospitalId });
+  wardsSaveMyHospitalsCache(uid, list);
+  return list;
+}
+
+async function wardsLoadMyHospitals(uid){
+  const cached = wardsLoadMyHospitalsCache(uid);
+  const verified = [];
+  for(const h of cached){
+    try{
+      const doc = await wfdb.collection('hospitals').doc(h.id).get();
+      if(doc.exists && doc.data().admins && doc.data().admins[uid]){
+        verified.push({ id: h.id, name: doc.data().name || h.id });
+      }
+    }catch(e){ /* no longer accessible (deleted, or admin revoked) — drop it silently */ }
+  }
+  wardsSaveMyHospitalsCache(uid, verified);
+  wardsMyHospitals = verified;
+  if(activeHospitalId && !verified.some(h => h.id === activeHospitalId)) selectWardsHospital(null);
+  renderWardsGroupSelect();
+}
+
+async function wardsCreateHospital(name){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const uid = currentWardsUser.uid;
+  const email = currentWardsUser.email || '';
+  const ref = wfdb.collection('hospitals').doc();
+  await ref.set({
+    name: name || 'New hospital',
+    createdBy: uid,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    admins: { [uid]: { role: 'admin', email, joinedAt: new Date().toISOString() } }
+  });
+  wardsMyHospitals = wardsRememberHospital(uid, ref.id, name || 'New hospital');
+  return ref.id;
+}
+
+function selectWardsHospital(hospitalId){
+  activeHospitalId = hospitalId || null;
+  try{
+    if(currentWardsUser){
+      const key = WARDS_SELECTED_HOSPITAL_KEY + '_' + currentWardsUser.uid;
+      if(activeHospitalId) localStorage.setItem(key, activeHospitalId);
+      else localStorage.removeItem(key);
+    }
+  }catch(e){}
+  renderWardsGroupSelect();
+}
+
 /* ---- "which groups am I in" via the flat groupMemberships index ---- */
 function wardsSubscribeMyGroups(uid){
   if(wardsGroupsUnsub){ wardsGroupsUnsub(); wardsGroupsUnsub = null; }
@@ -4807,6 +4904,7 @@ function wardsSubscribeMyGroups(uid){
 async function wardsCreateGroup(name){
   const ok = await initWardsFirebase();
   if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  if(!activeHospitalId) throw new Error('Select or create a hospital first.');
   const uid = currentWardsUser.uid;
   const email = currentWardsUser.email || '';
   const groupRef = wfdb.collection('wardGroups').doc();
@@ -4816,6 +4914,7 @@ async function wardsCreateGroup(name){
     name: name || 'New ward group',
     createdBy: uid,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    hospitalId: activeHospitalId,
     departmentId: null,
     members: { [uid]: { role: 'admin', email, joinedAt: new Date().toISOString() } }
   });
@@ -4969,6 +5068,14 @@ function renderWardsGroupSelect(){
       wardsMyGroups.map(g => `<option value="${g.groupId}">${escapeHtml(g.groupName || g.groupId)}</option>`).join('');
     sel.value = activeSyncGroupId || '';
   }
+  const hospSel = document.getElementById('wards-sync-hospital-select');
+  if(hospSel){
+    hospSel.innerHTML = '<option value="">No hospital selected</option>' +
+      wardsMyHospitals.map(h => `<option value="${h.id}">${escapeHtml(h.name || h.id)}</option>`).join('');
+    hospSel.value = activeHospitalId || '';
+  }
+  const newGroupBtn = document.getElementById('wards-sync-newgroup-btn');
+  if(newGroupBtn) newGroupBtn.disabled = !activeHospitalId;
   const signedOut = document.getElementById('wards-sync-signed-out');
   const signedIn = document.getElementById('wards-sync-signed-in');
   const emailEl = document.getElementById('wards-sync-user-email');
@@ -4983,6 +5090,11 @@ function wardsOnAuthChanged(user){
   currentWardsUser = user || null;
   if(user){
     wardsSubscribeMyGroups(user.uid);
+    wardsLoadMyHospitals(user.uid);
+    try{
+      const savedHospital = localStorage.getItem(WARDS_SELECTED_HOSPITAL_KEY + '_' + user.uid);
+      if(savedHospital) activeHospitalId = savedHospital; // confirmed/cleared once wardsLoadMyHospitals verifies it
+    }catch(e){}
     try{
       const saved = localStorage.getItem(WARDS_SYNC_GROUP_KEY);
       if(saved) selectWardsSyncGroup(saved);
@@ -4991,6 +5103,8 @@ function wardsOnAuthChanged(user){
     if(wardsGroupsUnsub){ wardsGroupsUnsub(); wardsGroupsUnsub = null; }
     selectWardsSyncGroup(null);
     wardsMyGroups = [];
+    wardsMyHospitals = [];
+    activeHospitalId = null;
   }
   renderWardsGroupSelect();
   updateWardsSyncIndicator();
@@ -5039,6 +5153,32 @@ function setupWardsSyncUI(){
 
   const groupSelect = document.getElementById('wards-sync-group-select');
   if(groupSelect) groupSelect.addEventListener('change', () => { selectWardsSyncGroup(groupSelect.value || null); });
+
+  const hospitalSelect = document.getElementById('wards-sync-hospital-select');
+  if(hospitalSelect) hospitalSelect.addEventListener('change', () => { selectWardsHospital(hospitalSelect.value || null); });
+
+  const newHospitalBtn = document.getElementById('wards-sync-newhospital-btn');
+  const newHospitalModal = document.getElementById('wards-newhospital-modal');
+  const newHospitalClose = document.getElementById('wards-newhospital-close');
+  const newHospitalName = document.getElementById('wards-newhospital-name');
+  const newHospitalErr = document.getElementById('wards-newhospital-error');
+  const newHospitalCreateBtn = document.getElementById('wards-newhospital-create-btn');
+  if(newHospitalBtn && newHospitalModal){
+    newHospitalBtn.addEventListener('click', () => { newHospitalModal.hidden = false; newHospitalModal.classList.add('show'); newHospitalName.focus(); });
+  }
+  if(newHospitalClose) newHospitalClose.addEventListener('click', () => { newHospitalModal.hidden = true; newHospitalModal.classList.remove('show'); });
+  if(newHospitalCreateBtn) newHospitalCreateBtn.addEventListener('click', async () => {
+    if(newHospitalErr) newHospitalErr.textContent = '';
+    const name = (newHospitalName && newHospitalName.value || '').trim();
+    if(!name){ if(newHospitalErr) newHospitalErr.textContent = 'Give the hospital a name.'; return; }
+    try{
+      const hospitalId = await wardsCreateHospital(name);
+      newHospitalModal.hidden = true; newHospitalModal.classList.remove('show');
+      newHospitalName.value = '';
+      selectWardsHospital(hospitalId);
+      showToast('Hospital created — you are its admin.', 'ok');
+    }catch(e){ if(newHospitalErr) newHospitalErr.textContent = (e && e.message) || 'Could not create the hospital.'; }
+  });
 
   const newGroupBtn = document.getElementById('wards-sync-newgroup-btn');
   const newGroupModal = document.getElementById('wards-newgroup-modal');
