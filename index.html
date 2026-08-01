@@ -336,6 +336,18 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .milestone-text{font-family:var(--ff-sans);font-size:13px;font-weight:600;color:var(--ink);}
 .milestone-dismiss{background:none;border:none;color:var(--ink-faint);font-size:16px;line-height:1;cursor:pointer;padding:2px 4px;}
 
+/* ---- Specialty passport — simple "stamp collected" grid ---- */
+.passport-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.passport-stamp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  border:1.5px dashed var(--line);border-radius:var(--r-md);padding:14px 8px;text-align:center;
+  background:var(--paper);opacity:0.55;}
+.passport-stamp.is-collected{border-style:solid;border-color:var(--evidence);background:var(--surface);opacity:1;}
+.passport-stamp-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:var(--cta-ink);background:transparent;}
+.passport-stamp.is-collected .passport-stamp-icon{background:var(--evidence);}
+.passport-stamp-name{font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--ink-soft);line-height:1.3;}
+.passport-stamp.is-collected .passport-stamp-name{color:var(--ink);}
+
 /* ---- "Case of the day" mystery vignette — same gentle corner-card
    pattern, top-right so it can coexist with the bottom corner cards. ---- */
 .case-of-day-card{position:fixed;top:20px;right:20px;z-index:1340;width:320px;max-width:calc(100vw - 40px);
@@ -2221,6 +2233,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Specialty passport</strong><span class="settings-sub">Which specialties you've engaged with</span></div>
+      <button type="button" class="settings-btn" id="settings-view-passport">View</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Demo mode</strong><span class="settings-sub">Sample bookmarks, for showing colleagues</span></div>
       <button type="button" class="settings-btn" id="settings-demo-toggle">Try demo mode</button>
     </div>
@@ -2336,6 +2353,18 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <h2 class="onb-title serif" id="recent-title">Recently viewed</h2>
     <p class="settings-sub" style="display:block;margin:-4px 0 14px;">Your last drug lookups, condition research, advances, and trials — across all four tabs.</p>
     <div class="crashlog-list" id="recent-list"></div>
+  </div>
+</div>
+
+<!-- ===== Specialty passport (Settings > Specialty passport) ===== -->
+<div class="rename-overlay" id="passport-modal" role="dialog" aria-modal="true" aria-labelledby="passport-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="passport-close" aria-label="Close specialty passport">&times;</button>
+    <p class="onb-eyebrow">SPECIALTY PASSPORT</p>
+    <h2 class="onb-title serif" id="passport-title">Passport</h2>
+    <p class="settings-sub" id="passport-summary" style="display:block;margin:-4px 0 14px;"></p>
+    <div class="passport-grid" id="passport-grid"></div>
+    <p class="settings-sub" style="display:block;margin-top:14px;">Based on specialties you've browsed, pinned, or saved a Condition from — no ranks, just what you've touched.</p>
   </div>
 </div>
 
@@ -6968,6 +6997,69 @@ function togglePinSpecialty(id){
   else list.splice(idx, 1);
   setPinnedSpecialties(list);
 }
+/* ============================================================
+   Specialty "passport" — a visual "you've engaged with X of Y
+   specialties" view. Reuses existing tracking rather than inventing new
+   counters: specialties explicitly selected in the Literature sidebar,
+   pinned specialties, and the specialty (system) of any bookmarked
+   Condition. No ranks or levels, just a stamp grid.
+   ============================================================ */
+const SPECIALTY_VISITED_KEY = 'rounds_specialty_visited_v1';
+function recordSpecialtyVisit(id){
+  if(!id) return;
+  try{
+    const list = JSON.parse(localStorage.getItem(SPECIALTY_VISITED_KEY) || '[]');
+    const arr = Array.isArray(list) ? list : [];
+    if(!arr.includes(id)){
+      arr.push(id);
+      localStorage.setItem(SPECIALTY_VISITED_KEY, JSON.stringify(arr));
+    }
+  }catch(e){}
+}
+function getEngagedSpecialtyIds(){
+  const set = new Set();
+  try{
+    const v = JSON.parse(localStorage.getItem(SPECIALTY_VISITED_KEY) || '[]');
+    if(Array.isArray(v)) v.forEach(id => set.add(id));
+  }catch(e){}
+  getPinnedSpecialties().forEach(id => set.add(id));
+  try{
+    Object.keys(getConditionBookmarks()).forEach(name => {
+      const s = SYNDROMES.find(x => x.name === name);
+      if(s && s.system) set.add(s.system);
+    });
+  }catch(e){}
+  return set;
+}
+function openSpecialtyPassport(){
+  const modal = document.getElementById('passport-modal');
+  if(!modal) return;
+  const grid = document.getElementById('passport-grid');
+  const summary = document.getElementById('passport-summary');
+  const engaged = getEngagedSpecialtyIds();
+  const engagedCount = SPECIALTIES.filter(sp => engaged.has(sp.id)).length;
+  if(summary) summary.textContent = `You've engaged with ${engagedCount} of ${SPECIALTIES.length} specialties.`;
+  if(grid){
+    grid.innerHTML = SPECIALTIES.map(sp => {
+      const got = engaged.has(sp.id);
+      return `<div class="passport-stamp${got ? ' is-collected' : ''}">
+        <span class="passport-stamp-icon" aria-hidden="true">${got ? '✓' : ''}</span>
+        <span class="passport-stamp-name">${escapeHtml(sp.name)}</span>
+      </div>`;
+    }).join('');
+  }
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  const closeBtn = document.getElementById('passport-close');
+  if(closeBtn) closeBtn.onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+
 const FEED_CACHE_KEY = 'rounds_feed_cache_v1';
 const SEEN_PMIDS_KEY = 'rounds_seen_pmids_v1';
 const FONTSIZE_KEY = 'rounds_fontsize_v1';
@@ -7838,6 +7930,7 @@ function formatApprovalDate(d){
 function selectSpecialty(sp){
   haptic('Light');
   state.specialty = sp;
+  recordSpecialtyVisit(sp.id);
   state.customTerm = null;
   state.viewingBookmarks = false;
   const inp = document.getElementById('search-input');
@@ -12850,6 +12943,9 @@ function openSettings(){
   const usageStatsBtn = document.getElementById('settings-view-usage-stats');
   if(usageStatsBtn) usageStatsBtn.onclick = () => { haptic('Light'); openUsageStats(); };
 
+  const passportBtn = document.getElementById('settings-view-passport');
+  if(passportBtn) passportBtn.onclick = () => { haptic('Light'); openSpecialtyPassport(); };
+
   const demoBtn = document.getElementById('settings-demo-toggle');
   function syncDemoBtn(){
     if(!demoBtn) return;
@@ -13144,7 +13240,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal','ask-modal','graph-modal']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal','ask-modal','graph-modal','passport-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
