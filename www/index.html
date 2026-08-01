@@ -210,14 +210,15 @@ body > header{background:transparent;position:sticky;top:0;z-index:50;padding:14
 .header-inner{max-width:1280px;margin:0 auto;padding:12px 14px 12px 22px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:28px;
   background:var(--header-bg);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   border:1px solid var(--header-line);border-radius:var(--r-pill);box-shadow:var(--shadow-md);}
-@media (max-width:880px){.header-inner{grid-template-columns:1fr auto;gap:16px;border-radius:var(--r-lg);}.header-search{grid-column:1 / -1;}}
+@media (max-width:880px){.header-inner{grid-template-columns:1fr auto;gap:16px;border-radius:var(--r-lg);}.header-search{grid-column:1 / -1;flex-wrap:wrap;padding-bottom:6px;}.header-search input{flex-basis:100%;order:-1;}}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
 .brand-mark{width:32px;height:32px;border-radius:10px;background:var(--cta-bg);display:grid;place-items:center;color:var(--cta-ink);font-family:var(--ff-display);font-weight:800;font-size:16px;line-height:1;flex-shrink:0;}
 .brand-words{display:flex;flex-direction:column;gap:2px;line-height:1;}
 .brand-name{font-family:var(--ff-display);font-size:21px;font-weight:800;margin:0;letter-spacing:-0.03em;color:var(--header-ink);line-height:1;}
 .brand-tagline{font-family:var(--ff-sans);font-size:10px;font-weight:600;color:var(--header-ink-soft);text-transform:uppercase;letter-spacing:var(--tracking-eyebrow);padding-left:1px;}
 
-.header-search{display:flex;align-items:center;gap:8px;background:var(--paper-deep);border:1px solid var(--header-line);border-radius:var(--r-pill);padding:4px 4px 4px 18px;transition:border-color var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out);}
+.header-search{display:flex;align-items:center;gap:8px;background:var(--paper-deep);border:1px solid var(--header-line);border-radius:var(--r-pill);padding:4px 4px 4px 18px;transition:border-color var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out);min-width:0;overflow-x:auto;scrollbar-width:none;}
+.header-search::-webkit-scrollbar{display:none;}
 .header-search:focus-within{border-color:var(--evidence);background:var(--surface);box-shadow:0 0 0 3px var(--evidence-bg);}
 .header-search .search-icon{width:18px;height:18px;color:var(--header-ink-soft);flex-shrink:0;}
 .header-search input{flex:1;border:none;background:transparent;color:var(--header-ink);font-family:var(--ff-sans);font-size:13.5px;padding:10px 0;outline:none;min-width:0;}
@@ -800,6 +801,8 @@ mark.user-hl{background:var(--evidence-bg);color:inherit;border-bottom:2px solid
 .boss-timer{font-family:var(--ff-mono);font-weight:700;font-size:14px;}
 .boss-timer.low{color:var(--caution);}
 .provenance-banner{font-family:var(--ff-sans);font-size:12px;line-height:1.5;color:var(--caution);background:var(--caution-bg);border-left:2px solid var(--caution-line);padding:10px 14px;border-radius:var(--r-sm);margin:0 0 var(--space-3);}
+.rotation-banner{font-family:var(--ff-sans);font-size:12px;line-height:1.5;color:var(--ink-soft);background:var(--surface-raised);border:1px solid var(--line-soft);padding:10px 14px;border-radius:var(--r-sm);margin:0 0 var(--space-3);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.rotation-show-all-btn{font-family:var(--ff-sans);font-size:11.5px;font-weight:600;color:var(--evidence-bright);background:none;border:1px solid var(--evidence-bright);border-radius:var(--r-pill);padding:3px 10px;cursor:pointer;}
 .provenance-diff del{background:rgba(220,90,80,0.18);text-decoration:line-through;}
 .provenance-diff ins{background:rgba(80,170,110,0.2);text-decoration:none;}
 .cmp-table-wrap{overflow-x:auto;margin-top:var(--space-6);}
@@ -1151,10 +1154,10 @@ body.locked{overflow:hidden;}
   background:rgba(5,6,5,0.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   animation:login-fade var(--dur-base) var(--ease-out);}
 .onb-overlay[hidden]{display:none;}
-.onb-card{position:relative;width:100%;max-width:440px;background:var(--shell-raised);border:1px solid var(--shell-line);
+.onb-card{position:relative;width:100%;max-width:440px;max-height:88vh;background:var(--shell-raised);border:1px solid var(--shell-line);
   border-radius:var(--r-lg);padding:38px 34px 24px;box-shadow:0 30px 80px rgba(0,0,0,0.6);
   background-image:radial-gradient(560px 300px at 80% -20%, rgba(91,156,255,0.12), transparent 60%);
-  animation:login-rise var(--dur-slow) var(--ease-out) both;overflow:hidden;}
+  animation:login-rise var(--dur-slow) var(--ease-out) both;overflow-y:auto;}
 .onb-close{position:absolute;top:14px;right:16px;width:32px;height:32px;border:none;background:none;color:var(--shell-ink-soft);
   font-size:26px;line-height:1;cursor:pointer;border-radius:var(--r-sm);transition:color var(--dur-fast) var(--ease-out);z-index:2;}
 .onb-close:hover{color:var(--shell-ink);}
@@ -1213,7 +1216,7 @@ body.locked{overflow:hidden;}
   background:rgba(5,6,5,0.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   animation:login-fade var(--dur-base) var(--ease-out);}
 .rename-overlay[hidden]{display:none;}
-.rename-card{position:relative;width:100%;max-width:400px;background:var(--shell-raised);border:1px solid var(--shell-line);
+.rename-card{position:relative;width:100%;max-width:400px;max-height:88vh;overflow-y:auto;background:var(--shell-raised);border:1px solid var(--shell-line);
   border-radius:var(--r-lg);padding:34px 30px 24px;box-shadow:0 30px 80px rgba(0,0,0,0.6);
   background-image:radial-gradient(500px 260px at 80% -20%, rgba(91,156,255,0.12), transparent 60%);
   animation:login-rise var(--dur-slow) var(--ease-out) both;}
@@ -1361,6 +1364,23 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 @media print{
   body.printing-study-sheet > *:not(#study-sheet){display:none !important;}
   body.printing-study-sheet #study-sheet{display:block !important;padding:24px;}
+}
+
+/* ---- print-only pocket card — a single condensed index-card summary ---- */
+#pocket-card{display:none;}
+.pc-card{width:3.5in;min-height:5in;border:1px solid #999;border-radius:10px;padding:16px 18px;margin:0 auto;}
+.pc-tag{display:inline-block;font-family:var(--ff-mono);font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#555;border:1px solid #999;border-radius:20px;padding:2px 8px;margin-bottom:8px;}
+.pc-title{font-family:var(--ff-sans);font-size:17px;font-weight:800;margin:0 0 2px;}
+.pc-sub{font-family:var(--ff-sans);font-size:11px;color:#555;margin:0 0 10px;}
+.pc-row{margin-bottom:9px;}
+.pc-row-label{font-family:var(--ff-mono);font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#777;margin:0 0 2px;}
+.pc-row-body{font-size:12px;line-height:1.45;}
+.pc-flags{border:1px solid #c33;border-radius:6px;padding:6px 9px;margin-top:8px;}
+.pc-flags .pc-row-label{color:#c33;}
+.pc-foot{font-family:var(--ff-sans);font-size:9px;color:#888;margin-top:12px;border-top:1px solid #ddd;padding-top:6px;}
+@media print{
+  body.printing-pocket-card > *:not(#pocket-card){display:none !important;}
+  body.printing-pocket-card #pocket-card{display:block !important;padding:24px;}
 }
 
 /* =====================================================================
@@ -2090,6 +2110,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Just for this rotation</strong><span class="settings-sub">Narrow Conditions/Advances/Drugs to your Default department above</span></div>
+      <button type="button" class="settings-btn" id="settings-rotation-toggle" aria-pressed="false">Off</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Default tab</strong><span class="settings-sub">Which section opens on launch</span></div>
       <select id="settings-default-tab" class="settings-select"></select>
     </div>
@@ -2136,6 +2161,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div class="settings-row">
       <div class="settings-label"><strong>Caution list</strong><span class="settings-sub" id="settings-caution-info">Drugs marked "always double-check"</span></div>
       <button type="button" class="settings-btn" id="settings-view-caution">Manage</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Pocket cards</strong><span class="settings-sub">Printable index-card summaries of saved entries</span></div>
+      <button type="button" class="settings-btn" id="settings-view-pocketcards">View</button>
     </div>
 
     <div class="settings-row">
@@ -2237,6 +2267,17 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <h2 class="onb-title serif" id="caution-title">Your caution list</h2>
     <p class="settings-sub" style="display:block;margin:-4px 0 14px;">Drugs you've marked "always double-check for me" — separate from the institutional Formulary. Shown wherever the drug appears in Rounds.</p>
     <div class="crashlog-list" id="caution-list"></div>
+  </div>
+</div>
+
+<!-- ===== Pocket cards (Settings > Pocket cards) ===== -->
+<div class="rename-overlay" id="pocketcards-modal" role="dialog" aria-modal="true" aria-labelledby="pocketcards-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="pocketcards-close" aria-label="Close pocket cards">&times;</button>
+    <p class="onb-eyebrow">PRINTABLE</p>
+    <h2 class="onb-title serif" id="pocketcards-title">Pocket cards</h2>
+    <p class="settings-sub" style="display:block;margin:-4px 0 14px;">Condense a saved Condition or stocked Drug into an index-card-sized printable summary — key facts only. Pulled from your saved Conditions and My formulary.</p>
+    <div class="crashlog-list" id="pocketcards-list"></div>
   </div>
 </div>
 
@@ -2510,6 +2551,10 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 <!-- ===== Print-only study sheet — populated by exportStudySheet(), shown
      only while body.printing-study-sheet is set (see @media print rule) ===== -->
 <div id="study-sheet"></div>
+
+<!-- ===== Print-only pocket card — populated by printPocketCard(), shown
+     only while body.printing-pocket-card is set (see @media print rule) ===== -->
+<div id="pocket-card"></div>
 
 <header>
   <div class="header-inner">
@@ -6782,6 +6827,41 @@ const TAB_OPTIONS = [
 ];
 const LAST_SPECIALTY_KEY = 'rounds_last_specialty_v1';
 const PINNED_SPECIALTIES_KEY = 'rounds_pinned_specialties_v1';
+/* ============================================================
+   "Just for this rotation" — narrows Conditions/Advances/Drugs to
+   the Default department (state.specialty, already set via the
+   existing Settings > Default department picker) instead of a
+   separate parallel specialty-picker.
+   ============================================================ */
+const ROTATION_MODE_KEY = 'rounds_rotation_mode_v1';
+function isRotationModeOn(){ try{ return localStorage.getItem(ROTATION_MODE_KEY) === '1'; }catch(e){ return false; } }
+function setRotationMode(on){
+  try{ localStorage.setItem(ROTATION_MODE_KEY, on ? '1' : '0'); }catch(e){}
+  if(typeof renderSyndromeGroups === 'function') renderSyndromeGroups();
+  if(typeof renderSimpleList === 'function'){ renderSimpleList('genetic'); renderSimpleList('congenital'); }
+  if(typeof rebuildDrugSuggestChips === 'function') rebuildDrugSuggestChips();
+  if(typeof applyRotationToAdvances === 'function') applyRotationToAdvances();
+}
+function currentRotationSpecialty(){
+  if(!isRotationModeOn()) return null;
+  return (typeof state !== 'undefined' && state.specialty) ? state.specialty : null;
+}
+function rotationBannerHtml(anchorId, tag){
+  const sp = currentRotationSpecialty();
+  if(!sp) return '';
+  const t = tag || 'div';
+  return `<${t} class="rotation-banner">Showing just <strong>${escapeHtml(sp.name)}</strong> — your current rotation. <button type="button" class="rotation-show-all-btn" data-rotation-off="${escapeHtml(anchorId||'')}">Show everything</button></${t}>`;
+}
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.rotation-show-all-btn');
+  if(!btn) return;
+  setRotationMode(false);
+  haptic('Light');
+  showToast('Showing everything again', 'ok');
+});
+/* PubMed "advances" fields don't share exact ids with SPECIALTIES —
+   map the handful that differ, best-effort only. */
+const ADVANCE_FIELD_ALIASES = { endocrinology:'endocrine', pulmonology:'pulmonary', gastroenterology:'gi' };
 function getPinnedSpecialties(){
   try{ const v = JSON.parse(localStorage.getItem(PINNED_SPECIALTIES_KEY) || '[]'); return Array.isArray(v) ? v : []; }
   catch(e){ return []; }
@@ -6804,6 +6884,29 @@ const FONTSIZE_KEY = 'rounds_fontsize_v1';
    Recently viewed — last N "detail" views across Drugs/Conditions/
    Advances/Trials, so backtracking doesn't require re-searching.
    ============================================================ */
+/* ============================================================
+   Search history — the last ~15 "search everywhere" queries, kept
+   distinct from recently-viewed entries above (those are individual
+   items opened; this is the raw search terms typed).
+   ============================================================ */
+const SEARCH_HISTORY_KEY = 'rounds_search_history_v1';
+const SEARCH_HISTORY_MAX = 15;
+function getSearchHistory(){
+  try{ const v = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); return Array.isArray(v) ? v : []; }
+  catch(e){ return []; }
+}
+function recordSearchHistory(qRaw){
+  const q = String(qRaw || '').trim();
+  if(q.length < 2) return;
+  try{
+    let list = getSearchHistory().filter(x => x.q.toLowerCase() !== q.toLowerCase());
+    list.unshift({ q, t: new Date().toISOString() });
+    if(list.length > SEARCH_HISTORY_MAX) list = list.slice(0, SEARCH_HISTORY_MAX);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(list));
+  }catch(e){}
+}
+function clearSearchHistory(){ try{ localStorage.removeItem(SEARCH_HISTORY_KEY); }catch(e){} }
+
 const RECENTLY_VIEWED_KEY = 'rounds_recently_viewed_v1';
 const RECENTLY_VIEWED_MAX = 10;
 const RECENTLY_VIEWED_LABELS = {drug:'Drug', condition:'Condition', advance:'Advance', trial:'Trial'};
@@ -8741,17 +8844,20 @@ function renderSyndromeGroups(){
   const q = syndromesState.query || '';
   let sorted = [...SYNDROMES].sort((a,b) => a.name.localeCompare(b.name));
   if(q){ sorted = sorted.filter(s => s.name.toLowerCase().includes(q) || (s.desc && s.desc.toLowerCase().includes(q))); }
+  const rotSp = currentRotationSpecialty();
+  if(rotSp) sorted = sorted.filter(s => s.system === rotSp.id);
+  const banner = rotationBannerHtml('syndrome-groups');
 
   if(!sorted.length){
     jump.innerHTML = '';
-    wrap.innerHTML = `<p class="drug-generic" style="font-style:normal;">No syndromes match “${escapeHtml(q)}”.</p>`;
+    wrap.innerHTML = banner + `<p class="drug-generic" style="font-style:normal;">${rotSp ? `No syndromes in ${escapeHtml(rotSp.name)}` + (q ? ` match “${escapeHtml(q)}”.` : '.') : `No syndromes match “${escapeHtml(q)}”.`}</p>`;
     return;
   }
 
   if(syndromesState.mode === 'system'){
     const present = SYNDROME_SYSTEM_ORDER.filter(sysId => sorted.some(s => s.system === sysId));
     jump.innerHTML = present.map(sysId => `<a href="#syn-sys-${sysId}">${escapeHtml(SYNDROME_SYSTEMS[sysId] || sysId)}</a>`).join('');
-    wrap.innerHTML = present.map(sysId => {
+    wrap.innerHTML = banner + present.map(sysId => {
       const items = sorted.filter(s => s.system === sysId);
       return `<section class="syndrome-group" id="syn-sys-${sysId}">
         <div class="syndrome-group-head">
@@ -8767,7 +8873,7 @@ function renderSyndromeGroups(){
 
   const letters = [...new Set(sorted.map(s => s.name[0].toUpperCase()))];
   jump.innerHTML = letters.map(letter => `<a href="#syn-az-${letter}">${letter}</a>`).join('');
-  wrap.innerHTML = letters.map(letter => {
+  wrap.innerHTML = banner + letters.map(letter => {
     const items = sorted.filter(s => s.name[0].toUpperCase() === letter);
     return `<section class="syndrome-group" id="syn-az-${letter}">
       <div class="syndrome-group-head">
@@ -8815,17 +8921,20 @@ function renderSimpleList(kind){
   const q = syndromesState[kind + 'Query'] || '';
   let sorted = [...cfg.data()].sort((a,b) => a.name.localeCompare(b.name));
   if(q){ sorted = sorted.filter(s => s.name.toLowerCase().includes(q) || (s.desc && s.desc.toLowerCase().includes(q))); }
+  const rotSp = currentRotationSpecialty();
+  if(rotSp) sorted = sorted.filter(s => s.system === rotSp.id);
+  const banner = rotationBannerHtml(cfg.groups);
 
   if(!sorted.length){
     jump.innerHTML = '';
-    wrap.innerHTML = `<p class="drug-generic" style="font-style:normal;">No ${cfg.noun}s match “${escapeHtml(q)}”.</p>`;
+    wrap.innerHTML = banner + `<p class="drug-generic" style="font-style:normal;">${rotSp ? `No ${cfg.noun}s in ${escapeHtml(rotSp.name)}` + (q ? ` match “${escapeHtml(q)}”.` : '.') : `No ${cfg.noun}s match “${escapeHtml(q)}”.`}</p>`;
     return;
   }
 
   if(syndromesState[kind + 'Mode'] === 'system'){
     const present = SYNDROME_SYSTEM_ORDER.filter(sysId => sorted.some(s => s.system === sysId));
     jump.innerHTML = present.map(sysId => `<a href="#${kind}-sys-${sysId}">${escapeHtml(SYNDROME_SYSTEMS[sysId] || sysId)}</a>`).join('');
-    wrap.innerHTML = present.map(sysId => {
+    wrap.innerHTML = banner + present.map(sysId => {
       const items = sorted.filter(s => s.system === sysId);
       return `<section class="syndrome-group" id="${kind}-sys-${sysId}">
         <div class="syndrome-group-head">
@@ -8840,7 +8949,7 @@ function renderSimpleList(kind){
 
   const letters = [...new Set(sorted.map(s => (s.name[0] || '#').toUpperCase()))];
   jump.innerHTML = letters.map(letter => `<a href="#${kind}-az-${letter}">${letter}</a>`).join('');
-  wrap.innerHTML = letters.map(letter => {
+  wrap.innerHTML = banner + letters.map(letter => {
     const items = sorted.filter(s => (s.name[0] || '#').toUpperCase() === letter);
     return `<section class="syndrome-group" id="${kind}-az-${letter}">
       <div class="syndrome-group-head">
@@ -9274,17 +9383,46 @@ function setupSearch(){
   }
 }
 
-function setupDrugSearch(){
-  const btn = document.getElementById('drug-search-btn');
+const DRUG_SUGGEST_DEFAULT = [
+  {drug:'metformin', label:'Metformin'}, {drug:'apixaban', label:'Apixaban'}, {drug:'amoxicillin', label:'Amoxicillin'},
+  {drug:'atorvastatin', label:'Atorvastatin'}, {drug:'sertraline', label:'Sertraline'}, {drug:'lisinopril', label:'Lisinopril'}
+];
+function wireDrugSuggestChips(){
   const inp = document.getElementById('drug-input');
-  if(btn) btn.onclick = lookupDrug;
-  if(inp) inp.addEventListener('keydown', e => { if(e.key === 'Enter') lookupDrug(); });
   document.querySelectorAll('#drug-suggest button').forEach(chip => {
     chip.onclick = () => {
       if(inp){ inp.value = chip.dataset.drug; inp.focus(); }
       lookupDrug();
     };
   });
+}
+/* "Just for this rotation" — swap the quick-lookup chips for drugs
+   tagged relevant to the current rotation via the existing
+   DRUG_CROSS_SPECIALTY map, instead of building a parallel per-
+   specialty drug list. Falls back to the defaults when too few
+   drugs are tagged for that specialty to be useful. */
+function rebuildDrugSuggestChips(){
+  const wrap = document.getElementById('drug-suggest');
+  if(!wrap) return;
+  const sp = currentRotationSpecialty();
+  let items = DRUG_SUGGEST_DEFAULT;
+  if(sp){
+    const matches = Object.keys(DRUG_CROSS_SPECIALTY)
+      .filter(id => DRUG_CROSS_SPECIALTY[id].includes(sp.id))
+      .map(id => RX_DRUGS.find(d => d.id === id))
+      .filter(Boolean)
+      .map(d => ({drug: d.generic, label: d.generic.charAt(0).toUpperCase() + d.generic.slice(1)}));
+    if(matches.length >= 3) items = matches.slice(0, 8);
+  }
+  wrap.innerHTML = items.map(it => `<button type="button" data-drug="${escapeHtml(it.drug)}">${escapeHtml(it.label)}</button>`).join('');
+  wireDrugSuggestChips();
+}
+function setupDrugSearch(){
+  const btn = document.getElementById('drug-search-btn');
+  const inp = document.getElementById('drug-input');
+  if(btn) btn.onclick = lookupDrug;
+  if(inp) inp.addEventListener('keydown', e => { if(e.key === 'Enter') lookupDrug(); });
+  rebuildDrugSuggestChips();
 }
 
 /* ============================================================
@@ -9384,7 +9522,22 @@ function initAdvances(){
   if(search){
     search.oninput = () => { advancesState.query = search.value.trim().toLowerCase(); renderAdvances(); };
   }
+  applyRotationToAdvances();
   fetchAdvances(false);
+}
+
+/* Best-effort "just for this rotation" default for Advances — only a
+   subset of ADVANCE_FIELDS lines up with a SPECIALTIES id (see
+   ADVANCE_FIELD_ALIASES), so this is a nudge, not a guarantee. */
+function applyRotationToAdvances(){
+  const filter = document.getElementById('advance-filter');
+  if(!filter || !filter.children.length) return;
+  const sp = currentRotationSpecialty();
+  const fieldId = sp ? (ADVANCE_FIELDS.some(f => f.id === sp.id) ? sp.id : ADVANCE_FIELD_ALIASES[sp.id]) : null;
+  const targetId = fieldId && ADVANCE_FIELDS.some(f => f.id === fieldId) ? fieldId : 'all';
+  advancesState.field = targetId;
+  filter.querySelectorAll('.syndrome-toggle-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.field === targetId ? 'true' : 'false'));
+  if(advancesState.fetched) renderAdvances();
 }
 
 async function fetchAdvances(force){
@@ -9469,6 +9622,12 @@ function renderAdvances(){
 
   container.innerHTML = '';
   if(jump) jump.innerHTML = '';
+  const rotSp = currentRotationSpecialty();
+  if(rotSp && selField !== 'all'){
+    const bannerEl = document.createElement('div');
+    bannerEl.innerHTML = rotationBannerHtml('advance-groups');
+    container.appendChild(bannerEl.firstElementChild);
+  }
   container.appendChild(advanceStatusBar());
   const refresh = document.getElementById('advance-refresh');
   if(refresh) refresh.onclick = () => fetchAdvances(true);
@@ -11056,12 +11215,15 @@ function renderFormularyList(){
   if(q) sorted = sorted.filter(d => d.generic.toLowerCase().includes(q) || d.brand.toLowerCase().includes(q));
   const stockedCount = RX_DRUGS.filter(d => formulary[d.id]).length;
   if(countEl) countEl.textContent = `${stockedCount} of ${RX_DRUGS.length} marked stocked`;
+  const rotSp = currentRotationSpecialty();
+  const banner = rotSp ? rotationBannerHtml('formulary-list', 'li') : '';
+  if(rotSp) sorted = sorted.filter(d => (DRUG_CROSS_SPECIALTY[d.id] || []).includes(rotSp.id));
   const visible = formularyState.onlyMine ? sorted.filter(d => formulary[d.id]) : sorted;
   if(!visible.length){
-    wrap.innerHTML = `<li class="cmp-empty">${formularyState.onlyMine ? 'No drugs marked as stocked yet.' : `No drugs match “${escapeHtml(q)}”.`}</li>`;
+    wrap.innerHTML = banner + `<li class="cmp-empty">${rotSp ? `No drugs tagged for ${escapeHtml(rotSp.name)} yet.` : (formularyState.onlyMine ? 'No drugs marked as stocked yet.' : `No drugs match “${escapeHtml(q)}”.`)}</li>`;
     return;
   }
-  wrap.innerHTML = visible.map(d => {
+  wrap.innerHTML = banner + visible.map(d => {
     const on = !!formulary[d.id];
     return `<li class="formulary-item${(!formularyState.onlyMine && !on) ? ' is-dimmed' : ''}">
       <span class="formulary-item-info">
@@ -12094,6 +12256,17 @@ function openSettings(){
     };
   }
 
+  const rotBtn = document.getElementById('settings-rotation-toggle');
+  if(rotBtn){
+    const syncRot = () => {
+      const on = isRotationModeOn();
+      rotBtn.textContent = on ? 'On' : 'Off';
+      rotBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    rotBtn.onclick = () => { setRotationMode(!isRotationModeOn()); syncRot(); showToast(isRotationModeOn() ? 'Narrowed to your rotation' : 'Showing everything again', 'ok'); };
+    syncRot();
+  }
+
   const tabSel = document.getElementById('settings-default-tab');
   if(tabSel){
     let curTab = 'last';
@@ -12206,6 +12379,9 @@ function openSettings(){
   }
   const cautionBtn = document.getElementById('settings-view-caution');
   if(cautionBtn) cautionBtn.onclick = () => openCautionList();
+
+  const pocketCardsBtn = document.getElementById('settings-view-pocketcards');
+  if(pocketCardsBtn) pocketCardsBtn.onclick = () => openPocketCards();
 
   const srsHistoryBtn = document.getElementById('settings-view-srs-history');
   if(srsHistoryBtn) srsHistoryBtn.onclick = () => openSrsHistory();
@@ -12667,11 +12843,38 @@ function collectGlobalSearchResults(qRaw){
   return groups;
 }
 
+function searchHistoryPanelHtml(){
+  const hist = getSearchHistory();
+  if(!hist.length) return '';
+  return `<div class="global-search-group search-history-group">
+    <h3>Recent searches <button type="button" class="search-history-clear" id="search-history-clear">Clear</button></h3>
+    ${hist.map((h,i) => `<button type="button" class="global-search-item search-history-item" data-rerun-idx="${i}">${escapeHtml(h.q)}</button>`).join('')}
+  </div>`;
+}
+function wireSearchHistoryPanel(wrap, input){
+  const hist = getSearchHistory();
+  wrap.querySelectorAll('[data-rerun-idx]').forEach(btn => {
+    btn.onclick = () => {
+      const item = hist[Number(btn.dataset.rerunIdx)];
+      if(!item || !input) return;
+      input.value = item.q;
+      haptic('Light');
+      renderGlobalSearchResults(item.q);
+      recordSearchHistory(item.q);
+    };
+  });
+  const clearBtn = wrap.querySelector('#search-history-clear');
+  if(clearBtn) clearBtn.onclick = (e) => { e.stopPropagation(); clearSearchHistory(); renderGlobalSearchResults(''); };
+}
 function renderGlobalSearchResults(qRaw){
   const wrap = document.getElementById('global-search-results');
   if(!wrap) return;
   const q = qRaw.trim();
-  if(!q){ wrap.innerHTML = ''; return; }
+  if(!q){
+    wrap.innerHTML = searchHistoryPanelHtml();
+    wireSearchHistoryPanel(wrap, document.getElementById('global-search-input'));
+    return;
+  }
   const groups = collectGlobalSearchResults(q);
   const groupDefs = [
     { key: 'literature', name: 'Literature', render: a => ({ label: a.title, sub: [a.journal, a.date].filter(Boolean).join(' · ') }) },
@@ -12734,7 +12937,13 @@ function openGlobalSearch(prefill){
   if(input){
     input.value = prefill || '';
     renderGlobalSearchResults(input.value);
-    input.oninput = () => renderGlobalSearchResults(input.value);
+    if(prefill && prefill.trim()) recordSearchHistory(prefill);
+    let historyTimer = null;
+    input.oninput = () => {
+      renderGlobalSearchResults(input.value);
+      clearTimeout(historyTimer);
+      historyTimer = setTimeout(() => recordSearchHistory(input.value), 800);
+    };
   }
   function close(){
     modal.hidden = true;
@@ -13887,6 +14096,100 @@ function exportStudySheet(){
 function setupStudyExport(){
   const btn = document.getElementById('export-study-btn');
   if(btn) btn.onclick = exportStudySheet;
+}
+
+/* ============================================================
+   Printable pocket card — one condensed, index-card-sized summary
+   of a saved Condition or a stocked Drug (key facts only). Reuses
+   the same window.print()-plus-hidden-container pattern as the
+   study-sheet export above, just with a single card instead of a
+   full list and a smaller print target (#pocket-card).
+   ============================================================ */
+function pocketCardDataForCondition(name){
+  const s = SYNDROMES.find(x => x.name === name);
+  if(!s) return null;
+  const rows = [
+    { label: 'Category', body: escapeHtml(SYNDROME_SYSTEMS[s.system] || s.system || '') },
+    { label: 'One-line summary', body: escapeHtml(s.desc || '') }
+  ];
+  const cross = CONDITION_CROSS_SPECIALTY[s.name];
+  if(cross && cross.length) rows.push({ label: 'Also relevant in', body: cross.map(id => escapeHtml(SYNDROME_SYSTEMS[id] || id)).join(', ') });
+  const flags = [];
+  if(isContradictFlagged('syndrome:' + s.name)) flags.push('Flagged by you as "contradicts what I learned" — double-check against your source before relying on this at the bedside.');
+  return { tag: 'Condition', title: s.name, sub: SYNDROME_SYSTEMS[s.system] || s.system || '', rows, flags };
+}
+function pocketCardDataForDrug(id){
+  const d = RX_DRUGS.find(x => x.id === id);
+  if(!d) return null;
+  const rows = [];
+  if(d.ref) rows.push({ label: 'Reference', body: escapeHtml(d.ref) });
+  (d.regimens || []).slice(0, 3).forEach(r => {
+    rows.push({ label: 'Key dosing — ' + escapeHtml(r.label), body: escapeHtml(r.note || '') });
+  });
+  const flags = [];
+  const lasa = lasaPairsFor(d.id);
+  lasa.forEach(p => {
+    const other = lasaPartner(d.id, p);
+    if(other) flags.push(`Look-alike/sound-alike with ${other.generic} (${other.brand}) — not an interaction, a naming mix-up risk.`);
+  });
+  if(isCautionDrug(d.id)) flags.push('On your personal caution list — always double-check.');
+  return { tag: 'Drug', title: `${d.generic} (${d.brand})`, sub: d.ref || '', rows, flags };
+}
+function buildPocketCardHtml(data){
+  const rows = data.rows.filter(r => r.body).map(r => `<div class="pc-row"><p class="pc-row-label">${r.label}</p><p class="pc-row-body">${r.body}</p></div>`).join('');
+  const flags = data.flags.length ? `<div class="pc-flags"><p class="pc-row-label">Watch for</p>${data.flags.map(f => `<p class="pc-row-body">${escapeHtml(f)}</p>`).join('')}</div>` : '';
+  return `<article class="pc-card">
+    <span class="pc-tag">${escapeHtml(data.tag)}</span>
+    <h1 class="pc-title">${escapeHtml(data.title)}</h1>
+    ${data.sub ? `<p class="pc-sub">${escapeHtml(data.sub)}</p>` : ''}
+    ${rows}
+    ${flags}
+    <p class="pc-foot">Rounds pocket card &middot; ${escapeHtml(new Date().toLocaleDateString(roundsLocaleArg()))} &middot; educational aid, not a clinical protocol</p>
+  </article>`;
+}
+function printPocketCard(kind, key){
+  const data = kind === 'condition' ? pocketCardDataForCondition(key) : pocketCardDataForDrug(key);
+  if(!data){ showToast('Could not build that pocket card', 'err'); return; }
+  const holder = document.getElementById('pocket-card');
+  holder.innerHTML = buildPocketCardHtml(data);
+  document.body.classList.add('printing-pocket-card');
+  haptic('Light');
+  let cleaned = false;
+  function cleanup(){
+    if(cleaned) return;
+    cleaned = true;
+    document.body.classList.remove('printing-pocket-card');
+    holder.innerHTML = '';
+    window.removeEventListener('afterprint', cleanup);
+  }
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(() => { window.print(); setTimeout(cleanup, 1200); }, 50);
+}
+function openPocketCards(){
+  const modal = document.getElementById('pocketcards-modal');
+  const body = document.getElementById('pocketcards-list');
+  if(!modal || !body) return;
+  haptic('Light');
+  const condItems = Object.values(getConditionBookmarks()).filter(cb => cb && SYNDROMES.some(s => s.name === cb.name));
+  const formulary = getFormulary();
+  const drugItems = RX_DRUGS.filter(d => formulary[d.id]);
+  if(!condItems.length && !drugItems.length){
+    body.innerHTML = `<p class="drug-generic" style="font-style:normal;">Nothing to make a pocket card from yet — save a Condition or mark a Drug as stocked in My formulary first.</p>`;
+  } else {
+    body.innerHTML = `<ul class="crashlog-list-inner">
+      ${condItems.map(cb => `<li class="flagged-row"><span class="flagged-label">${escapeHtml(cb.name)} <span class="settings-sub">(Condition)</span></span><button type="button" class="settings-btn" data-pc-kind="condition" data-pc-key="${escapeHtml(cb.name)}">Print card</button></li>`).join('')}
+      ${drugItems.map(d => `<li class="flagged-row"><span class="flagged-label">${escapeHtml(d.generic)} <span class="settings-sub">(Drug &middot; ${escapeHtml(d.brand)})</span></span><button type="button" class="settings-btn" data-pc-kind="drug" data-pc-key="${escapeHtml(d.id)}">Print card</button></li>`).join('')}
+    </ul>`;
+    body.querySelectorAll('[data-pc-kind]').forEach(btn => {
+      btn.onclick = () => printPocketCard(btn.dataset.pcKind, btn.dataset.pcKey);
+    });
+  }
+  modal.hidden = false;
+  function close(){ modal.hidden = true; document.removeEventListener('keydown', onKey); }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('pocketcards-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  document.addEventListener('keydown', onKey);
 }
 
 function setupKeyboardShortcuts(){
