@@ -2570,6 +2570,12 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:700;cursor:pointer;}
 .wards-demo-banner button:hover{background:rgba(255,255,255,.22);}
 .wards-demo-banner[hidden]{display:none;}
+.wards-covering-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
+  padding:8px 20px;background:var(--evidence);color:#fff;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
+.wards-covering-banner button{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;
+  border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:700;cursor:pointer;}
+.wards-covering-banner button:hover{background:rgba(255,255,255,.22);}
+.wards-covering-banner[hidden]{display:none;}
 
 /* ---- QR display / scan modals — plain fixed overlay, same visual
    weight as the CTG lightbox but its own simple markup since the
@@ -2752,6 +2758,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <label><input type="checkbox" data-flow-col="notes" checked> Notes</label>
         </div>
         <div class="ws-row">
+          <span class="ws-label">Who's covering me<span class="ws-sub">Mark a colleague as covering your patients during a break — shows as a banner on this device until you're back</span></span>
+        </div>
+        <div class="ws-row" style="gap:8px;">
+          <input type="text" id="wards-covering-name-input" class="settings-select" maxlength="40" placeholder="Colleague's name" style="flex:1;">
+          <button type="button" class="settings-btn" id="wards-covering-set-btn">Set</button>
+          <button type="button" class="settings-btn" id="wards-covering-clear-settings-btn">Clear</button>
+        </div>
+        <div class="ws-row">
           <span class="ws-label">Shift presets<span class="ws-sub">Open-on-launch, board/bed-map view &amp; flowsheet columns — save the combo, apply in one tap</span></span>
         </div>
         <div class="ws-shift-presets" id="wards-shift-presets"></div>
@@ -2796,6 +2810,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 <div class="wards-demo-banner" id="wards-demo-banner" hidden>
   <span>&#9888; DEMO MODE — fake sample patients shown below. Nothing here is your real data, and nothing you do while demoing is saved.</span>
   <button type="button" id="wards-demo-exit-btn">Exit demo mode</button>
+</div>
+
+<div class="wards-covering-banner" id="wards-covering-banner" hidden>
+  <span>&#128100; <strong id="wards-covering-name"></strong> is currently covering these patients &mdash; check with them before acting on anything urgent.</span>
+  <button type="button" id="wards-covering-clear-btn">Back now</button>
 </div>
 
 <nav class="wards-tabbar" id="wards-tabbar" aria-label="Sections">
@@ -3824,6 +3843,57 @@ function setupNightDim(){
     });
   });
   setInterval(updateNightDimState, 60000);
+}
+
+/* ============================================================
+   "Who's covering me" — a local, device-visible banner marking that a
+   named colleague is covering this user's patients right now. Purely
+   local device state (the point is anyone glancing at THIS shared
+   tablet sees it), not synced to Firestore or attached to any patient.
+   ============================================================ */
+const COVERING_KEY = 'wards_covering_v1';
+function getCoveringName(){
+  try{ return localStorage.getItem(COVERING_KEY) || ''; }catch(e){ return ''; }
+}
+function setCoveringName(name){
+  try{
+    const v = String(name || '').trim();
+    if(v) localStorage.setItem(COVERING_KEY, v);
+    else localStorage.removeItem(COVERING_KEY);
+  }catch(e){}
+  renderCoveringBanner();
+}
+function renderCoveringBanner(){
+  const banner = document.getElementById('wards-covering-banner');
+  const nameEl = document.getElementById('wards-covering-name');
+  const name = getCoveringName();
+  if(!banner) return;
+  banner.hidden = !name;
+  if(nameEl) nameEl.textContent = name;
+}
+function setupCoveringBanner(){
+  renderCoveringBanner();
+  const input = document.getElementById('wards-covering-name-input');
+  const setBtn = document.getElementById('wards-covering-set-btn');
+  const clearBtn = document.getElementById('wards-covering-clear-settings-btn');
+  const bannerClearBtn = document.getElementById('wards-covering-clear-btn');
+  if(input) input.value = getCoveringName();
+  if(setBtn && !setBtn.dataset.wired){
+    setBtn.dataset.wired = '1';
+    setBtn.addEventListener('click', () => {
+      setCoveringName(input ? input.value : '');
+      haptic('Light');
+    });
+  }
+  [clearBtn, bannerClearBtn].forEach(btn => {
+    if(!btn || btn.dataset.wired) return;
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => {
+      setCoveringName('');
+      if(input) input.value = '';
+      haptic('Light');
+    });
+  });
 }
 
 /* ============================================================
@@ -10578,6 +10648,7 @@ function boot(){
   setupWardsSettingsUI();
   setupBatterySaver();
   setupNightDim();
+  setupCoveringBanner();
   if(typeof window.setupAmbientSoundscape === 'function') window.setupAmbientSoundscape();
   const exportBtn = document.getElementById('wards-export-all');
   if(exportBtn) exportBtn.onclick = () => { haptic('Light'); exportAllWardsData(); };
