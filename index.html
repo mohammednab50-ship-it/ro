@@ -323,6 +323,19 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .wnd-list{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 12px;padding-left:16px;}
 .wnd-actions{display:flex;gap:8px;}
 
+/* ---- Milestone celebration toast — fire-and-fade, top-center so it
+   never collides with the corner cards above; never blocks input. ---- */
+.milestone-toast{position:fixed;top:16px;left:50%;z-index:1400;
+  display:flex;align-items:center;gap:10px;max-width:min(360px,88vw);
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-pill);
+  box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,0.25));padding:10px 12px 10px 16px;
+  opacity:0;transform:translate(-50%,-14px);pointer-events:none;
+  transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
+.milestone-toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
+.milestone-icon{font-size:16px;line-height:1;}
+.milestone-text{font-family:var(--ff-sans);font-size:13px;font-weight:600;color:var(--ink);}
+.milestone-dismiss{background:none;border:none;color:var(--ink-faint);font-size:16px;line-height:1;cursor:pointer;padding:2px 4px;}
+
 /* ---- "Case of the day" mystery vignette — same gentle corner-card
    pattern, top-right so it can coexist with the bottom corner cards. ---- */
 .case-of-day-card{position:fixed;top:20px;right:20px;z-index:1340;width:320px;max-width:calc(100vw - 40px);
@@ -1348,6 +1361,8 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .quiz-type-tag{display:inline-block;font-family:var(--ff-mono);font-size:10.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--evidence-bright);background:rgba(91,156,255,0.14);border-radius:var(--r-pill);padding:3px 10px;margin-bottom:10px;}
 .quiz-question{font-family:var(--ff-sans);font-size:16px;font-weight:600;color:var(--shell-ink);line-height:1.4;margin:0;}
 .quiz-sub{font-family:var(--ff-sans);font-size:12px;color:var(--shell-ink-soft);margin:6px 0 0;}
+.quiz-ghost-indicator{display:block;font-family:var(--ff-mono);font-size:11px;letter-spacing:0.02em;color:var(--shell-ink-soft);opacity:0.75;margin:-4px 0 10px;}
+.quiz-ghost-indicator[hidden]{display:none;}
 .case-title{font-family:var(--ff-sans);font-size:15px;font-weight:700;color:var(--shell-ink);margin:0 0 8px;}
 .case-stem{font-weight:400;font-size:14.5px;}
 .quiz-answer{margin-top:14px;padding-top:14px;border-top:1px dashed var(--shell-line);font-family:var(--ff-sans);font-size:13.5px;color:var(--shell-ink-soft);line-height:1.6;}
@@ -2153,6 +2168,16 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Ghost race in Quiz</strong><span class="settings-sub">Show how you did at this point in your last similar-sized session</span></div>
+      <button type="button" class="settings-btn" id="settings-ghost-race-toggle" aria-pressed="false">Off</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Milestone celebrations</strong><span class="settings-sub">Small toast for bookmark/quiz-session milestones</span></div>
+      <button type="button" class="settings-btn" id="settings-milestones-toggle" aria-pressed="true">On</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Battery saver</strong><span class="settings-sub" id="settings-battery-saver-sub">Reduce animation, auto on low battery</span></div>
       <button type="button" class="settings-btn" id="settings-battery-saver-toggle" aria-pressed="false">Off</button>
     </div>
@@ -2544,6 +2569,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div id="quiz-empty" class="cmp-empty" hidden></div>
     <div id="quiz-body" hidden>
       <div class="quiz-progress" id="quiz-progress"></div>
+      <span id="quiz-ghost-indicator" class="quiz-ghost-indicator" hidden></span>
       <span id="bossfight-timer" class="boss-timer" hidden></span>
       <div class="quiz-flashcard">
         <span class="quiz-type-tag" id="quiz-type-tag"></span>
@@ -7045,6 +7071,59 @@ function bumpUsageStat(key){
     localStorage.setItem(USAGE_STATS_KEY, JSON.stringify(stats));
   }catch(e){}
 }
+/* ============================================================
+   Milestone celebrations — a tasteful, fire-and-fade toast for genuine
+   personal milestones computed from data already tracked (bookmark
+   count, quiz sessions completed). Never blocking, easy to permanently
+   disable in Settings. Each milestone threshold fires at most once.
+   ============================================================ */
+const MILESTONES_SEEN_KEY = 'rounds_milestones_seen_v1';
+const MILESTONES_DISABLED_KEY = 'rounds_milestones_disabled_v1';
+const MILESTONE_THRESHOLDS = [1, 5, 10, 25, 50, 100, 250, 500, 1000];
+function getMilestonesSeen(){
+  try{ const v = JSON.parse(localStorage.getItem(MILESTONES_SEEN_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; }
+  catch(e){ return {}; }
+}
+function setMilestonesSeen(obj){ try{ localStorage.setItem(MILESTONES_SEEN_KEY, JSON.stringify(obj)); }catch(e){} }
+function getMilestonesDisabled(){
+  try{ return localStorage.getItem(MILESTONES_DISABLED_KEY) === '1'; }catch(e){ return false; }
+}
+function setMilestonesDisabled(on){ try{ localStorage.setItem(MILESTONES_DISABLED_KEY, on ? '1' : '0'); }catch(e){} }
+const MILESTONE_LABELS = {
+  bookmarks: (n) => `${n} bookmark${n === 1 ? '' : 's'} saved`,
+  quizSessions: (n) => `${n} quiz session${n === 1 ? '' : 's'} completed`
+};
+function maybeCelebrateMilestone(type, count){
+  if(getMilestonesDisabled()) return;
+  if(!count || !MILESTONE_LABELS[type]) return;
+  const seen = getMilestonesSeen();
+  const already = seen[type] || 0;
+  const hits = MILESTONE_THRESHOLDS.filter(t => t <= count && t > already);
+  if(!hits.length) return;
+  const hit = hits[hits.length - 1];
+  seen[type] = hit;
+  setMilestonesSeen(seen);
+  showMilestoneCelebration(MILESTONE_LABELS[type](hit));
+}
+let milestoneToastTimer = null;
+function showMilestoneCelebration(text){
+  let el = document.getElementById('milestone-toast');
+  if(el) el.remove();
+  el = document.createElement('div');
+  el.id = 'milestone-toast';
+  el.className = 'milestone-toast';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  el.innerHTML = `<span class="milestone-icon" aria-hidden="true">🎉</span><span class="milestone-text">${escapeHtml(text)}</span><button type="button" class="milestone-dismiss" aria-label="Dismiss">&times;</button>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  const dismiss = () => { el.classList.remove('show'); setTimeout(() => { if(el && el.parentNode) el.remove(); }, 300); };
+  el.querySelector('.milestone-dismiss').onclick = dismiss;
+  if(milestoneToastTimer) clearTimeout(milestoneToastTimer);
+  milestoneToastTimer = setTimeout(dismiss, 5000);
+  haptic('Light');
+}
+
 function topLookupEntries(category, n){
   const counts = getLookupCounts();
   return Object.keys(counts)
@@ -7486,6 +7565,7 @@ function toggleConditionBookmark(name){
   haptic('Medium');
   setConditionBookmarks(bm);
   showToast(added ? 'Saved to your list' : 'Removed from saved', 'ok');
+  if(added && typeof maybeCelebrateMilestone === 'function') maybeCelebrateMilestone('bookmarks', Object.keys(getBookmarks()).length + Object.keys(getConditionBookmarks()).length);
 }
 /* Word-level diff for the small "what changed" view — not a fancy LCS,
    just enough to highlight added/removed words between two short strings. */
@@ -12620,6 +12700,28 @@ function openSettings(){
     syncAnalogy();
   }
 
+  const ghostBtn = document.getElementById('settings-ghost-race-toggle');
+  if(ghostBtn){
+    const syncGhost = () => {
+      const on = getGhostRaceOn();
+      ghostBtn.textContent = on ? 'On' : 'Off';
+      ghostBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    ghostBtn.onclick = () => { setGhostRaceOn(!getGhostRaceOn()); haptic('Light'); syncGhost(); };
+    syncGhost();
+  }
+
+  const milestoneBtn = document.getElementById('settings-milestones-toggle');
+  if(milestoneBtn){
+    const syncMilestone = () => {
+      const on = !getMilestonesDisabled();
+      milestoneBtn.textContent = on ? 'On' : 'Off';
+      milestoneBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    milestoneBtn.onclick = () => { setMilestonesDisabled(!getMilestonesDisabled()); haptic('Light'); syncMilestone(); };
+    syncMilestone();
+  }
+
   const bsBtn = document.getElementById('settings-battery-saver-toggle');
   if(bsBtn){
     const syncBs = () => {
@@ -13940,6 +14042,43 @@ function buildQuizQueue(){
   return due.length ? due : items;
 }
 
+/* ---- "Ghost race" — a faint indicator, alongside live progress, of how
+   the learner did at the same point in their most recent previous session
+   of similar size ("you were at 7/10 correct by this point last time").
+   History stores just a cumulative-correct-count sequence per session,
+   trimmed to the most recent sessions — no card-level detail needed. ---- */
+const GHOST_RACE_KEY = 'rounds_ghost_race_v1';
+const QUIZ_HISTORY_KEY = 'rounds_quiz_history_v1';
+const QUIZ_HISTORY_MAX = 20;
+function getGhostRaceOn(){
+  try{ return localStorage.getItem(GHOST_RACE_KEY) === '1'; }catch(e){ return false; }
+}
+function setGhostRaceOn(on){
+  try{ localStorage.setItem(GHOST_RACE_KEY, on ? '1' : '0'); }catch(e){}
+}
+function getQuizHistory(){
+  try{ const v = JSON.parse(localStorage.getItem(QUIZ_HISTORY_KEY) || '[]'); return Array.isArray(v) ? v : []; }
+  catch(e){ return []; }
+}
+function saveQuizHistorySession(total, correctSeq){
+  if(!total || !correctSeq || !correctSeq.length) return;
+  try{
+    const hist = getQuizHistory();
+    hist.push({ total, correctSeq, ts: Date.now() });
+    while(hist.length > QUIZ_HISTORY_MAX) hist.shift();
+    localStorage.setItem(QUIZ_HISTORY_KEY, JSON.stringify(hist));
+  }catch(e){}
+}
+// "Similar size" — within 30% of the new session's card count, most recent first.
+function findGhostSession(total){
+  const hist = getQuizHistory();
+  for(let i = hist.length - 1; i >= 0; i--){
+    const h = hist[i];
+    if(h && h.total && Math.abs(h.total - total) / total <= 0.3) return h;
+  }
+  return null;
+}
+
 function openQuiz(){
   const modal = document.getElementById('quiz-modal');
   if(!modal) return;
@@ -13955,7 +14094,8 @@ function openQuiz(){
   } else {
     emptyEl.hidden = true;
     const queue = shuffleArr(buildQuizQueue());
-    quizSession = { queue, idx: 0, total: queue.length, resultCounts: { again: 0, hard: 0, good: 0, easy: 0 } };
+    quizSession = { queue, idx: 0, total: queue.length, resultCounts: { again: 0, hard: 0, good: 0, easy: 0 }, correctSeq: [], correctSoFar: 0 };
+    if(getGhostRaceOn()) quizSession.ghost = findGhostSession(queue.length);
     renderQuizCard();
   }
   modal.hidden = false;
@@ -14018,7 +14158,13 @@ function renderQuizCard(){
     const rc = quizSession ? quizSession.resultCounts : { again: 0, hard: 0, good: 0, easy: 0 };
     const total = quizSession ? quizSession.total : 0;
     summaryEl.innerHTML = `<strong>Session complete</strong>Reviewed ${total} card${total === 1 ? '' : 's'} · Again ${rc.again} · Hard ${rc.hard} · Good ${rc.good} · Easy ${rc.easy}<br><br>Come back later — cards you rated lower will resurface sooner.`;
-    if(quizSession && quizSession.total > 0) bumpUsageStat('quizSessions');
+    if(quizSession && quizSession.total > 0){
+      bumpUsageStat('quizSessions');
+      saveQuizHistorySession(quizSession.total, quizSession.correctSeq);
+      if(typeof maybeCelebrateMilestone === 'function') maybeCelebrateMilestone('quizSessions', (getUsageStats().quizSessions || 0));
+    }
+    const ghostEl = document.getElementById('quiz-ghost-indicator');
+    if(ghostEl) ghostEl.hidden = true;
     quizSession = null;
     return;
   }
@@ -14027,6 +14173,17 @@ function renderQuizCard(){
   const item = quizSession.queue[quizSession.idx];
   quizSession.confidence = null;
   document.getElementById('quiz-progress').textContent = `Card ${quizSession.idx + 1} of ${quizSession.total}`;
+  const ghostEl = document.getElementById('quiz-ghost-indicator');
+  if(ghostEl){
+    const g = quizSession.ghost;
+    const cardsDone = quizSession.idx;
+    if(g && g.correctSeq && cardsDone > 0 && g.correctSeq[cardsDone - 1] != null){
+      ghostEl.hidden = false;
+      ghostEl.textContent = `👻 Last similar session: ${g.correctSeq[cardsDone - 1]}/${cardsDone} correct by this point · you're at ${quizSession.correctSoFar}/${cardsDone}`;
+    } else {
+      ghostEl.hidden = true;
+    }
+  }
   document.getElementById('quiz-type-tag').textContent = item.type;
   document.getElementById('quiz-question').textContent = item.q;
   document.getElementById('quiz-sub').textContent = item.sub || '';
@@ -14060,6 +14217,8 @@ function rateQuizCard(rating){
   srsRate(item.key, rating);
   recordCalibration(quizSession.confidence, rating === 'good' || rating === 'easy');
   quizSession.resultCounts[rating] = (quizSession.resultCounts[rating] || 0) + 1;
+  if(rating === 'good' || rating === 'easy') quizSession.correctSoFar++;
+  quizSession.correctSeq.push(quizSession.correctSoFar);
   quizSession.idx++;
   haptic('Light');
   renderQuizCard();
