@@ -323,6 +323,55 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .wnd-list{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 12px;padding-left:16px;}
 .wnd-actions{display:flex;gap:8px;}
 
+/* ---- Milestone celebration toast — fire-and-fade, top-center so it
+   never collides with the corner cards above; never blocks input. ---- */
+.milestone-toast{position:fixed;top:16px;left:50%;z-index:1400;
+  display:flex;align-items:center;gap:10px;max-width:min(360px,88vw);
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-pill);
+  box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,0.25));padding:10px 12px 10px 16px;
+  opacity:0;transform:translate(-50%,-14px);pointer-events:none;
+  transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
+.milestone-toast.show{opacity:1;transform:translate(-50%,0);pointer-events:auto;}
+.milestone-icon{font-size:16px;line-height:1;}
+.milestone-text{font-family:var(--ff-sans);font-size:13px;font-weight:600;color:var(--ink);}
+.milestone-dismiss{background:none;border:none;color:var(--ink-faint);font-size:16px;line-height:1;cursor:pointer;padding:2px 4px;}
+
+/* ---- Specialty passport — simple "stamp collected" grid ---- */
+.passport-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;}
+.passport-stamp{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;
+  border:1.5px dashed var(--line);border-radius:var(--r-md);padding:14px 8px;text-align:center;
+  background:var(--paper);opacity:0.55;}
+.passport-stamp.is-collected{border-style:solid;border-color:var(--evidence);background:var(--surface);opacity:1;}
+.passport-stamp-icon{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+  font-size:14px;font-weight:700;color:var(--cta-ink);background:transparent;}
+.passport-stamp.is-collected .passport-stamp-icon{background:var(--evidence);}
+.passport-stamp-name{font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--ink-soft);line-height:1.3;}
+.passport-stamp.is-collected .passport-stamp-name{color:var(--ink);}
+
+/* ---- "Explain like it's 3am" mode — deliberately large, sparse text ---- */
+.syndrome-3am-btn{font-family:var(--ff-mono);font-size:11px;font-weight:600;color:var(--evidence-dark);background:none;border:none;padding:0;cursor:pointer;}
+.syndrome-3am-btn:hover{text-decoration:underline;}
+.threeam-card{max-width:480px;}
+.threeam-name{font-size:22px;line-height:1.25;}
+.threeam-body{font-family:var(--ff-sans);font-size:22px;line-height:1.5;font-weight:600;color:var(--ink);margin:14px 0 10px;}
+.threeam-fallback-note{display:block;margin-top:8px;}
+
+/* ---- Bookmark collections manager ---- */
+.collections-new-row{display:flex;gap:8px;margin-bottom:12px;}
+.collections-new-row input{flex:1;}
+.collection-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.collection-chip-wrap{display:inline-flex;align-items:center;gap:2px;}
+.collection-chip{border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);border-radius:var(--r-pill);
+  padding:5px 12px;font-family:var(--ff-sans);font-size:12px;font-weight:600;cursor:pointer;}
+.collection-chip.active{background:var(--cta-bg);color:var(--cta-ink);border-color:transparent;}
+.collection-chip-del{background:none;border:none;color:var(--ink-faint);font-size:14px;cursor:pointer;padding:2px 4px;}
+.collection-assign-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.collection-assign-chip{border:1px dashed var(--line);background:none;color:var(--ink-faint);border-radius:var(--r-pill);
+  padding:3px 10px;font-family:var(--ff-sans);font-size:11.5px;font-weight:600;cursor:pointer;}
+.collection-assign-chip.is-member{border-style:solid;border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
+
+.shortcut-remap-btn.is-listening{background:var(--cta-bg);color:var(--cta-ink);border-color:transparent;}
+
 /* ---- "Case of the day" mystery vignette — same gentle corner-card
    pattern, top-right so it can coexist with the bottom corner cards. ---- */
 .case-of-day-card{position:fixed;top:20px;right:20px;z-index:1340;width:320px;max-width:calc(100vw - 40px);
@@ -699,6 +748,9 @@ details.guideline-updates[open] > summary .section-chevron{transform:rotate(180d
 .condition-refs a:hover{border-color:var(--evidence);background:var(--evidence-bg);}
 .condition-refs a::after{content:'↗';font-family:var(--ff-mono);font-size:11px;color:var(--ink-faint);}
 .condition-disclaimer{font-family:var(--ff-sans);font-size:12px;color:var(--ink-faint);line-height:1.6;margin:0 0 var(--space-7);padding:12px 16px;border-left:2px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-sm);color:var(--caution);}
+.condition-controversy{font-family:var(--ff-sans);font-size:12.5px;line-height:1.6;margin:0 0 var(--space-7);padding:12px 16px;border-left:2px solid var(--evidence);background:var(--evidence-bg);border-radius:var(--r-sm);color:var(--evidence-dark);display:flex;gap:10px;align-items:flex-start;}
+.condition-controversy .cc-icon{flex-shrink:0;font-size:14px;line-height:1.5;}
+.condition-controversy strong{color:var(--evidence-dark);}
 .condition-divider{font-family:var(--ff-mono);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:var(--tracking-eyebrow);color:var(--ink-faint);margin:var(--space-8) 0 var(--space-5);padding-bottom:10px;border-bottom:1px solid var(--line);}
 
 /* ---- syndromes view (A-Z / by-system reference index) ---- */
@@ -722,6 +774,8 @@ details.guideline-updates[open] > summary .section-chevron{transform:rotate(180d
 .syndrome-mech-more-btn:hover{text-decoration:underline;}
 .syndrome-desc-full{font-family:var(--ff-serif);font-size:14.5px;color:var(--ink-soft);line-height:1.5;margin-top:4px;display:block;}
 .syndrome-desc-full[hidden]{display:none;}
+.syndrome-analogy{font-family:var(--ff-serif);font-style:italic;font-size:13.5px;color:var(--ink-faint);line-height:1.5;margin-top:4px;display:block;}
+.syndrome-analogy-label{font-family:var(--ff-sans);font-style:normal;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--evidence-dark, var(--ink-faint));margin-right:4px;}
 .syndrome-sys-tag{font-family:var(--ff-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:var(--tracking-wide);color:var(--ink-faint);white-space:nowrap;}
 .syndrome-row a.syndrome-src{font-family:var(--ff-mono);font-size:11px;color:var(--evidence-dark);text-decoration:none;font-weight:600;white-space:nowrap;}
 .syndrome-row a.syndrome-src:hover{text-decoration:underline;}
@@ -1188,9 +1242,11 @@ body.locked{overflow:hidden;}
 .header-actions{display:flex;align-items:center;gap:10px;}
 .welcome-greeting{font-family:var(--ff-sans);font-size:13px;font-weight:500;color:var(--ink-soft);white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px;padding:4px 6px;}
 .welcome-greeting strong{color:var(--evidence-dark);font-weight:600;text-transform:uppercase;letter-spacing:0.03em;}
+.welcome-greeting .greet-suffix{color:var(--ink-faint);font-weight:400;}
 @media (max-width:680px){
   .welcome-greeting{max-width:150px;padding:4px;}
   .welcome-greeting .greet-prefix{display:none;}
+  .welcome-greeting .greet-suffix{display:none;}
 }
 
 /* =====================================================================
@@ -1346,6 +1402,8 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .quiz-type-tag{display:inline-block;font-family:var(--ff-mono);font-size:10.5px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--evidence-bright);background:rgba(91,156,255,0.14);border-radius:var(--r-pill);padding:3px 10px;margin-bottom:10px;}
 .quiz-question{font-family:var(--ff-sans);font-size:16px;font-weight:600;color:var(--shell-ink);line-height:1.4;margin:0;}
 .quiz-sub{font-family:var(--ff-sans);font-size:12px;color:var(--shell-ink-soft);margin:6px 0 0;}
+.quiz-ghost-indicator{display:block;font-family:var(--ff-mono);font-size:11px;letter-spacing:0.02em;color:var(--shell-ink-soft);opacity:0.75;margin:-4px 0 10px;}
+.quiz-ghost-indicator[hidden]{display:none;}
 .case-title{font-family:var(--ff-sans);font-size:15px;font-weight:700;color:var(--shell-ink);margin:0 0 8px;}
 .case-stem{font-weight:400;font-size:14.5px;}
 .quiz-answer{margin-top:14px;padding-top:14px;border-top:1px dashed var(--shell-line);font-family:var(--ff-sans);font-size:13.5px;color:var(--shell-ink-soft);line-height:1.6;}
@@ -2151,6 +2209,16 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Ghost race in Quiz</strong><span class="settings-sub">Show how you did at this point in your last similar-sized session</span></div>
+      <button type="button" class="settings-btn" id="settings-ghost-race-toggle" aria-pressed="false">Off</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Milestone celebrations</strong><span class="settings-sub">Small toast for bookmark/quiz-session milestones</span></div>
+      <button type="button" class="settings-btn" id="settings-milestones-toggle" aria-pressed="true">On</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Battery saver</strong><span class="settings-sub" id="settings-battery-saver-sub">Reduce animation, auto on low battery</span></div>
       <button type="button" class="settings-btn" id="settings-battery-saver-toggle" aria-pressed="false">Off</button>
     </div>
@@ -2191,6 +2259,21 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div class="settings-row">
       <div class="settings-label"><strong>Your activity</strong><span class="settings-sub">Personal usage insight — local only</span></div>
       <button type="button" class="settings-btn" id="settings-view-usage-stats">View</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Specialty passport</strong><span class="settings-sub">Which specialties you've engaged with</span></div>
+      <button type="button" class="settings-btn" id="settings-view-passport">View</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Collections</strong><span class="settings-sub">Group saved bookmarks, e.g. "Finals review"</span></div>
+      <button type="button" class="settings-btn" id="settings-view-collections">Manage</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Keyboard shortcuts</strong><span class="settings-sub">Remap tab/search/help keys</span></div>
+      <button type="button" class="settings-btn" id="settings-view-shortcuts-remap">Customize</button>
     </div>
 
     <div class="settings-row">
@@ -2312,6 +2395,57 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== Specialty passport (Settings > Specialty passport) ===== -->
+<div class="rename-overlay" id="passport-modal" role="dialog" aria-modal="true" aria-labelledby="passport-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="passport-close" aria-label="Close specialty passport">&times;</button>
+    <p class="onb-eyebrow">SPECIALTY PASSPORT</p>
+    <h2 class="onb-title serif" id="passport-title">Passport</h2>
+    <p class="settings-sub" id="passport-summary" style="display:block;margin:-4px 0 14px;"></p>
+    <div class="passport-grid" id="passport-grid"></div>
+    <p class="settings-sub" style="display:block;margin-top:14px;">Based on specialties you've browsed, pinned, or saved a Condition from — no ranks, just what you've touched.</p>
+  </div>
+</div>
+
+<!-- ===== "Explain like it's 3am" mode — stripped-down single-fact view ===== -->
+<div class="rename-overlay" id="threeam-modal" role="dialog" aria-modal="true" aria-labelledby="threeam-name" hidden>
+  <div class="rename-card settings-card threeam-card" role="document">
+    <button type="button" class="onb-close" id="threeam-close" aria-label="Close">&times;</button>
+    <p class="onb-eyebrow">🌙 3AM MODE</p>
+    <h2 class="onb-title serif threeam-name" id="threeam-name"></h2>
+    <div class="threeam-body" id="threeam-body"></div>
+    <p class="settings-sub threeam-fallback-note" id="threeam-fallback-note" hidden>No single curated critical fact for this entry yet — showing the normal summary instead.</p>
+  </div>
+</div>
+
+<!-- ===== Keyboard shortcut remapping (Settings > Keyboard shortcuts) ===== -->
+<div class="rename-overlay" id="shortcuts-remap-modal" role="dialog" aria-modal="true" aria-labelledby="shortcuts-remap-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="shortcuts-remap-close" aria-label="Close">&times;</button>
+    <p class="onb-eyebrow">KEYBOARD SHORTCUTS</p>
+    <h2 class="onb-title serif" id="shortcuts-remap-title">Customize shortcuts</h2>
+    <p class="settings-sub" style="display:block;margin:-4px 0 12px;">Click a key, then press the new key you want for it. Doesn't apply while typing in a text field.</p>
+    <div id="shortcuts-remap-list"></div>
+    <button type="button" class="settings-btn" id="shortcuts-remap-reset" style="margin-top:12px;">Reset to defaults</button>
+  </div>
+</div>
+
+<!-- ===== Bookmark collections (Settings > Collections) ===== -->
+<div class="rename-overlay" id="collections-modal" role="dialog" aria-modal="true" aria-labelledby="collections-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="collections-close" aria-label="Close collections">&times;</button>
+    <p class="onb-eyebrow">BOOKMARK COLLECTIONS</p>
+    <h2 class="onb-title serif" id="collections-title">Collections</h2>
+    <p class="settings-sub" style="display:block;margin:-4px 0 12px;">Group saved articles and Conditions into a few named collections, e.g. "Finals review". A bookmark can belong to more than one.</p>
+    <div class="collections-new-row">
+      <input type="text" id="collections-new-input" class="bookmark-note-input" style="min-height:auto;" placeholder="New collection name…" maxlength="40">
+      <button type="button" class="settings-btn" id="collections-add-btn">Add</button>
+    </div>
+    <div class="collection-chips" id="collections-chips"></div>
+    <div class="crashlog-list" id="collections-item-list"></div>
+  </div>
+</div>
+
 <!-- ===== Flagged entries (Settings > Flagged entries) ===== -->
 <div class="rename-overlay" id="flagged-modal" role="dialog" aria-modal="true" aria-labelledby="flagged-title" hidden>
   <div class="rename-card settings-card" role="document">
@@ -2371,18 +2505,9 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <p class="onb-eyebrow">SHORTCUTS</p>
     <h2 class="onb-title serif" id="shortcuts-title">Keyboard shortcuts</h2>
     <table class="shortcuts-table">
-      <tbody>
-        <tr><td><kbd>1</kbd></td><td>Literature</td></tr>
-        <tr><td><kbd>2</kbd></td><td>Drugs</td></tr>
-        <tr><td><kbd>3</kbd></td><td>Conditions</td></tr>
-        <tr><td><kbd>4</kbd></td><td>Advances</td></tr>
-        <tr><td><kbd>5</kbd></td><td>Trials</td></tr>
-        <tr><td><kbd>/</kbd></td><td>Focus the search bar</td></tr>
-        <tr><td><kbd>Esc</kbd></td><td>Close the open dialog</td></tr>
-        <tr><td><kbd>?</kbd></td><td>Show this list</td></tr>
-      </tbody>
+      <tbody id="shortcuts-table-body"></tbody>
     </table>
-    <p class="settings-sub" style="display:block;margin-top:12px;">Number keys and <kbd>/</kbd> only act when you're not typing in a text field.</p>
+    <p class="settings-sub" style="display:block;margin-top:12px;">Shortcuts only act when you're not typing in a text field. Customize them from Settings &gt; Keyboard shortcuts.</p>
   </div>
 </div>
 
@@ -2542,6 +2667,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div id="quiz-empty" class="cmp-empty" hidden></div>
     <div id="quiz-body" hidden>
       <div class="quiz-progress" id="quiz-progress"></div>
+      <span id="quiz-ghost-indicator" class="quiz-ghost-indicator" hidden></span>
       <span id="bossfight-timer" class="boss-timer" hidden></span>
       <div class="quiz-flashcard">
         <span class="quiz-type-tag" id="quiz-type-tag"></span>
@@ -2570,6 +2696,35 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       </div>
     </div>
     <div id="quiz-summary" class="quiz-summary" hidden></div>
+  </div>
+</div>
+
+<!-- ===== Muscle memory — ultra-fast single-fact flashcard drill, distinct
+     from the full spaced-repetition Quiz above (pure rote recall, no
+     confidence rating or SRS scheduling) ===== -->
+<div class="rename-overlay" id="drill-modal" role="dialog" aria-modal="true" aria-labelledby="drill-title" hidden>
+  <div class="rename-card settings-card global-search-card quiz-card" role="document">
+    <button type="button" class="onb-close" id="drill-close" aria-label="Close drill">&times;</button>
+    <p class="onb-eyebrow">MUSCLE MEMORY</p>
+    <h2 class="onb-title serif" id="drill-title">Quick-answer drill</h2>
+    <p class="settings-sub" style="display:block;margin:6px 0 14px;">Ultra-fast rote recall, one fact per card. The timer is a soft target only — it never marks you wrong.</p>
+    <div class="seg" id="drill-mode-seg" role="group" aria-label="Drill content">
+      <button type="button" class="seg-btn seg-btn-text active" data-drillmode="abbrev" aria-pressed="true">Abbreviations</button>
+      <button type="button" class="seg-btn seg-btn-text" data-drillmode="drug" aria-pressed="false">Drugs</button>
+    </div>
+    <div id="drill-body">
+      <div class="quiz-progress" id="drill-progress"></div>
+      <span id="drill-timer" class="boss-timer"></span>
+      <div class="quiz-flashcard">
+        <p class="quiz-question" id="drill-prompt"></p>
+        <div class="quiz-answer" id="drill-answer" hidden></div>
+      </div>
+      <button type="button" class="results-export-btn" id="drill-reveal-btn">Reveal</button>
+      <div class="quiz-rate-row" id="drill-next-row" hidden>
+        <button type="button" class="results-export-btn" id="drill-next-btn">Next →</button>
+      </div>
+    </div>
+    <div id="drill-summary" class="quiz-summary" hidden></div>
   </div>
 </div>
 
@@ -2642,6 +2797,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <button id="ask-btn" class="btn-search-everywhere" type="button" title="Ask a plain-language question — ranked answers from this app's own Drugs/Conditions/Trials content">Ask</button>
       <button id="graph-btn" class="btn-search-everywhere" type="button" title="Visual graph of drug/condition/interaction connections">Graph</button>
       <button id="quiz-btn" class="btn-search-everywhere" type="button" title="Spaced-repetition quiz from your bookmarks">Quiz</button>
+      <button id="drill-btn" class="btn-search-everywhere" type="button" title="Muscle memory — ultra-fast single-fact flashcard drill">Drill</button>
       <button id="cases-btn" class="btn-search-everywhere" type="button" title="Case vignettes for self-study">Cases</button>
     </form>
     <div class="header-actions">
@@ -3492,6 +3648,7 @@ const GUIDELINES = {
 const CONDITIONS = [
   {
     name:'Hyponatremia', system:'nephrology',
+    controversy:'Correction-rate ceilings differ by source. The European multi-society guideline used as this entry\'s primary reference caps correction at ≤10 mmol/L in the first 24h and ≤8 mmol/L in each subsequent 24h; some US expert-panel guidance (e.g. Verbalis et al. 2013) has permitted a somewhat faster ceiling. When sources disagree, follow the more conservative limit and your local protocol.',
     aliases:['hyponatraemia','low sodium','low na','siadh'],
     scope:'Adults · Original summary based on The Washington Manual of Medical Therapeutics, Chapter 12 (pp. 462–469), cross-checked against current emergency guidance. Local protocols take priority.',
     sourceNote:'Primary reference in this app: The Washington Manual of Medical Therapeutics, Chapter 12: Fluid and Electrolyte Management, Hyponatremia, pp. 462–469 (user-provided PDF).',
@@ -3540,6 +3697,7 @@ const CONDITIONS = [
   },
   {
     name:'Type 2 diabetes mellitus', system:'endocrinology',
+    controversy:'NICE\'s stepwise algorithm still sequences add-on drugs largely by HbA1c control, while ADA/EASD consensus recommends starting an SGLT2 inhibitor or GLP-1 receptor agonist early for patients with established cardiovascular, renal, or heart-failure risk regardless of HbA1c. Both are defensible; the difference is philosophy (glycaemic-control-first vs cardiorenal-risk-first), not an error in either.',
     aliases:['t2dm','diabetes','sugar','dm','high blood sugar','madhumeha'],
     sa:[
       'South Asians develop T2DM ~a decade earlier and at lower BMI — use Asian cutoffs: overweight ≥23, obese ≥25 kg/m². Waist ≥90 cm (men) / ≥80 cm (women).',
@@ -3562,6 +3720,7 @@ const CONDITIONS = [
   },
   {
     name:'Hypertension', system:'cardiology',
+    controversy:'The diagnostic/treatment threshold itself differs by guideline: US ACC/AHA (2017) defines hypertension at ≥130/80 mmHg and treats many patients to that target, while ESC and NICE guidance uses a ≥140/90 mmHg threshold for diagnosis and treatment target in most adults. This is a genuine, unresolved difference between major societies, not a simple regional preference.',
     aliases:['htn','high bp','high blood pressure','raised bp','uccha raktchap'],
     sa:[
       'Very high population burden and low awareness/control rates; India Hypertension Control Initiative (IHCI) pushes standardised drug-and-dose protocols in primary care.',
@@ -3621,6 +3780,7 @@ const CONDITIONS = [
   },
   {
     name:'Chronic kidney disease', system:'nephrology',
+    controversy:'eGFR equations differ across settings. The US National Kidney Foundation/ASN (2021) recommend a race-free CKD-EPI creatinine equation; other equations (including older CKD-EPI versions and Cockcroft-Gault used for drug dosing) remain in use elsewhere, and adoption of the race-free equation has not been uniform internationally. The equation used can shift a patient\'s reported CKD stage.',
     aliases:['ckd','renal failure','kidney disease','crf'],
     sa:[
       'High burden of diabetic and hypertensive nephropathy plus a distinct CKD of unknown aetiology (CKDu) in agricultural belts (e.g. parts of Andhra/Sri Lanka).',
@@ -3776,6 +3936,7 @@ const CONDITIONS = [
   },
   {
     name:'Dyslipidaemia', system:'endocrinology',
+    controversy:'European ESC/EAS guidance sets explicit LDL-C targets (e.g. <1.4 mmol/L for very-high-risk patients). US ACC/AHA guidance has historically been risk-based statin-intensity without a universal fixed target, adding a target only for a very-high-risk subgroup in its 2018 update. Practically: one tradition treats to a number, the other treats to an intensity tier.',
     aliases:['dyslipidemia','high cholesterol','hyperlipidemia','lipids','ldl'],
     sa:[
       'South Asians show atherogenic pattern: high triglycerides, low HDL, high lipoprotein(a) and small dense LDL — high ASCVD risk at "normal" LDL.',
@@ -3814,6 +3975,7 @@ const CONDITIONS = [
   },
   {
     name:'Iron deficiency anaemia', system:'hematology',
+    controversy:'Dosing frequency for oral iron is unsettled. Hepcidin-based physiology studies (e.g. Stoffel et al.) suggest alternate-day dosing improves fractional absorption and cuts GI side effects versus daily dosing, but most established national programmes and product labelling still default to daily or twice-daily dosing. Guidance is shifting but not yet consistent.',
     aliases:['anemia','anaemia','iron deficiency','ida','low hemoglobin','pandu'],
     sa:[
       'Extremely high prevalence in women and children; Anaemia Mukt Bharat programme drives supplementation and screening.',
@@ -3947,6 +4109,7 @@ const CONDITIONS = [
   },
   {
     name:'Depression', system:'psychiatry',
+    controversy:'NICE\'s stepped-care model explicitly discourages antidepressants as first-line for less-severe depression, favouring guided self-help or psychological therapy first with medication reserved for more severe/persistent presentations. Many US primary-care pathways start an SSRI at first presentation of mild-to-moderate depression alongside offering therapy. Both are guideline-based; they weigh the evidence on mild-depression drug efficacy differently.',
     aliases:['depression','mdd','low mood','mental health','udasi'],
     sa:[
       'Large treatment gap and stigma; somatic presentations (body aches, fatigue, "gas") are common instead of stated low mood.',
@@ -4004,6 +4167,7 @@ const CONDITIONS = [
   },
   {
     name:'Gestational diabetes mellitus', system:'obgyn',
+    controversy:'Diagnostic strategy is genuinely split. IADPSG/WHO one-step criteria (a single 75g OGTT, also the basis for DIPSI used in parts of India) diagnose more women than the traditional US two-step approach (50g glucose challenge screen, then 100g OGTT only if positive) still endorsed by ACOG. The two approaches identify different, only partly overlapping, patient populations.',
     aliases:['gdm','gestational diabetes','pregnancy diabetes'],
     sa:[
       'High prevalence in South Asian pregnancies; India follows a single-step DIPSI test (2-hr 75 g OGTT, ≥140 mg/dL) usable in the fasting or non-fasting state for field feasibility.',
@@ -4118,6 +4282,7 @@ const CONDITIONS = [
   },
   {
     name:'Atrial fibrillation', system:'cardiology',
+    controversy:'The CHA2DS2-VASc threshold for starting anticoagulation differs: ESC guidance supports considering anticoagulation from a score of 1 in men / 2 in women, while US ACC/AHA/ACCP guidance has generally set the threshold a point higher (≥2 in men / ≥3 in women) before routinely recommending it. Shared decision-making is advised either way at the lower scores.',
     aliases:['af','afib','atrial fibrillation','irregular heartbeat','palpitations'],
     sa:[
       'Rheumatic (valvular) AF remains common in South Asia — a mitral-stenosis-associated AF changes anticoagulation choice (warfarin, not a DOAC).',
@@ -4138,6 +4303,7 @@ const CONDITIONS = [
   },
   {
     name:'Venous thromboembolism (DVT & PE)', system:'cardiology',
+    controversy:'For cancer-associated VTE specifically, guidance has diverged on first-line anticoagulant: NICE and more recent ASH/ASCO updates now support DOACs as an option for many patients, but LMWH remains preferred or equally weighted in some pathways (especially with GI/GU malignancy, where DOAC bleeding risk is higher) — this is an active, evolving disagreement rather than settled practice.',
     aliases:['vte','dvt','deep vein thrombosis','pulmonary embolism','pe','blood clot','clot in leg','clot in lung'],
     sa:[
       'Under-recognised; consider provoked (surgery, immobility, pregnancy, malignancy) and unprovoked events. Peripartum VTE risk is relevant given high birth rates.',
@@ -4178,6 +4344,7 @@ const CONDITIONS = [
   },
   {
     name:'Sepsis & septic shock', system:'em',
+    controversy:'The Surviving Sepsis Campaign\'s "1-hour bundle" (broad-spectrum antibiotics within 1 hour of recognition) has drawn explicit public pushback from emergency medicine bodies (e.g. ACEP, IDSA) concerned it pushes empirical antibiotics ahead of diagnostic clarity and stewardship, especially for patients where sepsis is only possible, not confirmed. This is a real, named disagreement between societies, not just implementation difficulty.',
     aliases:['sepsis','septic shock','severe sepsis','bloodstream infection','sirs'],
     sa:[
       'Tropical infections (dengue, malaria, typhoid, leptospirosis, scrub typhus) frequently present as undifferentiated sepsis — keep a broad, region-aware differential.',
@@ -4218,6 +4385,7 @@ const CONDITIONS = [
   },
   {
     name:'Upper GI bleeding', system:'gastroenterology',
+    controversy:'Post-endoscopic PPI dosing intensity is debated: continuous high-dose IV infusion has long been the traditional default (and remains favoured in some protocols) after high-risk stigmata, but trial and meta-analysis evidence supports intermittent high-dose bolus dosing as non-inferior, and it has been adopted more broadly outside the US. Local protocols still vary on which is first-line.',
     aliases:['ugib','gi bleed','haematemesis','melena','melaena','variceal bleed','peptic ulcer bleed'],
     sa:[
       'High burden of variceal bleeding from viral/alcoholic cirrhosis and, in endemic areas, from NCPF/portal hypertension — variceal and non-variceal causes need different pathways.',
@@ -4298,6 +4466,7 @@ const CONDITIONS = [
   },
   {
     name:'Osteoarthritis', system:'rheumatology',
+    controversy:'NICE\'s 2022 update explicitly removed its recommendation for routine paracetamol and topical capsaicin, citing limited effect size, while ACR and OARSI guidance still list paracetamol as a reasonable option, particularly for patients wanting to avoid NSAIDs. Same evidence base, different thresholds for what counts as "worth recommending."',
     aliases:['oa','osteoarthritis','degenerative joint disease','knee arthritis','joint pain'],
     sa:[
       'Very high knee-OA burden, with earlier and more severe disease in women; obesity, squatting/floor-sitting postures and physically demanding work contribute.',
@@ -4498,6 +4667,7 @@ const CONDITIONS = [
   },
   {
     name:'Osteoporosis & fragility fracture', system:'orthopedics',
+    controversy:'FRAX-based intervention thresholds are not universal: the US (NOF/AACE) uses fixed 10-year fracture-risk thresholds to trigger treatment, while the UK\'s NOGG applies age-adjusted FRAX thresholds that rise with age. The same FRAX score can therefore fall on different sides of the "treat" line depending which country\'s threshold is applied.',
     aliases:['osteoporosis','brittle bones','fragility fracture','low bone density','hip fracture','bhurbhura haddi'],
     sa:[
       'Occurs at younger ages and lower BMD thresholds than in Western populations; widespread vitamin D and calcium deficiency and low peak bone mass contribute.',
@@ -4538,6 +4708,7 @@ const CONDITIONS = [
   },
   {
     name:'Anaphylaxis', system:'allergy',
+    controversy:'IM adrenaline dosing convention differs by source: UK Resuscitation Council guidance uses fixed age-band doses, while common US teaching (and many autoinjector labels) uses weight-based (mg/kg) dosing. Both deliver the same drug by the same route — check which convention your local protocol and available autoinjector actually follow before dosing.',
     aliases:['anaphylaxis','severe allergic reaction','allergic shock','anaphylactic shock'],
     sa:[
       'Common triggers include drugs (antibiotics, NSAIDs), stinging insects, and foods; snakebite antivenom and radiocontrast reactions are region-relevant.',
@@ -6940,6 +7111,69 @@ function togglePinSpecialty(id){
   else list.splice(idx, 1);
   setPinnedSpecialties(list);
 }
+/* ============================================================
+   Specialty "passport" — a visual "you've engaged with X of Y
+   specialties" view. Reuses existing tracking rather than inventing new
+   counters: specialties explicitly selected in the Literature sidebar,
+   pinned specialties, and the specialty (system) of any bookmarked
+   Condition. No ranks or levels, just a stamp grid.
+   ============================================================ */
+const SPECIALTY_VISITED_KEY = 'rounds_specialty_visited_v1';
+function recordSpecialtyVisit(id){
+  if(!id) return;
+  try{
+    const list = JSON.parse(localStorage.getItem(SPECIALTY_VISITED_KEY) || '[]');
+    const arr = Array.isArray(list) ? list : [];
+    if(!arr.includes(id)){
+      arr.push(id);
+      localStorage.setItem(SPECIALTY_VISITED_KEY, JSON.stringify(arr));
+    }
+  }catch(e){}
+}
+function getEngagedSpecialtyIds(){
+  const set = new Set();
+  try{
+    const v = JSON.parse(localStorage.getItem(SPECIALTY_VISITED_KEY) || '[]');
+    if(Array.isArray(v)) v.forEach(id => set.add(id));
+  }catch(e){}
+  getPinnedSpecialties().forEach(id => set.add(id));
+  try{
+    Object.keys(getConditionBookmarks()).forEach(name => {
+      const s = SYNDROMES.find(x => x.name === name);
+      if(s && s.system) set.add(s.system);
+    });
+  }catch(e){}
+  return set;
+}
+function openSpecialtyPassport(){
+  const modal = document.getElementById('passport-modal');
+  if(!modal) return;
+  const grid = document.getElementById('passport-grid');
+  const summary = document.getElementById('passport-summary');
+  const engaged = getEngagedSpecialtyIds();
+  const engagedCount = SPECIALTIES.filter(sp => engaged.has(sp.id)).length;
+  if(summary) summary.textContent = `You've engaged with ${engagedCount} of ${SPECIALTIES.length} specialties.`;
+  if(grid){
+    grid.innerHTML = SPECIALTIES.map(sp => {
+      const got = engaged.has(sp.id);
+      return `<div class="passport-stamp${got ? ' is-collected' : ''}">
+        <span class="passport-stamp-icon" aria-hidden="true">${got ? '✓' : ''}</span>
+        <span class="passport-stamp-name">${escapeHtml(sp.name)}</span>
+      </div>`;
+    }).join('');
+  }
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  const closeBtn = document.getElementById('passport-close');
+  if(closeBtn) closeBtn.onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+
 const FEED_CACHE_KEY = 'rounds_feed_cache_v1';
 const SEEN_PMIDS_KEY = 'rounds_seen_pmids_v1';
 const FONTSIZE_KEY = 'rounds_fontsize_v1';
@@ -7043,6 +7277,59 @@ function bumpUsageStat(key){
     localStorage.setItem(USAGE_STATS_KEY, JSON.stringify(stats));
   }catch(e){}
 }
+/* ============================================================
+   Milestone celebrations — a tasteful, fire-and-fade toast for genuine
+   personal milestones computed from data already tracked (bookmark
+   count, quiz sessions completed). Never blocking, easy to permanently
+   disable in Settings. Each milestone threshold fires at most once.
+   ============================================================ */
+const MILESTONES_SEEN_KEY = 'rounds_milestones_seen_v1';
+const MILESTONES_DISABLED_KEY = 'rounds_milestones_disabled_v1';
+const MILESTONE_THRESHOLDS = [1, 5, 10, 25, 50, 100, 250, 500, 1000];
+function getMilestonesSeen(){
+  try{ const v = JSON.parse(localStorage.getItem(MILESTONES_SEEN_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; }
+  catch(e){ return {}; }
+}
+function setMilestonesSeen(obj){ try{ localStorage.setItem(MILESTONES_SEEN_KEY, JSON.stringify(obj)); }catch(e){} }
+function getMilestonesDisabled(){
+  try{ return localStorage.getItem(MILESTONES_DISABLED_KEY) === '1'; }catch(e){ return false; }
+}
+function setMilestonesDisabled(on){ try{ localStorage.setItem(MILESTONES_DISABLED_KEY, on ? '1' : '0'); }catch(e){} }
+const MILESTONE_LABELS = {
+  bookmarks: (n) => `${n} bookmark${n === 1 ? '' : 's'} saved`,
+  quizSessions: (n) => `${n} quiz session${n === 1 ? '' : 's'} completed`
+};
+function maybeCelebrateMilestone(type, count){
+  if(getMilestonesDisabled()) return;
+  if(!count || !MILESTONE_LABELS[type]) return;
+  const seen = getMilestonesSeen();
+  const already = seen[type] || 0;
+  const hits = MILESTONE_THRESHOLDS.filter(t => t <= count && t > already);
+  if(!hits.length) return;
+  const hit = hits[hits.length - 1];
+  seen[type] = hit;
+  setMilestonesSeen(seen);
+  showMilestoneCelebration(MILESTONE_LABELS[type](hit));
+}
+let milestoneToastTimer = null;
+function showMilestoneCelebration(text){
+  let el = document.getElementById('milestone-toast');
+  if(el) el.remove();
+  el = document.createElement('div');
+  el.id = 'milestone-toast';
+  el.className = 'milestone-toast';
+  el.setAttribute('role', 'status');
+  el.setAttribute('aria-live', 'polite');
+  el.innerHTML = `<span class="milestone-icon" aria-hidden="true">🎉</span><span class="milestone-text">${escapeHtml(text)}</span><button type="button" class="milestone-dismiss" aria-label="Dismiss">&times;</button>`;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  const dismiss = () => { el.classList.remove('show'); setTimeout(() => { if(el && el.parentNode) el.remove(); }, 300); };
+  el.querySelector('.milestone-dismiss').onclick = dismiss;
+  if(milestoneToastTimer) clearTimeout(milestoneToastTimer);
+  milestoneToastTimer = setTimeout(dismiss, 5000);
+  haptic('Light');
+}
+
 function topLookupEntries(category, n){
   const counts = getLookupCounts();
   return Object.keys(counts)
@@ -7249,6 +7536,19 @@ function setPlainMechanism(on){
   if(typeof window.reRenderFor_syndromes === 'function') window.reRenderFor_syndromes();
 }
 
+// Bug found during cleanup pass: getVisualAnalogyMode/setVisualAnalogyMode
+// were called (settings toggle, syndromeRowHtml) but never defined anywhere
+// in this file — every openSettings() call and every Conditions-tab render
+// threw a ReferenceError. Backing them properly, same pattern as above.
+const VISUAL_ANALOGY_KEY = 'rounds_visual_analogy_v1';
+function getVisualAnalogyMode(){
+  try{ return localStorage.getItem(VISUAL_ANALOGY_KEY) === '1'; }catch(e){ return false; }
+}
+function setVisualAnalogyMode(on){
+  try{ localStorage.setItem(VISUAL_ANALOGY_KEY, on ? '1' : '0'); }catch(e){}
+  if(typeof window.reRenderFor_syndromes === 'function') window.reRenderFor_syndromes();
+}
+
 /* ---- Battery saver — manual Settings toggle, or auto-enabled via
    navigator.getBattery() where the browser implements it (feature-
    detected; no-ops silently where it isn't, e.g. iOS Safari/Firefox).
@@ -7439,6 +7739,75 @@ function setConditionBookmarks(obj){
   try{ localStorage.setItem(COND_BOOKMARK_KEY, JSON.stringify(obj)); }catch(e){}
 }
 function isConditionBookmarked(name){ return !!getConditionBookmarks()[name]; }
+
+/* ============================================================
+   Bookmark folders/collections — light manual grouping on top of
+   existing bookmark data (article + condition bookmarks), stored as
+   metadata rather than a parallel bookmark system: a list of named
+   collections, plus a membership map from a stable bookmark key to the
+   collection ids it belongs to. A bookmark can belong to more than one.
+   ============================================================ */
+const BOOKMARK_COLLECTIONS_KEY = 'rounds_bookmark_collections_v1';
+function bookmarkKeyFor(kind, id){ return kind + ':' + id; }
+function getCollectionsData(){
+  try{
+    const v = JSON.parse(localStorage.getItem(BOOKMARK_COLLECTIONS_KEY) || '{}');
+    return {
+      collections: Array.isArray(v.collections) ? v.collections : [],
+      membership: (v.membership && typeof v.membership === 'object') ? v.membership : {}
+    };
+  }catch(e){ return { collections: [], membership: {} }; }
+}
+function setCollectionsData(data){
+  try{ localStorage.setItem(BOOKMARK_COLLECTIONS_KEY, JSON.stringify(data)); }catch(e){}
+}
+function createCollection(name){
+  const trimmed = (name || '').trim().slice(0, 40);
+  if(!trimmed) return null;
+  const data = getCollectionsData();
+  const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  data.collections.push({ id, name: trimmed });
+  setCollectionsData(data);
+  return id;
+}
+function renameCollection(id, name){
+  const trimmed = (name || '').trim().slice(0, 40);
+  if(!trimmed) return;
+  const data = getCollectionsData();
+  const c = data.collections.find(x => x.id === id);
+  if(c){ c.name = trimmed; setCollectionsData(data); }
+}
+function deleteCollection(id){
+  const data = getCollectionsData();
+  data.collections = data.collections.filter(x => x.id !== id);
+  Object.keys(data.membership).forEach(key => {
+    data.membership[key] = (data.membership[key] || []).filter(cid => cid !== id);
+    if(!data.membership[key].length) delete data.membership[key];
+  });
+  setCollectionsData(data);
+}
+function getCollectionsForBookmark(key){
+  const data = getCollectionsData();
+  return data.membership[key] || [];
+}
+function toggleBookmarkInCollection(key, collectionId){
+  const data = getCollectionsData();
+  const cur = data.membership[key] || [];
+  const idx = cur.indexOf(collectionId);
+  if(idx === -1) cur.push(collectionId); else cur.splice(idx, 1);
+  if(cur.length) data.membership[key] = cur; else delete data.membership[key];
+  setCollectionsData(data);
+}
+function allSavedBookmarkEntries(){
+  const out = [];
+  Object.values(getBookmarks()).forEach(a => {
+    if(a && a.pmid) out.push({ key: bookmarkKeyFor('lit', a.pmid), label: a.title || 'Untitled article', type: 'Literature' });
+  });
+  Object.keys(getConditionBookmarks()).forEach(name => {
+    out.push({ key: bookmarkKeyFor('cond', name), label: name, type: 'Condition' });
+  });
+  return out;
+}
 /* Tiny non-cryptographic string hash (djb2) — enough to detect drift
    in curated content between when a bookmark was saved and now.
    Shared mechanism powering both content-provenance-on-bookmarks and
@@ -7471,6 +7840,7 @@ function toggleConditionBookmark(name){
   haptic('Medium');
   setConditionBookmarks(bm);
   showToast(added ? 'Saved to your list' : 'Removed from saved', 'ok');
+  if(added && typeof maybeCelebrateMilestone === 'function') maybeCelebrateMilestone('bookmarks', Object.keys(getBookmarks()).length + Object.keys(getConditionBookmarks()).length);
 }
 /* Word-level diff for the small "what changed" view — not a fancy LCS,
    just enough to highlight added/removed words between two short strings. */
@@ -7743,6 +8113,7 @@ function formatApprovalDate(d){
 function selectSpecialty(sp){
   haptic('Light');
   state.specialty = sp;
+  recordSpecialtyVisit(sp.id);
   state.customTerm = null;
   state.viewingBookmarks = false;
   const inp = document.getElementById('search-input');
@@ -8591,6 +8962,7 @@ function conditionCardHtml(c){
   const flagKey = 'guideline:' + c.name;
   const crossChips = crossSpecialtyChipsHtml(CONDITION_CROSS_SPECIALTY[c.name]);
   const headActions = `<span class="condition-head-actions">${contradictFlagBtnHtml(flagKey, c.name, 'Guideline')}</span>`;
+  const controversyHtml = c.controversy ? `<p class="condition-controversy"><span class="cc-icon" aria-hidden="true">&#9878;</span><span><strong>Guidance differs:</strong> ${glossify(c.controversy)}</span></p>` : '';
   if(c.sections){
     const sections = c.sections.map(s => `<div class="condition-block ${s.title === 'Treatment' ? 'mgmt' : ''}">
       <p class="condition-block-label">${escapeHtml(s.title)}</p>
@@ -8601,6 +8973,7 @@ function conditionCardHtml(c){
       ${crossChips}
       ${c.scope ? `<p class="condition-disclaimer"><strong>Scope:</strong> ${escapeHtml(c.scope)}</p>` : ''}
       ${c.sourceNote ? `<p class="condition-disclaimer"><strong>Reference:</strong> ${escapeHtml(c.sourceNote)}</p>` : ''}
+      ${controversyHtml}
       ${sections}
       <div class="condition-block"><p class="condition-block-label">Guidelines &amp; sources</p><div class="condition-refs">${refs}</div></div>
     </article>`;
@@ -8612,6 +8985,7 @@ function conditionCardHtml(c){
       ${headActions}
     </div>
     ${crossChips}
+    ${controversyHtml}
     <div class="condition-block sa">
       <p class="condition-block-label">South Asia notes <span class="sa-flag">· epidemiology, thresholds &amp; access</span></p>
       <ul class="condition-list">${saItems}</ul>
@@ -9064,6 +9438,66 @@ const VISUAL_ANALOGY = {
   'Metabolic syndrome':'Several dashboard warning lights — belly fat, blood sugar, blood pressure, cholesterol — switching on together rather than one at a time, and each one lit makes the others more likely to stay lit too.'
 };
 
+/* Curated single "most decision-relevant fact" per entry for "Explain
+   like it's 3am" mode — deliberately small. Only entries with a genuinely
+   clear, singular, actionable takeaway are included; everything else
+   gracefully falls back to the normal (glossified) description instead
+   of forcing a fact that doesn't exist. */
+const THREE_AM_FACT = {
+  'Serotonin syndrome':'Stop every serotonergic drug now. Core triad: autonomic instability, neuromuscular hyperactivity (clonus/hyperreflexia, worse in the legs), altered mental status.',
+  'Neuroleptic malignant syndrome':'Stop the causative antipsychotic now. Hallmark is lead-pipe rigidity plus fever — drug discontinuation and supportive care come before bromocriptine/dantrolene.',
+  'Tumor lysis syndrome':'Aggressive IV hydration before/during cytotoxic therapy is the critical action. Hyperkalemia is the most immediately dangerous derangement to catch.',
+  'Compartment syndrome':'Pain out of proportion to exam, worse with passive stretch, is the earliest reliable sign — pulses can still be present. Don\'t wait for a pulse to disappear.',
+  'SIADH':'Fluid restrict first-line, and correct sodium slowly — over-fast correction risks osmotic demyelination.',
+  'Cauda equina syndrome':'Urinary retention/incontinence or saddle anesthesia mandates emergent MRI and surgical decompression — don\'t wait for abnormal reflexes.',
+  'Wolff-Parkinson-White syndrome':'Avoid AV-nodal blockers (adenosine, verapamil, digoxin) in a wide-complex irregular tachycardia — they can accelerate the accessory pathway and precipitate VF.',
+  'Long QT syndrome':'Check and correct QT-prolonging drugs and electrolytes (K, Mg) first — torsades is the feared arrhythmia.',
+  'Guillain-Barré syndrome':'Monitor respiratory function closely (serial FVC/NIF) — respiratory failure, not the weakness itself, is what kills.',
+  'Wernicke-Korsakoff syndrome':'Give thiamine before glucose in any at-risk patient — glucose first can precipitate or worsen Wernicke encephalopathy.',
+  'Hemolytic uremic syndrome':'Avoid antibiotics for suspected STEC-associated HUS in children — antibiotics can increase toxin release and worsen HUS risk.',
+  'Refeeding syndrome':'Check and replace phosphate, potassium, and magnesium before/during refeeding; start calories low and go slow in high-risk patients.',
+  'Toxic epidermal necrolysis':'Stop the causative drug immediately — the single most important intervention. Manage like a major burn thereafter.',
+  'Waterhouse-Friderichsen syndrome':'Treat as fulminant meningococcemia — give antibiotics immediately, don\'t delay for confirmatory testing.',
+  'Reye syndrome':'Avoid aspirin in children/teens with a viral illness — that\'s the preventable trigger.',
+  'Acute retroviral syndrome':'A flu-like illness after a recent HIV exposure needs a 4th-gen antigen/antibody or RNA test — antibody-only testing can miss this early window.',
+  'Disseminated intravascular coagulation':'Treat the underlying trigger — DIC is a downstream consequence, not a disease itself. Blood product support follows, it doesn\'t replace, treating the cause.',
+  'Takotsubo syndrome':'Mimics STEMI clinically — troponin and ECG changes can look identical. Diagnosis needs angiography (no obstructive disease) plus the characteristic wall-motion pattern.',
+  'Brugada syndrome':'Avoid drugs that provoke the Brugada ECG pattern and treat fever promptly — fever alone can unmask the pattern and trigger arrhythmia.',
+  'Acute respiratory distress syndrome':'Lung-protective ventilation (low tidal volume, ~6 mL/kg predicted body weight) is the single intervention proven to reduce mortality.'
+};
+
+/* ============================================================
+   "Explain like it's 3am" mode — a stripped-down, fatigue-friendly view
+   surfacing only the single most decision-relevant fact for an entry.
+   Falls back gracefully to the normal (glossified) description when no
+   curated fact exists, rather than fabricating one.
+   ============================================================ */
+function openThreeAmMode(name){
+  const modal = document.getElementById('threeam-modal');
+  if(!modal || !name) return;
+  const s = SYNDROMES.find(x => x.name === name);
+  const fact = THREE_AM_FACT[name];
+  document.getElementById('threeam-name').textContent = name;
+  const bodyEl = document.getElementById('threeam-body');
+  const noteEl = document.getElementById('threeam-fallback-note');
+  if(fact){
+    bodyEl.innerHTML = glossify(fact);
+    noteEl.hidden = true;
+  } else {
+    bodyEl.innerHTML = s ? glossify(s.desc) : 'No curated summary available for this entry.';
+    noteEl.hidden = false;
+  }
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('threeam-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+
 function syndromeRowHtml(s){
   const src = `https://medlineplus.gov/search/?query=${encodeURIComponent(s.name)}`;
   const links = conditionLinksFor(s.name);
@@ -9089,6 +9523,7 @@ function syndromeRowHtml(s){
       <a class="syndrome-src" href="${src}" target="_blank" rel="noopener">Look up →</a>
       ${conditionBookmarkBtnHtml(s.name)}
       ${contradictFlagBtnHtml('syndrome:' + s.name, s.name, 'Condition')}
+      <button type="button" class="syndrome-3am-btn" data-threeam="${escapeHtml(s.name)}" title="Explain like it's 3am — stripped-down, fatigue-friendly view">🌙 3am</button>
     </span>
   </li>`;
 }
@@ -9150,6 +9585,8 @@ function setupConditionEvidence(){
   view.addEventListener('click', e => {
     const drugChip = e.target.closest('.rx-link-chip[data-drug]');
     if(drugChip){ jumpToRxDrugCalc(drugChip.dataset.drug); return; }
+    const threeAmBtn = e.target.closest('.syndrome-3am-btn');
+    if(threeAmBtn){ haptic('Light'); openThreeAmMode(threeAmBtn.dataset.threeam); return; }
     const btn = e.target.closest('.syndrome-evidence-btn');
     if(!btn) return;
     const row = btn.closest('.syndrome-row');
@@ -12055,6 +12492,7 @@ function init(){
   setupGraphView();
   setupConditionBookmarks();
   setupQuiz();
+  setupDrill();
   setupCases();
   setupStudyExport();
   maybeShowOnThisDay();
@@ -12304,11 +12742,35 @@ function displayNameFor(user){
   return 'Doctor';
 }
 
+// Time-of-day prefix, plus a light "it's been a while" acknowledgment when
+// the gap since the last visit is large — reusing DIGEST_LAST_VISIT_KEY
+// (already recorded every open for the "what's new since last visit"
+// digest) rather than tracking a second last-visit timestamp. Must run
+// before maybeShowDigest() overwrites that key for the current visit.
+function greetingTimeOfDayPrefix(){
+  const h = new Date().getHours();
+  if(h < 5) return 'Still up, ';
+  if(h < 12) return 'Good morning, ';
+  if(h < 17) return 'Good afternoon, ';
+  if(h < 22) return 'Good evening, ';
+  return 'Still up, ';
+}
+const GREETING_GAP_MS = 14 * 24 * 60 * 60 * 1000;
+function greetingGapSuffix(){
+  try{
+    const lastVisit = parseInt(localStorage.getItem(DIGEST_LAST_VISIT_KEY), 10);
+    if(!lastVisit || isNaN(lastVisit)) return '';
+    if(Date.now() - lastVisit >= GREETING_GAP_MS) return ' — it’s been a while';
+  }catch(e){}
+  return '';
+}
 function refreshGreeting(){
   const greet = document.getElementById('welcome-greeting');
   if(!greet) return;
   const name = displayNameFor(currentUser);
-  greet.innerHTML = '<span class="greet-prefix">Welcome, </span><strong>' + escapeHtml(name) + '</strong>';
+  const prefix = greetingTimeOfDayPrefix();
+  const suffix = greetingGapSuffix();
+  greet.innerHTML = '<span class="greet-prefix">' + escapeHtml(prefix) + '</span><strong>' + escapeHtml(name) + '</strong>' + (suffix ? '<span class="greet-suffix">' + escapeHtml(suffix) + '</span>' : '');
   greet.hidden = false;
 }
 
@@ -12581,6 +13043,28 @@ function openSettings(){
     syncAnalogy();
   }
 
+  const ghostBtn = document.getElementById('settings-ghost-race-toggle');
+  if(ghostBtn){
+    const syncGhost = () => {
+      const on = getGhostRaceOn();
+      ghostBtn.textContent = on ? 'On' : 'Off';
+      ghostBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    ghostBtn.onclick = () => { setGhostRaceOn(!getGhostRaceOn()); haptic('Light'); syncGhost(); };
+    syncGhost();
+  }
+
+  const milestoneBtn = document.getElementById('settings-milestones-toggle');
+  if(milestoneBtn){
+    const syncMilestone = () => {
+      const on = !getMilestonesDisabled();
+      milestoneBtn.textContent = on ? 'On' : 'Off';
+      milestoneBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    milestoneBtn.onclick = () => { setMilestonesDisabled(!getMilestonesDisabled()); haptic('Light'); syncMilestone(); };
+    syncMilestone();
+  }
+
   const bsBtn = document.getElementById('settings-battery-saver-toggle');
   if(bsBtn){
     const syncBs = () => {
@@ -12708,6 +13192,15 @@ function openSettings(){
 
   const usageStatsBtn = document.getElementById('settings-view-usage-stats');
   if(usageStatsBtn) usageStatsBtn.onclick = () => { haptic('Light'); openUsageStats(); };
+
+  const passportBtn = document.getElementById('settings-view-passport');
+  if(passportBtn) passportBtn.onclick = () => { haptic('Light'); openSpecialtyPassport(); };
+
+  const collectionsBtn = document.getElementById('settings-view-collections');
+  if(collectionsBtn) collectionsBtn.onclick = () => { haptic('Light'); openCollectionsManager(); };
+
+  const shortcutsRemapBtn = document.getElementById('settings-view-shortcuts-remap');
+  if(shortcutsRemapBtn) shortcutsRemapBtn.onclick = () => { haptic('Light'); openShortcutsRemap(); };
 
   const demoBtn = document.getElementById('settings-demo-toggle');
   function syncDemoBtn(){
@@ -12958,6 +13451,98 @@ function jumpToRecentlyViewed(item){
     window.open(item.url, '_blank', 'noopener');
   }
 }
+/* ============================================================
+   Bookmark collections manager (Settings > Collections)
+   ============================================================ */
+let collectionsFilterState = 'all';
+function renderCollectionsManager(){
+  const data = getCollectionsData();
+  const chipsWrap = document.getElementById('collections-chips');
+  const listEl = document.getElementById('collections-item-list');
+  if(!chipsWrap || !listEl) return;
+  if(collectionsFilterState !== 'all' && !data.collections.some(c => c.id === collectionsFilterState)) collectionsFilterState = 'all';
+  chipsWrap.innerHTML = `<button type="button" class="collection-chip${collectionsFilterState === 'all' ? ' active' : ''}" data-filter="all">All</button>`
+    + data.collections.map(c => `<span class="collection-chip-wrap"><button type="button" class="collection-chip${collectionsFilterState === c.id ? ' active' : ''}" data-filter="${escapeHtml(c.id)}">${escapeHtml(c.name)}</button><button type="button" class="collection-chip-del" data-del="${escapeHtml(c.id)}" title="Delete collection" aria-label="Delete ${escapeHtml(c.name)}">&times;</button></span>`).join('');
+
+  const entries = allSavedBookmarkEntries();
+  const visible = collectionsFilterState === 'all' ? entries : entries.filter(e => (data.membership[e.key] || []).includes(collectionsFilterState));
+  if(!entries.length){
+    listEl.innerHTML = '<div class="crashlog-empty">No saved bookmarks yet — save an article or Condition first, then organize them here.</div>';
+  } else if(!visible.length){
+    listEl.innerHTML = '<div class="crashlog-empty">Nothing in this collection yet.</div>';
+  } else if(!data.collections.length){
+    listEl.innerHTML = '<div class="crashlog-empty">Create a collection above, then tap it on each saved item to add it.</div>';
+  } else {
+    listEl.innerHTML = visible.map(e => {
+      const memberIds = data.membership[e.key] || [];
+      const chips = data.collections.map(c => `<button type="button" class="collection-assign-chip${memberIds.includes(c.id) ? ' is-member' : ''}" data-key="${escapeHtml(e.key)}" data-cid="${escapeHtml(c.id)}">${memberIds.includes(c.id) ? '✓ ' : ''}${escapeHtml(c.name)}</button>`).join('');
+      return `<div class="crashlog-entry collection-item">
+        <span class="crashlog-time">${escapeHtml(e.type)}</span>
+        <p class="crashlog-msg">${escapeHtml(e.label)}</p>
+        <div class="collection-assign-row">${chips}</div>
+      </div>`;
+    }).join('');
+  }
+}
+function openCollectionsManager(){
+  const modal = document.getElementById('collections-modal');
+  if(!modal) return;
+  renderCollectionsManager();
+  const addBtn = document.getElementById('collections-add-btn');
+  const input = document.getElementById('collections-new-input');
+  if(addBtn){
+    addBtn.onclick = () => {
+      if(!input || !input.value.trim()) return;
+      createCollection(input.value);
+      input.value = '';
+      haptic('Light');
+      renderCollectionsManager();
+    };
+  }
+  if(input){
+    input.onkeydown = (e) => { if(e.key === 'Enter'){ e.preventDefault(); addBtn.click(); } };
+  }
+  const chipsWrap = document.getElementById('collections-chips');
+  if(chipsWrap){
+    chipsWrap.onclick = (e) => {
+      const del = e.target.closest('.collection-chip-del');
+      if(del){
+        if(confirm('Delete this collection? Saved bookmarks stay saved, they just lose this grouping.')){
+          deleteCollection(del.dataset.del);
+          haptic('Medium');
+          renderCollectionsManager();
+        }
+        return;
+      }
+      const chip = e.target.closest('.collection-chip[data-filter]');
+      if(chip){
+        collectionsFilterState = chip.dataset.filter;
+        haptic('Light');
+        renderCollectionsManager();
+      }
+    };
+  }
+  const listEl = document.getElementById('collections-item-list');
+  if(listEl){
+    listEl.onclick = (e) => {
+      const chip = e.target.closest('.collection-assign-chip');
+      if(!chip) return;
+      toggleBookmarkInCollection(chip.dataset.key, chip.dataset.cid);
+      haptic('Light');
+      renderCollectionsManager();
+    };
+  }
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('collections-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+
 function openRecentlyViewed(){
   const modal = document.getElementById('recent-modal');
   if(!modal) return;
@@ -12996,26 +13581,121 @@ function openRecentlyViewed(){
 /* ============================================================
    Keyboard shortcuts
    ============================================================ */
-const SHORTCUT_TAB_KEYS = {'1':'literature', '2':'drug', '3':'syndromes', '4':'advances', '5':'trials'};
+/* ============================================================
+   Customizable keyboard shortcuts — same bindings as before by default,
+   remappable from Settings > Keyboard shortcuts, persisted locally.
+   ============================================================ */
+const SHORTCUT_ACTION_DEFS = [
+  { id:'literature', label:'Literature', key:'1' },
+  { id:'drug', label:'Drugs', key:'2' },
+  { id:'syndromes', label:'Conditions', key:'3' },
+  { id:'advances', label:'Advances', key:'4' },
+  { id:'trials', label:'Trials', key:'5' },
+  { id:'search', label:'Focus the search bar', key:'/' },
+  { id:'help', label:'Show this list', key:'?' }
+];
+const SHORTCUTS_KEY = 'rounds_shortcuts_v1';
+function getShortcutOverrides(){
+  try{ const v = JSON.parse(localStorage.getItem(SHORTCUTS_KEY) || '{}'); return (v && typeof v === 'object') ? v : {}; }
+  catch(e){ return {}; }
+}
+function getShortcutBindings(){
+  const overrides = getShortcutOverrides();
+  const map = {};
+  SHORTCUT_ACTION_DEFS.forEach(a => { map[a.id] = overrides[a.id] || a.key; });
+  return map;
+}
+function setShortcutBinding(actionId, key){
+  const overrides = getShortcutOverrides();
+  overrides[actionId] = key;
+  try{ localStorage.setItem(SHORTCUTS_KEY, JSON.stringify(overrides)); }catch(e){}
+}
+function resetShortcutsToDefault(){
+  try{ localStorage.removeItem(SHORTCUTS_KEY); }catch(e){}
+}
+function renderShortcutsHelpTable(){
+  const body = document.getElementById('shortcuts-table-body');
+  if(!body) return;
+  const bindings = getShortcutBindings();
+  const rows = SHORTCUT_ACTION_DEFS.map(a => `<tr><td><kbd>${escapeHtml(bindings[a.id])}</kbd></td><td>${escapeHtml(a.label)}</td></tr>`).join('');
+  body.innerHTML = rows + '<tr><td><kbd>Esc</kbd></td><td>Close the open dialog</td></tr>';
+}
 function isTypingTarget(el){
   if(!el) return false;
   const tag = (el.tagName || '').toLowerCase();
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal','ask-modal','graph-modal']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','shortcuts-remap-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','drill-modal','cases-modal','ask-modal','graph-modal','passport-modal','threeam-modal','collections-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
   const modal = document.getElementById('shortcuts-modal');
   if(!modal) return;
+  renderShortcutsHelpTable();
   function close(){
     modal.hidden = true;
     document.removeEventListener('keydown', onKey);
   }
-  function onKey(e){ if(e.key === 'Escape' || e.key === '?') close(); }
+  function onKey(e){ if(e.key === 'Escape' || e.key === getShortcutBindings().help) close(); }
   document.getElementById('shortcuts-close').onclick = close;
   modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+
+function shortcutKeyLabel(key){
+  if(key === ' ') return 'Space';
+  return key;
+}
+function renderShortcutsRemapList(){
+  const wrap = document.getElementById('shortcuts-remap-list');
+  if(!wrap) return;
+  const bindings = getShortcutBindings();
+  wrap.innerHTML = SHORTCUT_ACTION_DEFS.map(a => `
+    <div class="settings-row">
+      <div class="settings-label"><strong>${escapeHtml(a.label)}</strong></div>
+      <button type="button" class="settings-btn shortcut-remap-btn" data-action="${escapeHtml(a.id)}">${escapeHtml(shortcutKeyLabel(bindings[a.id]))}</button>
+    </div>`).join('');
+  wrap.querySelectorAll('.shortcut-remap-btn').forEach(btn => {
+    btn.onclick = () => {
+      const original = btn.textContent;
+      btn.textContent = 'Press a key…';
+      btn.classList.add('is-listening');
+      function capture(e){
+        e.preventDefault();
+        e.stopPropagation();
+        document.removeEventListener('keydown', capture, true);
+        btn.classList.remove('is-listening');
+        if(e.key === 'Escape'){ btn.textContent = original; return; }
+        setShortcutBinding(btn.dataset.action, e.key);
+        haptic('Light');
+        renderShortcutsRemapList();
+      }
+      document.addEventListener('keydown', capture, true);
+    };
+  });
+}
+function openShortcutsRemap(){
+  const modal = document.getElementById('shortcuts-remap-modal');
+  if(!modal) return;
+  renderShortcutsRemapList();
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape' && !document.querySelector('.shortcut-remap-btn.is-listening')) close(); }
+  document.getElementById('shortcuts-remap-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  const resetBtn = document.getElementById('shortcuts-remap-reset');
+  if(resetBtn){
+    resetBtn.onclick = () => {
+      resetShortcutsToDefault();
+      haptic('Medium');
+      renderShortcutsRemapList();
+      showToast('Shortcuts reset to defaults', 'ok');
+    };
+  }
   modal.hidden = false;
   document.addEventListener('keydown', onKey);
 }
@@ -13901,6 +14581,43 @@ function buildQuizQueue(){
   return due.length ? due : items;
 }
 
+/* ---- "Ghost race" — a faint indicator, alongside live progress, of how
+   the learner did at the same point in their most recent previous session
+   of similar size ("you were at 7/10 correct by this point last time").
+   History stores just a cumulative-correct-count sequence per session,
+   trimmed to the most recent sessions — no card-level detail needed. ---- */
+const GHOST_RACE_KEY = 'rounds_ghost_race_v1';
+const QUIZ_HISTORY_KEY = 'rounds_quiz_history_v1';
+const QUIZ_HISTORY_MAX = 20;
+function getGhostRaceOn(){
+  try{ return localStorage.getItem(GHOST_RACE_KEY) === '1'; }catch(e){ return false; }
+}
+function setGhostRaceOn(on){
+  try{ localStorage.setItem(GHOST_RACE_KEY, on ? '1' : '0'); }catch(e){}
+}
+function getQuizHistory(){
+  try{ const v = JSON.parse(localStorage.getItem(QUIZ_HISTORY_KEY) || '[]'); return Array.isArray(v) ? v : []; }
+  catch(e){ return []; }
+}
+function saveQuizHistorySession(total, correctSeq){
+  if(!total || !correctSeq || !correctSeq.length) return;
+  try{
+    const hist = getQuizHistory();
+    hist.push({ total, correctSeq, ts: Date.now() });
+    while(hist.length > QUIZ_HISTORY_MAX) hist.shift();
+    localStorage.setItem(QUIZ_HISTORY_KEY, JSON.stringify(hist));
+  }catch(e){}
+}
+// "Similar size" — within 30% of the new session's card count, most recent first.
+function findGhostSession(total){
+  const hist = getQuizHistory();
+  for(let i = hist.length - 1; i >= 0; i--){
+    const h = hist[i];
+    if(h && h.total && Math.abs(h.total - total) / total <= 0.3) return h;
+  }
+  return null;
+}
+
 function openQuiz(){
   const modal = document.getElementById('quiz-modal');
   if(!modal) return;
@@ -13916,7 +14633,8 @@ function openQuiz(){
   } else {
     emptyEl.hidden = true;
     const queue = shuffleArr(buildQuizQueue());
-    quizSession = { queue, idx: 0, total: queue.length, resultCounts: { again: 0, hard: 0, good: 0, easy: 0 } };
+    quizSession = { queue, idx: 0, total: queue.length, resultCounts: { again: 0, hard: 0, good: 0, easy: 0 }, correctSeq: [], correctSoFar: 0 };
+    if(getGhostRaceOn()) quizSession.ghost = findGhostSession(queue.length);
     renderQuizCard();
   }
   modal.hidden = false;
@@ -13979,7 +14697,13 @@ function renderQuizCard(){
     const rc = quizSession ? quizSession.resultCounts : { again: 0, hard: 0, good: 0, easy: 0 };
     const total = quizSession ? quizSession.total : 0;
     summaryEl.innerHTML = `<strong>Session complete</strong>Reviewed ${total} card${total === 1 ? '' : 's'} · Again ${rc.again} · Hard ${rc.hard} · Good ${rc.good} · Easy ${rc.easy}<br><br>Come back later — cards you rated lower will resurface sooner.`;
-    if(quizSession && quizSession.total > 0) bumpUsageStat('quizSessions');
+    if(quizSession && quizSession.total > 0){
+      bumpUsageStat('quizSessions');
+      saveQuizHistorySession(quizSession.total, quizSession.correctSeq);
+      if(typeof maybeCelebrateMilestone === 'function') maybeCelebrateMilestone('quizSessions', (getUsageStats().quizSessions || 0));
+    }
+    const ghostEl = document.getElementById('quiz-ghost-indicator');
+    if(ghostEl) ghostEl.hidden = true;
     quizSession = null;
     return;
   }
@@ -13988,6 +14712,17 @@ function renderQuizCard(){
   const item = quizSession.queue[quizSession.idx];
   quizSession.confidence = null;
   document.getElementById('quiz-progress').textContent = `Card ${quizSession.idx + 1} of ${quizSession.total}`;
+  const ghostEl = document.getElementById('quiz-ghost-indicator');
+  if(ghostEl){
+    const g = quizSession.ghost;
+    const cardsDone = quizSession.idx;
+    if(g && g.correctSeq && cardsDone > 0 && g.correctSeq[cardsDone - 1] != null){
+      ghostEl.hidden = false;
+      ghostEl.textContent = `👻 Last similar session: ${g.correctSeq[cardsDone - 1]}/${cardsDone} correct by this point · you're at ${quizSession.correctSoFar}/${cardsDone}`;
+    } else {
+      ghostEl.hidden = true;
+    }
+  }
   document.getElementById('quiz-type-tag').textContent = item.type;
   document.getElementById('quiz-question').textContent = item.q;
   document.getElementById('quiz-sub').textContent = item.sub || '';
@@ -14021,6 +14756,8 @@ function rateQuizCard(rating){
   srsRate(item.key, rating);
   recordCalibration(quizSession.confidence, rating === 'good' || rating === 'easy');
   quizSession.resultCounts[rating] = (quizSession.resultCounts[rating] || 0) + 1;
+  if(rating === 'good' || rating === 'easy') quizSession.correctSoFar++;
+  quizSession.correctSeq.push(quizSession.correctSoFar);
   quizSession.idx++;
   haptic('Light');
   renderQuizCard();
@@ -14050,6 +14787,133 @@ function setupQuiz(){
   });
   const calBtn = document.getElementById('quiz-calibration-btn');
   if(calBtn) calBtn.onclick = () => { haptic('Light'); toggleCalibrationPanel(); };
+}
+
+/* ============================================================
+   "Muscle memory" quick-answer drill — an ultra-fast flashcard mode
+   distinct from the full spaced-repetition Quiz above: single fact per
+   card, a subtle informational (never punitive) target-time readout,
+   pure rote recall. Two content sources, both reused from data the app
+   already has: abbreviation → expansion (ABBREV_DICT) and drug → a key
+   dosing fact (first regimen note from RX_DRUGS).
+   ============================================================ */
+let drillSession = null;
+const DRILL_TARGET_MS = 5000;
+let drillTimerInterval = null;
+let drillCardStart = 0;
+function buildDrillQueue(mode){
+  if(mode === 'drug'){
+    return RX_DRUGS.filter(d => d.regimens && d.regimens[0]).map(d => ({
+      prompt: `${d.generic} (${d.brand})`,
+      answer: d.regimens[0].note || d.regimens[0].label || ''
+    }));
+  }
+  return Object.keys(ABBREV_DICT).map(k => ({ prompt: k, answer: ABBREV_DICT[k] }));
+}
+function startDrillSession(mode){
+  clearDrillTimer();
+  const queue = shuffleArr(buildDrillQueue(mode));
+  drillSession = { queue, idx: 0, total: queue.length, mode };
+  renderDrillCard();
+}
+function renderDrillCard(){
+  const bodyEl = document.getElementById('drill-body');
+  const summaryEl = document.getElementById('drill-summary');
+  if(!drillSession || drillSession.idx >= drillSession.queue.length){
+    bodyEl.hidden = true;
+    summaryEl.hidden = false;
+    const total = drillSession ? drillSession.total : 0;
+    summaryEl.innerHTML = `<strong>Drill complete</strong>Ran through ${total} card${total === 1 ? '' : 's'}.`;
+    if(total > 0) bumpUsageStat('drillSessions');
+    clearDrillTimer();
+    drillSession = null;
+    return;
+  }
+  bodyEl.hidden = false;
+  summaryEl.hidden = true;
+  const item = drillSession.queue[drillSession.idx];
+  const progEl = document.getElementById('drill-progress');
+  if(progEl) progEl.textContent = `Card ${drillSession.idx + 1} of ${drillSession.total}`;
+  const promptEl = document.getElementById('drill-prompt');
+  if(promptEl) promptEl.textContent = item.prompt;
+  const answerEl = document.getElementById('drill-answer');
+  if(answerEl){ answerEl.textContent = item.answer; answerEl.hidden = true; }
+  const revealBtn = document.getElementById('drill-reveal-btn');
+  if(revealBtn) revealBtn.hidden = false;
+  const nextRow = document.getElementById('drill-next-row');
+  if(nextRow) nextRow.hidden = true;
+  startDrillTimer();
+}
+function startDrillTimer(){
+  clearDrillTimer();
+  drillCardStart = Date.now();
+  const timerEl = document.getElementById('drill-timer');
+  if(!timerEl) return;
+  const tick = () => {
+    const elapsed = Date.now() - drillCardStart;
+    const sec = (elapsed / 1000).toFixed(1);
+    const overTarget = elapsed > DRILL_TARGET_MS;
+    timerEl.textContent = `${sec}s${overTarget ? ' · past target' : ' / ' + (DRILL_TARGET_MS / 1000) + 's target'}`;
+    timerEl.classList.toggle('low', overTarget);
+  };
+  tick();
+  drillTimerInterval = setInterval(tick, 100);
+}
+function clearDrillTimer(){
+  if(drillTimerInterval){ clearInterval(drillTimerInterval); drillTimerInterval = null; }
+}
+function revealDrillAnswer(){
+  const answerEl = document.getElementById('drill-answer');
+  if(answerEl) answerEl.hidden = false;
+  const revealBtn = document.getElementById('drill-reveal-btn');
+  if(revealBtn) revealBtn.hidden = true;
+  const nextRow = document.getElementById('drill-next-row');
+  if(nextRow) nextRow.hidden = false;
+  clearDrillTimer();
+  haptic('Light');
+}
+function nextDrillCard(){
+  if(!drillSession) return;
+  drillSession.idx++;
+  renderDrillCard();
+}
+function onDrillKey(e){ if(e.key === 'Escape') closeDrill(); }
+function closeDrill(){
+  const modal = document.getElementById('drill-modal');
+  if(modal) modal.hidden = true;
+  document.removeEventListener('keydown', onDrillKey);
+  clearDrillTimer();
+  drillSession = null;
+}
+function openDrill(){
+  const modal = document.getElementById('drill-modal');
+  if(!modal) return;
+  const activeBtn = document.querySelector('#drill-mode-seg .seg-btn.active');
+  startDrillSession(activeBtn ? activeBtn.dataset.drillmode : 'abbrev');
+  modal.hidden = false;
+  document.addEventListener('keydown', onDrillKey);
+}
+function setupDrill(){
+  const btn = document.getElementById('drill-btn');
+  if(btn) btn.onclick = () => { haptic('Light'); openDrill(); };
+  const closeBtn = document.getElementById('drill-close');
+  if(closeBtn) closeBtn.onclick = closeDrill;
+  const modal = document.getElementById('drill-modal');
+  if(modal) modal.onclick = (e) => { if(e.target === modal) closeDrill(); };
+  const revealBtn = document.getElementById('drill-reveal-btn');
+  if(revealBtn) revealBtn.onclick = revealDrillAnswer;
+  const nextBtn = document.getElementById('drill-next-btn');
+  if(nextBtn) nextBtn.onclick = nextDrillCard;
+  document.querySelectorAll('#drill-mode-seg .seg-btn').forEach(b => {
+    b.onclick = () => {
+      haptic('Light');
+      document.querySelectorAll('#drill-mode-seg .seg-btn').forEach(x => {
+        x.classList.toggle('active', x === b);
+        x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+      });
+      startDrillSession(b.dataset.drillmode);
+    };
+  });
 }
 
 /* ============================================================
@@ -14735,20 +15599,21 @@ function setupKeyboardShortcuts(){
   document.addEventListener('keydown', (e) => {
     if(e.metaKey || e.ctrlKey || e.altKey) return;
     if(isTypingTarget(e.target)) return;
-    if(e.key === '?'){
+    const bindings = getShortcutBindings();
+    if(e.key === bindings.help){
       if(anyOverlayOpen()) return;
       e.preventDefault();
       openShortcuts();
       return;
     }
     if(anyOverlayOpen()) return;
-    if(e.key === '/'){
+    if(e.key === bindings.search){
       const inp = document.getElementById('search-input');
       if(inp){ e.preventDefault(); inp.focus(); }
       return;
     }
-    const view = SHORTCUT_TAB_KEYS[e.key];
-    if(view) switchView(view);
+    const tabAction = SHORTCUT_ACTION_DEFS.find(a => ['literature','drug','syndromes','advances','trials'].includes(a.id) && bindings[a.id] === e.key);
+    if(tabAction) switchView(tabAction.id);
   });
 }
 
