@@ -1795,6 +1795,12 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-compare-cell-flag{color:var(--caution);font-weight:800;}
 .ws-flowsheet-cols{display:flex;flex-wrap:wrap;gap:6px 14px;padding:2px 0 10px;font-size:12.5px;color:var(--ink-soft);}
 .ws-flowsheet-cols label{display:flex;align-items:center;gap:5px;white-space:nowrap;}
+.vitals-endshift-recap{display:flex;flex-wrap:wrap;gap:var(--space-4);margin-bottom:var(--space-5);}
+.es-stat{flex:1;min-width:150px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);padding:14px 16px;}
+.es-num{display:block;font-family:var(--ff-display);font-size:32px;line-height:1;}
+.es-label{display:block;font-size:12px;color:var(--ink-soft);margin-top:4px;}
+.vitals-endshift-list{list-style:none;margin:0 0 var(--space-4);padding:0;display:grid;gap:6px;}
+.vitals-endshift-list li{font-size:13px;border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px;background:var(--surface);}
 .vitals-board-card{text-align:left;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
   padding:14px 16px;cursor:pointer;font-family:var(--ff-sans);color:var(--ink);transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);}
 .vitals-board-card:hover{border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
@@ -2679,6 +2685,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       Not seen recently only
     </label>
     <button type="button" class="vitals-btn-outline vitals-sbar-all-btn" id="vitals-sbar-all-btn" title="Generate one combined SBAR handover for every patient marked as yours this shift">SBAR &mdash; my patients this shift</button>
+    <button type="button" class="vitals-btn-outline vitals-sbar-all-btn" id="vitals-endshift-btn" title="Your shift recap plus an aggregate of what's due across your active patients">End-of-shift summary</button>
     <ol class="chapter-list" id="patient-list"></ol>
     <button type="button" class="vitals-add-patient-btn" id="vitals-add-patient-btn">+ Add patient</button>
     <button type="button" class="vitals-add-patient-btn vitals-btn-outline" id="vitals-scan-patient-btn" hidden>&#128247; Scan patient ID</button>
@@ -2740,6 +2747,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       <p class="vitals-disclaimer" style="margin-bottom:var(--space-4);">Bed map is a visual layout of the same active-roster data as the board view — not a real-time facility floor plan.</p>
       <div class="vitals-mapview-grid" id="vitals-mapview-grid"></div>
       <p class="vitals-board-empty" id="vitals-mapview-empty" hidden>No patients on the roster yet — add one on the left.</p>
+    </div>
+
+    <div id="vitals-endshift" class="vitals-board" hidden>
+      <p class="vitals-disclaimer" style="margin-bottom:var(--space-4);">Personal recap and an aggregate of what's due — a charting aid to sanity-check before you hand over, not an official end-of-shift report.</p>
+      <div id="vitals-endshift-content"></div>
     </div>
 
     <div id="vitals-archive" class="vitals-board" hidden>
@@ -4924,6 +4936,7 @@ function initVitals(){
   setupPatientTimeline();
   setupFlowsheetColumnSettings();
   applyFlowsheetColumnVisibility();
+  setupVitalsEndShiftToggle();
   setupReadingIntervalSelect();
   setupIoBalanceForm();
   setupMarSection();
@@ -5301,6 +5314,11 @@ function setVitalsBoardActive(active){
     vitalsMapViewActive = false;
     const mapBtn = document.getElementById('vitals-mapview-toggle-btn');
     if(mapBtn){ mapBtn.setAttribute('aria-pressed', 'false'); mapBtn.textContent = 'Bed map'; }
+    const esPanel = document.getElementById('vitals-endshift');
+    if(esPanel) esPanel.hidden = true;
+    vitalsEndShiftActive = false;
+    const esBtn = document.getElementById('vitals-endshift-btn');
+    if(esBtn) esBtn.textContent = 'End-of-shift summary';
     renderVitalsBoard();
   }else{
     renderVitalsMain();
@@ -5404,6 +5422,11 @@ function setVitalsArchiveActive(active){
     vitalsMapViewActive = false;
     const mapBtn = document.getElementById('vitals-mapview-toggle-btn');
     if(mapBtn){ mapBtn.setAttribute('aria-pressed', 'false'); mapBtn.textContent = 'Bed map'; }
+    const esPanel = document.getElementById('vitals-endshift');
+    if(esPanel) esPanel.hidden = true;
+    vitalsEndShiftActive = false;
+    const esBtn = document.getElementById('vitals-endshift-btn');
+    if(esBtn) esBtn.textContent = 'End-of-shift summary';
     renderVitalsArchive();
   }else{
     renderVitalsMain();
@@ -5494,6 +5517,11 @@ function setVitalsMapViewActive(active){
     vitalsArchiveActive = false;
     const archiveBtn = document.getElementById('vitals-archive-toggle-btn');
     if(archiveBtn){ archiveBtn.setAttribute('aria-pressed', 'false'); archiveBtn.textContent = 'Archive'; }
+    const esPanel = document.getElementById('vitals-endshift');
+    if(esPanel) esPanel.hidden = true;
+    vitalsEndShiftActive = false;
+    const esBtn = document.getElementById('vitals-endshift-btn');
+    if(esBtn) esBtn.textContent = 'End-of-shift summary';
     renderVitalsMapView();
   }else{
     renderVitalsMain();
@@ -7572,6 +7600,90 @@ function setupPatientTimeline(){
     closeBtn.dataset.wired = '1';
     closeBtn.addEventListener('click', () => { if(panel) panel.hidden = true; });
   }
+}
+
+/* ---- end-of-shift summary — personal recap plus an aggregate "things
+   due" list (MAR doses, overdue vitals, unresolved problems) across your
+   active patients. Reuses existing per-patient logic; doesn't reinvent
+   due/overdue calculation. Prefers patients marked "mine" this shift,
+   falling back to the whole active roster if none are marked. ---- */
+let vitalsEndShiftActive = false;
+
+function renderEndOfShiftSummary(){
+  const wrap = document.getElementById('vitals-endshift-content');
+  if(!wrap) return;
+  const now = Date.now();
+  const activePatients = vitalsState.patients.filter(isPatientActive);
+  const mineMarked = activePatients.filter(p => p.mine);
+  const scope = mineMarked.length ? mineMarked : activePatients;
+
+  const todayKey = wardsTodayKey();
+  let readingsToday = 0;
+  const patientsChartedToday = new Set();
+  activePatients.forEach(p => {
+    (vitalsState.logs[p.id] || []).forEach(e => {
+      if((e.ts || '').slice(0, 10) === todayKey){ readingsToday++; patientsChartedToday.add(p.id); }
+    });
+  });
+
+  const overdueVitals = scope.filter(p => isVitalsPatientOverdue(p, now));
+  const dueMeds = [];
+  scope.forEach(p => (p.medications || []).forEach(med => {
+    const status = marDoseStatus(med);
+    if(status.cls === 'mar-due' || status.cls === 'mar-overdue') dueMeds.push({ p, med, status });
+  }));
+  const unresolvedProblems = [];
+  scope.forEach(p => (p.problems || []).filter(pr => !pr.resolvedAt).forEach(pr => unresolvedProblems.push({ p, pr })));
+
+  const listOrEmpty = (items, emptyMsg) => items.length
+    ? `<ul class="vitals-endshift-list">${items}</ul>`
+    : `<p class="vitals-dept-empty">${emptyMsg}</p>`;
+
+  wrap.innerHTML =
+    `<div class="vitals-endshift-recap">` +
+      `<div class="es-stat"><span class="es-num">${patientsChartedToday.size}</span><span class="es-label">patients you've charted today</span></div>` +
+      `<div class="es-stat"><span class="es-num">${readingsToday}</span><span class="es-label">readings logged today</span></div>` +
+      `<div class="es-stat"><span class="es-num">${scope.length}</span><span class="es-label">${mineMarked.length ? 'patients marked as mine this shift' : 'active patients (none marked "mine" — showing all)'}</span></div>` +
+    `</div>` +
+    `<p class="vitals-dept-subtitle">Medications due or overdue</p>` +
+    listOrEmpty(dueMeds.map(d => `<li><span class="vitals-timeline-kind">MED</span>${escapeHtml(d.p.bed || '—')} ${escapeHtml(d.p.name || 'Unnamed')} — ${escapeHtml(d.med.name)} (${escapeHtml(d.status.label)})</li>`).join(''), 'Nothing due.') +
+    `<p class="vitals-dept-subtitle">Vitals not seen recently</p>` +
+    listOrEmpty(overdueVitals.map(p => `<li><span class="vitals-timeline-kind">VITALS</span>${escapeHtml(p.bed || '—')} ${escapeHtml(p.name || 'Unnamed')} — not seen in over ${effectiveUnseenThresholdHours(p)}h</li>`).join(''), 'Nothing overdue.') +
+    `<p class="vitals-dept-subtitle">Unresolved problems</p>` +
+    listOrEmpty(unresolvedProblems.map(u => `<li><span class="vitals-timeline-kind">PROBLEM</span>${escapeHtml(u.p.bed || '—')} ${escapeHtml(u.p.name || 'Unnamed')} — ${escapeHtml(u.pr.text)}</li>`).join(''), 'No unresolved problems.');
+}
+
+function setVitalsEndShiftActive(active){
+  vitalsEndShiftActive = active;
+  const panel = document.getElementById('vitals-endshift');
+  const toggleBtn = document.getElementById('vitals-endshift-btn');
+  const empty = document.getElementById('vitals-empty');
+  const view = document.getElementById('vitals-patient-view');
+  if(panel) panel.hidden = !active;
+  if(toggleBtn) toggleBtn.textContent = active ? 'Close summary' : 'End-of-shift summary';
+  if(active){
+    if(empty) empty.hidden = true;
+    if(view) view.hidden = true;
+    const board = document.getElementById('vitals-board');
+    if(board) board.hidden = true;
+    vitalsBoardActive = false;
+    const mapPanel = document.getElementById('vitals-mapview');
+    if(mapPanel) mapPanel.hidden = true;
+    vitalsMapViewActive = false;
+    const archivePanel = document.getElementById('vitals-archive');
+    if(archivePanel) archivePanel.hidden = true;
+    vitalsArchiveActive = false;
+    renderEndOfShiftSummary();
+  }else{
+    renderVitalsMain();
+  }
+}
+
+function setupVitalsEndShiftToggle(){
+  const btn = document.getElementById('vitals-endshift-btn');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => setVitalsEndShiftActive(!vitalsEndShiftActive));
 }
 
 /* ============================================================
