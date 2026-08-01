@@ -1777,7 +1777,31 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 
 /* ---- roster-wide board view ---- */
 .vitals-main-toprow{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;}
-.vitals-main-toprow-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.vitals-main-toprow-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.wards-weather-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--ink-faint);cursor:default;}
+.wards-weather-badge[hidden]{display:none;}
+.wards-weather-icon{font-size:15px;line-height:1;}
+
+.vitals-sbar-baton{display:inline-block;font-size:20px;line-height:1;opacity:0;transform:scale(0.6) rotate(-10deg);}
+.vitals-sbar-baton.baton-fire{animation:wardsBatonPulse 0.85s ease;}
+@keyframes wardsBatonPulse{
+  0%{opacity:0;transform:scale(0.6) rotate(-10deg);}
+  35%{opacity:1;transform:scale(1.25) rotate(6deg);}
+  70%{opacity:1;transform:scale(1) rotate(0deg);}
+  100%{opacity:0;transform:scale(1) rotate(0deg);}
+}
+@media (prefers-reduced-motion: reduce){.vitals-sbar-baton.baton-fire{animation:none;opacity:0;}}
+
+.wards-wellwall-wrap{position:relative;}
+.wards-wellwall-panel{width:280px;max-height:min(70vh,520px);overflow-y:auto;}
+.wards-wellwall-list{display:flex;flex-direction:column;gap:8px;max-height:32vh;overflow-y:auto;}
+.wards-wellwall-item{border-top:1px solid var(--line);padding-top:8px;}
+.wards-wellwall-item:first-child{border-top:none;padding-top:0;}
+.wards-wellwall-item p{margin:0 0 4px;font-family:var(--ff-sans);font-size:13px;color:var(--ink);white-space:pre-wrap;}
+.wards-wellwall-item .ww-time{font-size:10.5px;color:var(--ink-faint);display:block;margin-bottom:4px;}
+.wards-wellwall-item .ww-del{border:none;background:none;color:var(--ink-faint);font-size:11px;cursor:pointer;padding:0;text-decoration:underline;}
+.wards-wellwall-item .ww-del:hover{color:var(--caution);}
+.wards-wellwall-empty{font-size:12.5px;color:var(--ink-faint);}
 .vitals-board-toggle-btn[aria-pressed="true"]{background:var(--evidence);color:var(--shell-ink);border-color:var(--evidence);}
 .vitals-board-card.is-archived{border-color:var(--line);opacity:.92;}
 .vitals-board-archived-date{font-size:11px;font-weight:700;color:var(--ink-faint);}
@@ -2611,6 +2635,20 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 20h9" stroke-linecap="round"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z" stroke-linecap="round" stroke-linejoin="round"/></svg>
       <span class="wards-quicknote-badge" id="wards-quicknote-badge" hidden></span>
     </button>
+    <div class="wards-wellwall-wrap">
+      <button id="wards-wellwall-btn" class="theme-toggle" type="button" aria-label="Something that went well — private reflection wall" title="Something that went well — a private, personal wellbeing note. Local-only, never clinical, never synced." aria-expanded="false">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 21s-7.2-4.5-9.5-9C.9 8.4 2.6 5 6 5c2 0 3.4 1.1 4 2.2C10.6 6.1 12 5 14 5c3.4 0 5.1 3.4 3.5 7-2.3 4.5-9.5 9-9.5 9Z"/></svg>
+      </button>
+      <div class="quiet-hours-panel wards-wellwall-panel" id="wards-wellwall-panel" hidden>
+        <p class="qh-row" style="margin-bottom:6px;">Something that went well</p>
+        <p class="qh-note" style="margin-bottom:10px;">A private, personal reflection — not a clinical note, never attached to a patient, never exported or synced. Stays on this device only.</p>
+        <textarea id="wards-wellwall-input" rows="3" maxlength="280" placeholder="One good thing from this shift…" style="width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-family:var(--ff-sans);font-size:13px;resize:vertical;margin-bottom:8px;"></textarea>
+        <div class="ws-row" style="margin-bottom:10px;">
+          <button type="button" class="settings-btn" id="wards-wellwall-add-btn">Add</button>
+        </div>
+        <div id="wards-wellwall-list" class="wards-wellwall-list"></div>
+      </div>
+    </div>
     <button id="wards-export-all" class="theme-toggle" type="button" aria-label="Export all Wards data" title="Export all Wards data (Vitals + Maternity backup)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
@@ -2716,6 +2754,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <label class="qh-row ws-row"><input type="checkbox" id="wards-critical-sound-toggle"> Escalation alert sound</label>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-critical-vibration-toggle"> Escalation alert vibration</label>
         <p class="qh-note">Off by default. When a newly logged reading crosses the NEWS2 escalation threshold, plays a short synthesised alarm tone and/or a distinct double-pulse vibration &mdash; separate from the routine save feedback &mdash; so it can be felt/heard without looking at the screen. This tab needs to be open to fire; it's a convenience, not a monitor.</p>
+        <label class="qh-row ws-row"><input type="checkbox" id="wards-ambient-toggle"> Ambient vitals soundscape <span style="font-weight:500;">(experimental)</span></label>
+        <p class="qh-note">Off by default. A very quiet, continuous synthesised tone whose pitch/tempo drifts with the sickest active patient's NEWS2 trend &mdash; a peripheral-awareness aid, not a monitor or an alarm. Separate from, and does not replace, the escalation alert sound above. Silent during quiet hours. This tab needs to stay open to play.</p>
       </div>
     </div>
   </div>
@@ -2792,6 +2832,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <h2 class="drug-title" style="font-size:38px;margin-bottom:16px;">Patients</h2>
       </div>
       <div class="vitals-main-toprow-actions">
+        <span class="wards-weather-badge" id="wards-weather-badge" title="Ward weather — a rough vibe-check from active patients' NEWS2 scores. Not a clinical summary; always check individual patients." hidden>
+          <span class="wards-weather-icon" id="wards-weather-icon" aria-hidden="true"></span>
+          <span class="wards-weather-label" id="wards-weather-label"></span>
+        </span>
         <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-board-toggle-btn" aria-pressed="false">Board view — all patients</button>
         <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-mapview-toggle-btn" aria-pressed="false">Bed map</button>
         <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-archive-toggle-btn" aria-pressed="false">Archive</button>
@@ -2932,6 +2976,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div class="vitals-baselines-actions">
           <button type="button" class="vitals-btn-primary" id="vitals-sbar-copy-btn">Copy</button>
           <button type="button" class="vitals-btn-outline" id="vitals-sbar-print-btn">Print</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-sbar-ack-btn">Mark handover received</button>
+          <span class="vitals-sbar-baton" id="vitals-sbar-baton" aria-hidden="true">&#129309;</span>
           <button type="button" class="vitals-btn-ghost" id="vitals-sbar-close-btn">Close</button>
         </div>
       </div>
@@ -3985,6 +4031,73 @@ function setupQuietHoursUI(){
 
   updateQuietHoursBodyClass();
   setInterval(updateQuietHoursBodyClass, 60000);
+}
+
+/* ---- "Something that went well" wall — a private, positive-only,
+   personal reflection log, distinct from the clinical/patient-triage
+   "snapshot before I forget" quick-note inbox elsewhere in this file.
+   Never attached to a patient, never included in exportAllWardsData()
+   or the Firestore sync path — purely local-only by design, since this
+   is personal wellbeing, not clinical documentation. ---- */
+const WARDS_WELLWALL_KEY = 'wards_wellwall_v1';
+function getWellWallEntries(){
+  try{ const raw = localStorage.getItem(WARDS_WELLWALL_KEY); return raw ? JSON.parse(raw) : []; }catch(e){ return []; }
+}
+function saveWellWallEntries(list){
+  try{ localStorage.setItem(WARDS_WELLWALL_KEY, JSON.stringify(list)); }catch(e){}
+}
+function renderWellWall(){
+  const wrap = document.getElementById('wards-wellwall-list');
+  if(!wrap) return;
+  const entries = getWellWallEntries().slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  if(!entries.length){
+    wrap.innerHTML = '<p class="wards-wellwall-empty">Nothing here yet — jot one good thing whenever you like.</p>';
+    return;
+  }
+  wrap.innerHTML = entries.map(e =>
+    `<div class="wards-wellwall-item"><span class="ww-time">${escapeHtml(fmtWardsDateTime(new Date(e.ts)))}</span>` +
+    `<p>${escapeHtml(e.text)}</p>` +
+    `<button type="button" class="ww-del" data-wellwall-del="${e.id}">Remove</button></div>`
+  ).join('');
+}
+function setupWellWall(){
+  const btn = document.getElementById('wards-wellwall-btn');
+  const panel = document.getElementById('wards-wellwall-panel');
+  const input = document.getElementById('wards-wellwall-input');
+  const addBtn = document.getElementById('wards-wellwall-add-btn');
+  const list = document.getElementById('wards-wellwall-list');
+  if(!btn || !panel || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  renderWellWall();
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isHidden = panel.hidden;
+    panel.hidden = !isHidden;
+    btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+    if(isHidden) renderWellWall();
+  });
+  document.addEventListener('click', (e) => {
+    if(!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true;
+  });
+  const addEntry = () => {
+    const text = (input.value || '').trim();
+    if(!text) return;
+    const entries = getWellWallEntries();
+    entries.push({ id: 'ww_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8), text, ts: new Date().toISOString() });
+    saveWellWallEntries(entries);
+    input.value = '';
+    renderWellWall();
+    haptic('Light');
+  };
+  if(addBtn) addBtn.addEventListener('click', addEntry);
+  if(input) input.addEventListener('keydown', (e) => { if(e.key === 'Enter' && (e.metaKey || e.ctrlKey)){ e.preventDefault(); addEntry(); } });
+  if(list) list.addEventListener('click', (e) => {
+    const delBtn = e.target.closest('[data-wellwall-del]');
+    if(!delBtn) return;
+    const id = delBtn.dataset.wellwallDel;
+    saveWellWallEntries(getWellWallEntries().filter(en => en.id !== id));
+    renderWellWall();
+  });
 }
 
 /* ---- Haptic feedback ----
@@ -5052,6 +5165,7 @@ function initVitals(){
   setupRetentionSettings();
   runRetentionSweep();
   setupCriticalAlertSettings();
+  setupAmbientSoundscape();
   setupWardsDigest();
   renderPatientList();
   if(getDefaultVitalsView() === 'board' && vitalsState.patients.length){
@@ -5263,6 +5377,7 @@ function renderPatientList(){
     li.textContent = 'No overdue patients right now.';
     list.appendChild(li);
   }
+  renderWardWeather();
 }
 
 function setupVitalsOverdueFilterToggle(){
@@ -5331,6 +5446,49 @@ function latestVitalsEntryFor(p){
   const log = vitalsState.logs[p.id] || [];
   if(!log.length) return null;
   return log.slice().sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+}
+
+/* ---- "Ward weather" — a light-touch vibe-check glyph, purely a fast
+   gut-feel glance built from the same computeNews2() every other view
+   uses. Not a clinical summary and never gates or replaces checking
+   individual patients — see the badge's own title text. ---- */
+function activeNews2Levels(){
+  return vitalsState.patients.filter(isPatientActive).map(p => {
+    const latest = latestVitalsEntryFor(p);
+    if(!latest) return null;
+    const n2 = computeNews2(latest, p);
+    return n2.dataPresent ? n2 : null;
+  });
+}
+function computeWardWeather(){
+  const results = activeNews2Levels();
+  const total = results.length;
+  let high = 0, medium = 0, low = 0;
+  results.forEach(n2 => {
+    if(!n2) return;
+    if(n2.level === 'high') high++;
+    else if(n2.level === 'medium') medium++;
+    else low++;
+  });
+  const withData = high + medium + low;
+  if(!total) return { condition: 'none', icon: '—', label: 'No active patients', high, medium, low, total };
+  if(!withData) return { condition: 'foggy', icon: '\u{1F32B}️', label: 'No vitals logged yet', high, medium, low, total };
+  if(high > 0 || medium >= 2) return { condition: 'stormy', icon: '⛈️', label: 'Stormy', high, medium, low, total };
+  if(medium === 1) return { condition: 'cloudy', icon: '⛅', label: 'Cloudy', high, medium, low, total };
+  return { condition: 'sunny', icon: '☀️', label: 'Sunny', high, medium, low, total };
+}
+function renderWardWeather(){
+  const badge = document.getElementById('wards-weather-badge');
+  const iconEl = document.getElementById('wards-weather-icon');
+  const labelEl = document.getElementById('wards-weather-label');
+  if(!badge || !iconEl || !labelEl) return;
+  const w = computeWardWeather();
+  if(w.condition === 'none'){ badge.hidden = true; return; }
+  badge.hidden = false;
+  badge.dataset.condition = w.condition;
+  iconEl.textContent = w.icon;
+  labelEl.textContent = w.label;
+  badge.title = `Ward weather: ${w.label} — a rough vibe-check from ${w.total} active patient(s)' NEWS2 (${w.high} high, ${w.medium} medium, ${w.low} low). Not a clinical summary; always check individual patients.`;
 }
 
 function renderVitalsBoard(){
@@ -5794,6 +5952,81 @@ function setupCriticalAlertSettings(){
       if(el === soundToggle && el.checked) playCriticalAlertTone();
       if(el === vibrationToggle && el.checked) criticalAlertVibrate();
     });
+  });
+}
+
+/* ---- Ambient vitals soundscape (opt-in, off by default) — a very quiet,
+   continuous, generative peripheral-awareness tone, distinct from and
+   additional to playCriticalAlertTone() above (that's a discrete alarm;
+   this is ambient). Synthesised the same way, no audio assets. Pitch/tempo
+   track the sickest active patient's NEWS2 score via computeNews2() —
+   reuses the same scoring the rest of the app uses, doesn't reinvent it.
+   Explicitly framed as experimental, not a monitor — see settings copy. */
+const WARDS_AMBIENT_KEY = 'wards_ambient_soundscape_v1';
+let wardsAmbientTimer = null;
+
+function wardsAmbientEnabled(){
+  try{ return localStorage.getItem(WARDS_AMBIENT_KEY) === '1'; }catch(e){ return false; }
+}
+function sickestActiveNews2(){
+  let best = null;
+  vitalsState.patients.filter(isPatientActive).forEach(p => {
+    const latest = latestVitalsEntryFor(p);
+    if(!latest) return;
+    const n2 = computeNews2(latest, p);
+    if(!n2.dataPresent) return;
+    if(!best || n2.score > best.score) best = n2;
+  });
+  return best;
+}
+function playAmbientPulse(){
+  if(!WardsAudioCtxCtor || !wardsAmbientEnabled() || isQuietHoursNow()) return;
+  const n2 = sickestActiveNews2();
+  const score = n2 ? n2.score : 0;
+  try{
+    if(!wardsAudioCtx) wardsAudioCtx = new WardsAudioCtxCtor();
+    if(wardsAudioCtx.state === 'suspended') wardsAudioCtx.resume();
+    const ctx = wardsAudioCtx;
+    const now = ctx.currentTime;
+    const freq = 220 + Math.min(score, 15) * 13; // gentle rise with roster acuity, never alarming
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    gain.gain.setValueAtTime(0.0001, now);
+    gain.gain.exponentialRampToValueAtTime(0.015, now + 0.5);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 1.8);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 1.9);
+  }catch(e){}
+}
+function scheduleNextAmbientPulse(){
+  if(wardsAmbientTimer){ clearTimeout(wardsAmbientTimer); wardsAmbientTimer = null; }
+  if(!wardsAmbientEnabled()) return;
+  const n2 = sickestActiveNews2();
+  const score = n2 ? n2.score : 0;
+  const interval = Math.max(2200, 6200 - score * 300); // sicker roster -> shorter gap, still gentle
+  wardsAmbientTimer = setTimeout(() => {
+    playAmbientPulse();
+    scheduleNextAmbientPulse();
+  }, interval);
+}
+function startAmbientSoundscape(){ scheduleNextAmbientPulse(); }
+function stopAmbientSoundscape(){
+  if(wardsAmbientTimer){ clearTimeout(wardsAmbientTimer); wardsAmbientTimer = null; }
+}
+function setupAmbientSoundscape(){
+  const toggle = document.getElementById('wards-ambient-toggle');
+  if(!toggle) return;
+  toggle.checked = wardsAmbientEnabled();
+  if(!WardsAudioCtxCtor) toggle.disabled = true;
+  if(toggle.checked && WardsAudioCtxCtor) startAmbientSoundscape();
+  if(toggle.dataset.wired) return;
+  toggle.dataset.wired = '1';
+  toggle.addEventListener('change', () => {
+    try{ localStorage.setItem(WARDS_AMBIENT_KEY, toggle.checked ? '1' : '0'); }catch(e){}
+    if(toggle.checked) startAmbientSoundscape(); else stopAmbientSoundscape();
   });
 }
 
@@ -6992,10 +7225,10 @@ const TREND_WORSENING_DIRECTION = { hr: 'up', rr: 'up', spo2: 'down', sbp: 'down
 const TREND_STEP = { hr: 15, rr: 6, spo2: 4, sbp: 15 };
 const TREND_LABELS = { hr: 'HR', rr: 'RR', spo2: 'SpO₂', sbp: 'BP systolic' };
 
-function lastNVitalValues(field, count){
-  const log = activeLog().slice().sort((a, b) => new Date(a.ts) - new Date(b.ts));
+function lastNVitalValues(field, count, log){
+  const src = (log || activeLog()).slice().sort((a, b) => new Date(a.ts) - new Date(b.ts));
   const vals = [];
-  for(const e of log){
+  for(const e of src){
     const raw = e[field];
     if(raw === '' || raw === null || raw === undefined) continue;
     const v = parseFloat(raw);
@@ -7004,8 +7237,8 @@ function lastNVitalValues(field, count){
   return vals.slice(-count);
 }
 
-function detectVitalTrend(field){
-  const vals = lastNVitalValues(field, 3);
+function detectVitalTrend(field, log){
+  const vals = lastNVitalValues(field, 3, log);
   if(vals.length < 3) return null;
   const [a, b, c] = vals;
   const d1 = b - a, d2 = c - b;
@@ -7032,6 +7265,23 @@ function renderVitalsTrendAlerts(){
   }).join('');
   wrap.innerHTML = badges;
   wrap.hidden = !badges;
+}
+
+/* ---- "Quiet win" counter — the inverse of the worsening-trend badges
+   above: tallies trend checks that came back stable or improving instead
+   of only ever surfacing the bad ones. Purely informational, shown in the
+   end-of-shift summary; never a target to chase. ---- */
+function countQuietWins(patients){
+  let count = 0;
+  patients.forEach(p => {
+    const log = vitalsState.logs[p.id] || [];
+    Object.keys(TREND_WORSENING_DIRECTION).forEach(field => {
+      if(lastNVitalValues(field, 3, log).length < 3) return;
+      const trend = detectVitalTrend(field, log);
+      if(!trend || !trend.worsening) count++;
+    });
+  });
+  return count;
 }
 
 /* ---- vitals entry sanity check: catches obviously-mistyped values
@@ -7615,6 +7865,27 @@ function openSbarPanel(text){
   if(!panel || !textarea) return;
   textarea.value = text;
   panel.hidden = false;
+  const ackBtn = document.getElementById('vitals-sbar-ack-btn');
+  if(ackBtn){ ackBtn.disabled = false; ackBtn.textContent = 'Mark handover received'; }
+  const baton = document.getElementById('vitals-sbar-baton');
+  if(baton) baton.classList.remove('baton-fire');
+}
+
+/* ---- Handoff "baton" moment — a brief, skippable animation + haptic
+   pulse when a generated SBAR handover is acknowledged as received/
+   reviewed, for a genuine sense of closure at shift end. Reuses
+   haptic() (already a no-op in quiet hours) and the same reduced-motion
+   / battery-saver checks used elsewhere in this file. ---- */
+function wardsReducedMotionPreferred(){
+  return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+}
+function fireHandoffBaton(){
+  if(wardsReducedMotionPreferred() || document.documentElement.classList.contains('wards-battery-saver')) return;
+  const el = document.getElementById('vitals-sbar-baton');
+  if(!el) return;
+  el.classList.remove('baton-fire');
+  void el.offsetWidth;
+  el.classList.add('baton-fire');
 }
 
 function printSbarText(text){
@@ -7678,6 +7949,18 @@ function setupSbarButtons(){
     printBtn.addEventListener('click', () => {
       const textarea = document.getElementById('vitals-sbar-text');
       if(textarea) printSbarText(textarea.value);
+    });
+  }
+  const ackBtn = document.getElementById('vitals-sbar-ack-btn');
+  if(ackBtn && !ackBtn.dataset.wired){
+    ackBtn.dataset.wired = '1';
+    ackBtn.addEventListener('click', () => {
+      if(ackBtn.disabled) return;
+      ackBtn.disabled = true;
+      ackBtn.textContent = 'Handover reviewed ✓';
+      haptic('Medium');
+      fireHandoffBaton();
+      showToast('Handover marked as received.', 'ok');
     });
   }
 }
@@ -8306,6 +8589,7 @@ function renderEndOfShiftSummary(){
   }));
   const unresolvedProblems = [];
   scope.forEach(p => (p.problems || []).filter(pr => !pr.resolvedAt).forEach(pr => unresolvedProblems.push({ p, pr })));
+  const quietWins = countQuietWins(scope);
 
   const listOrEmpty = (items, emptyMsg) => items.length
     ? `<ul class="vitals-endshift-list">${items}</ul>`
@@ -8316,6 +8600,7 @@ function renderEndOfShiftSummary(){
       `<div class="es-stat"><span class="es-num">${patientsChartedToday.size}</span><span class="es-label">patients you've charted today</span></div>` +
       `<div class="es-stat"><span class="es-num">${readingsToday}</span><span class="es-label">readings logged today</span></div>` +
       `<div class="es-stat"><span class="es-num">${scope.length}</span><span class="es-label">${mineMarked.length ? 'patients marked as mine this shift' : 'active patients (none marked "mine" — showing all)'}</span></div>` +
+      `<div class="es-stat es-stat-quiet" title="Trend checks (3+ consecutive readings on a vital) that came back stable or improving, not worsening — just a tally, not a target."><span class="es-num">${quietWins}</span><span class="es-label">quiet wins — trends stable or improving this shift</span></div>` +
     `</div>` +
     `<p class="vitals-dept-subtitle">Medications due or overdue</p>` +
     listOrEmpty(dueMeds.map(d => `<li><span class="vitals-timeline-kind">MED</span>${escapeHtml(d.p.bed || '—')} ${escapeHtml(d.p.name || 'Unnamed')} — ${escapeHtml(d.med.name)} (${escapeHtml(d.status.label)})</li>`).join(''), 'Nothing due.') +
@@ -9860,9 +10145,11 @@ function boot(){
   setupWardsSettingsUI();
   setupBatterySaver();
   setupNightDim();
+  setupAmbientSoundscape();
   const exportBtn = document.getElementById('wards-export-all');
   if(exportBtn) exportBtn.onclick = () => { haptic('Light'); exportAllWardsData(); };
   if(typeof window.setupQuickNoteCapture === 'function') window.setupQuickNoteCapture();
+  setupWellWall();
   setupWardsTabs();
   wardsSwitchView('vitals');
   initWardsCloudSync();
