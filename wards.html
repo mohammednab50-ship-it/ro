@@ -4021,130 +4021,6 @@ function showToast(msg, kind, action){
   toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, action ? 7000 : 2200);
 }
 
-/* ---- "Snapshot before I forget" quick-note capture — reachable from the
-   header on every view, not tied to any one patient. Saved to a small
-   local inbox; triaged later into a specific patient's notes (as a
-   notes-only vitals log entry — the same shape the entry form already
-   writes when only the notes field is filled in) or discarded. ---- */
-const WARDS_QUICKNOTES_KEY = 'wards_quicknotes_v1';
-function getQuickNotes(){
-  try{
-    const raw = localStorage.getItem(WARDS_QUICKNOTES_KEY);
-    const arr = raw ? JSON.parse(raw) : [];
-    return Array.isArray(arr) ? arr : [];
-  }catch(e){ return []; }
-}
-function saveQuickNotes(list){
-  try{ localStorage.setItem(WARDS_QUICKNOTES_KEY, JSON.stringify(list)); }catch(e){}
-}
-function updateQuickNoteBadge(){
-  const badge = document.getElementById('wards-quicknote-badge');
-  if(!badge) return;
-  const n = getQuickNotes().length;
-  badge.textContent = n > 9 ? '9+' : String(n);
-  badge.hidden = n === 0;
-}
-function renderQuickNoteInbox(){
-  const wrap = document.getElementById('wards-quicknote-inbox');
-  if(!wrap) return;
-  const notes = getQuickNotes().slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
-  if(!notes.length){ wrap.innerHTML = '<p class="vitals-dept-empty">Inbox is empty.</p>'; updateQuickNoteBadge(); return; }
-  const patientOptions = vitalsState.patients.filter(isPatientActive)
-    .map(p => `<option value="${p.id}">${escapeHtml(p.bed || '—')} — ${escapeHtml(p.name || 'Unnamed')}</option>`).join('');
-  wrap.innerHTML = notes.map(n =>
-    `<div class="wards-quicknote-item">` +
-      `<span class="wq-time">${escapeHtml(fmtVitalsTime(n.ts))}</span>` +
-      `<p>${escapeHtml(n.text)}</p>` +
-      `<div class="wq-actions">` +
-        `<select data-note-patient="${n.id}"><option value="">Triage to…</option>${patientOptions}</select>` +
-        `<button type="button" class="settings-btn" data-triage-note="${n.id}">Triage</button>` +
-        `<button type="button" class="ws-shift-preset-del" data-discard-note="${n.id}" aria-label="Discard note">&times;</button>` +
-      `</div>` +
-    `</div>`
-  ).join('');
-  updateQuickNoteBadge();
-}
-function triageQuickNote(noteId, patientId){
-  const notes = getQuickNotes();
-  const note = notes.find(n => n.id === noteId);
-  const p = vitalsState.patients.find(pt => pt.id === patientId);
-  if(!note || !p) return;
-  if(!vitalsState.logs[p.id]) vitalsState.logs[p.id] = [];
-  vitalsState.logs[p.id].push({
-    id: genVitalsId('vr'), ts: new Date().toISOString(),
-    hr: '', sbp: '', dbp: '', rr: '', spo2: '', temp: '', gcs: '', uop: '',
-    intakeOral: '', intakeIv: '', outputOther: '', o2sup: false,
-    notes: note.text
-  });
-  saveVitalsData();
-  if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('quicknote_triaged', p, note.text.slice(0, 120));
-  saveQuickNotes(notes.filter(n => n.id !== noteId));
-  renderQuickNoteInbox();
-  renderPatientList();
-  if(activePatient() && activePatient().id === p.id) renderVitalsMain();
-  showToast(`Added to ${p.name || 'patient'}'s notes.`, 'ok');
-  haptic('Light');
-}
-function setupQuickNoteCapture(){
-  const btn = document.getElementById('wards-quicknote-btn');
-  const modal = document.getElementById('wards-quicknote-modal');
-  const closeBtn = document.getElementById('wards-quicknote-close');
-  const saveBtn = document.getElementById('wards-quicknote-save-btn');
-  const textArea = document.getElementById('wards-quicknote-text');
-  const inbox = document.getElementById('wards-quicknote-inbox');
-  updateQuickNoteBadge();
-  if(textArea) attachVoiceInput(textArea);
-  const close = () => { if(modal){ modal.hidden = true; modal.classList.remove('show'); } };
-  if(btn && !btn.dataset.wired){
-    btn.dataset.wired = '1';
-    btn.addEventListener('click', () => {
-      if(!modal) return;
-      renderQuickNoteInbox();
-      modal.hidden = false;
-      modal.classList.add('show');
-      if(textArea) setTimeout(() => textArea.focus(), 30);
-    });
-  }
-  if(closeBtn && !closeBtn.dataset.wired){ closeBtn.dataset.wired = '1'; closeBtn.addEventListener('click', close); }
-  if(modal && !modal.dataset.wired){
-    modal.dataset.wired = '1';
-    modal.addEventListener('click', e => { if(e.target === modal) close(); });
-  }
-  if(saveBtn && !saveBtn.dataset.wired){
-    saveBtn.dataset.wired = '1';
-    saveBtn.addEventListener('click', () => {
-      const text = (textArea && textArea.value.trim()) || '';
-      if(!text) return;
-      const notes = getQuickNotes();
-      notes.push({ id: genVitalsId('qn'), text, ts: new Date().toISOString() });
-      saveQuickNotes(notes);
-      if(textArea) textArea.value = '';
-      renderQuickNoteInbox();
-      haptic('Light');
-      showToast('Saved to inbox.', 'ok');
-    });
-  }
-  if(inbox && !inbox.dataset.wired){
-    inbox.dataset.wired = '1';
-    inbox.addEventListener('click', e => {
-      const triageBtn = e.target.closest('[data-triage-note]');
-      if(triageBtn){
-        const noteId = triageBtn.dataset.triageNote;
-        const select = inbox.querySelector(`select[data-note-patient="${noteId}"]`);
-        const patientId = select ? select.value : '';
-        if(!patientId){ if(select) select.focus(); return; }
-        triageQuickNote(noteId, patientId);
-        return;
-      }
-      const discardBtn = e.target.closest('[data-discard-note]');
-      if(discardBtn){
-        saveQuickNotes(getQuickNotes().filter(n => n.id !== discardBtn.dataset.discardNote));
-        renderQuickNoteInbox();
-      }
-    });
-  }
-}
-
 function escapeHtml(s){
   if(s == null) return '';
   return String(s)
@@ -9527,7 +9403,132 @@ function setupPediatricsSection(){
   }
 }
 
+/* ---- "Snapshot before I forget" quick-note capture — reachable from the
+   header on every view, not tied to any one patient. Saved to a small
+   local inbox; triaged later into a specific patient's notes (as a
+   notes-only vitals log entry — the same shape the entry form already
+   writes when only the notes field is filled in) or discarded. ---- */
+const WARDS_QUICKNOTES_KEY = 'wards_quicknotes_v1';
+function getQuickNotes(){
+  try{
+    const raw = localStorage.getItem(WARDS_QUICKNOTES_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function saveQuickNotes(list){
+  try{ localStorage.setItem(WARDS_QUICKNOTES_KEY, JSON.stringify(list)); }catch(e){}
+}
+function updateQuickNoteBadge(){
+  const badge = document.getElementById('wards-quicknote-badge');
+  if(!badge) return;
+  const n = getQuickNotes().length;
+  badge.textContent = n > 9 ? '9+' : String(n);
+  badge.hidden = n === 0;
+}
+function renderQuickNoteInbox(){
+  const wrap = document.getElementById('wards-quicknote-inbox');
+  if(!wrap) return;
+  const notes = getQuickNotes().slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  if(!notes.length){ wrap.innerHTML = '<p class="vitals-dept-empty">Inbox is empty.</p>'; updateQuickNoteBadge(); return; }
+  const patientOptions = vitalsState.patients.filter(isPatientActive)
+    .map(p => `<option value="${p.id}">${escapeHtml(p.bed || '—')} — ${escapeHtml(p.name || 'Unnamed')}</option>`).join('');
+  wrap.innerHTML = notes.map(n =>
+    `<div class="wards-quicknote-item">` +
+      `<span class="wq-time">${escapeHtml(fmtVitalsTime(n.ts))}</span>` +
+      `<p>${escapeHtml(n.text)}</p>` +
+      `<div class="wq-actions">` +
+        `<select data-note-patient="${n.id}"><option value="">Triage to…</option>${patientOptions}</select>` +
+        `<button type="button" class="settings-btn" data-triage-note="${n.id}">Triage</button>` +
+        `<button type="button" class="ws-shift-preset-del" data-discard-note="${n.id}" aria-label="Discard note">&times;</button>` +
+      `</div>` +
+    `</div>`
+  ).join('');
+  updateQuickNoteBadge();
+}
+function triageQuickNote(noteId, patientId){
+  const notes = getQuickNotes();
+  const note = notes.find(n => n.id === noteId);
+  const p = vitalsState.patients.find(pt => pt.id === patientId);
+  if(!note || !p) return;
+  if(!vitalsState.logs[p.id]) vitalsState.logs[p.id] = [];
+  vitalsState.logs[p.id].push({
+    id: genVitalsId('vr'), ts: new Date().toISOString(),
+    hr: '', sbp: '', dbp: '', rr: '', spo2: '', temp: '', gcs: '', uop: '',
+    intakeOral: '', intakeIv: '', outputOther: '', o2sup: false,
+    notes: note.text
+  });
+  saveVitalsData();
+  if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('quicknote_triaged', p, note.text.slice(0, 120));
+  saveQuickNotes(notes.filter(n => n.id !== noteId));
+  renderQuickNoteInbox();
+  renderPatientList();
+  if(activePatient() && activePatient().id === p.id) renderVitalsMain();
+  showToast(`Added to ${p.name || 'patient'}'s notes.`, 'ok');
+  haptic('Light');
+}
+function setupQuickNoteCapture(){
+  const btn = document.getElementById('wards-quicknote-btn');
+  const modal = document.getElementById('wards-quicknote-modal');
+  const closeBtn = document.getElementById('wards-quicknote-close');
+  const saveBtn = document.getElementById('wards-quicknote-save-btn');
+  const textArea = document.getElementById('wards-quicknote-text');
+  const inbox = document.getElementById('wards-quicknote-inbox');
+  updateQuickNoteBadge();
+  if(textArea) attachVoiceInput(textArea);
+  const close = () => { if(modal){ modal.hidden = true; modal.classList.remove('show'); } };
+  if(btn && !btn.dataset.wired){
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => {
+      if(!modal) return;
+      renderQuickNoteInbox();
+      modal.hidden = false;
+      modal.classList.add('show');
+      if(textArea) setTimeout(() => textArea.focus(), 30);
+    });
+  }
+  if(closeBtn && !closeBtn.dataset.wired){ closeBtn.dataset.wired = '1'; closeBtn.addEventListener('click', close); }
+  if(modal && !modal.dataset.wired){
+    modal.dataset.wired = '1';
+    modal.addEventListener('click', e => { if(e.target === modal) close(); });
+  }
+  if(saveBtn && !saveBtn.dataset.wired){
+    saveBtn.dataset.wired = '1';
+    saveBtn.addEventListener('click', () => {
+      const text = (textArea && textArea.value.trim()) || '';
+      if(!text) return;
+      const notes = getQuickNotes();
+      notes.push({ id: genVitalsId('qn'), text, ts: new Date().toISOString() });
+      saveQuickNotes(notes);
+      if(textArea) textArea.value = '';
+      renderQuickNoteInbox();
+      haptic('Light');
+      showToast('Saved to inbox.', 'ok');
+    });
+  }
+  if(inbox && !inbox.dataset.wired){
+    inbox.dataset.wired = '1';
+    inbox.addEventListener('click', e => {
+      const triageBtn = e.target.closest('[data-triage-note]');
+      if(triageBtn){
+        const noteId = triageBtn.dataset.triageNote;
+        const select = inbox.querySelector(`select[data-note-patient="${noteId}"]`);
+        const patientId = select ? select.value : '';
+        if(!patientId){ if(select) select.focus(); return; }
+        triageQuickNote(noteId, patientId);
+        return;
+      }
+      const discardBtn = e.target.closest('[data-discard-note]');
+      if(discardBtn){
+        saveQuickNotes(getQuickNotes().filter(n => n.id !== discardBtn.dataset.discardNote));
+        renderQuickNoteInbox();
+      }
+    });
+  }
+}
+
 window.initVitals = initVitals;
+window.setupQuickNoteCapture = setupQuickNoteCapture;
 window.getDefaultVitalsView = getDefaultVitalsView;
 window.setDefaultVitalsView = setDefaultVitalsView;
 window.getWardsLocale = getWardsLocale;
@@ -9786,6 +9787,7 @@ function boot(){
   setupNightDim();
   const exportBtn = document.getElementById('wards-export-all');
   if(exportBtn) exportBtn.onclick = () => { haptic('Light'); exportAllWardsData(); };
+  if(typeof window.setupQuickNoteCapture === 'function') window.setupQuickNoteCapture();
   setupWardsTabs();
   wardsSwitchView('vitals');
   initWardsCloudSync();
