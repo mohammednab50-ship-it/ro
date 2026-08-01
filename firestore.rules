@@ -235,7 +235,16 @@ match /databases/{database}/documents {
   // at all, by design.
   match /hospitals/{hospitalId} {
     allow get: if isHospitalAdmin(hospitalId);
-    allow list: if signedIn(); // each returned doc still individually checked against `get` above
+    // `allow list: if signedIn()` would NOT be per-document-filtered the
+    // way the old comment here used to claim — an unconstrained list rule
+    // with no resource.data condition lets ANY signed-in user (any
+    // hospital, or none) run an unfiltered `.collection('hospitals').get()`
+    // and receive every hospital's name + full admins map (uids/emails)
+    // in the whole multi-tenant project, a real cross-tenant leak. The app
+    // never actually lists this collection in bulk — it only ever reads a
+    // specific hospital by an ID it already has (see `initWardsCloudSync`/
+    // hospital-selection code in wards.html) — so list is simply denied.
+    allow list: if false;
     allow create: if isValidNewHospital();
     allow update: if isHospitalAdmin(hospitalId);
     allow delete: if isHospitalAdmin(hospitalId);
@@ -244,7 +253,15 @@ match /databases/{database}/documents {
   // ---- departments ----
   match /departments/{deptId} {
     allow get: if isDepartmentAdmin(deptId) || isAboveDeptPath(deptId);
-    allow list: if signedIn(); // each returned doc still individually checked against `get` above
+    // See the matching comment on hospitals/{hospitalId} above — an
+    // unconstrained `signedIn()` list rule would let any signed-in user
+    // enumerate every department (name + admins map) across every
+    // hospital. There is no in-app department-list UI yet, so list is
+    // denied entirely; if that UI gets built, this should become
+    // `resource.data.hospitalId == <a specific hospital the caller
+    // administers>` matched against an actual `.where('hospitalId','==',
+    // id)` query client-side, not a blanket allow.
+    allow list: if false;
     allow create: if isValidNewDepartment();
     // hospitalId is locked on update (must match the existing value) —
     // otherwise a department admin could re-parent their own department
@@ -268,7 +285,18 @@ match /databases/{database}/documents {
       resource.data.uid == request.auth.uid
       || isAboveGroupPath(groupDoc(resource.data.groupId))
     );
-    allow list: if signedIn(); // scoping happens via the required uid-equality query, enforced by `read` above per returned doc
+    // `list` and `read` are separate rule types in Firestore — the `read`
+    // condition above does NOT govern list/query requests on its own, so
+    // this needed its own condition mirroring it, not a blanket
+    // `signedIn()`. This form (a plain resource.data equality check) is
+    // what lets Firestore prove the app's actual
+    // `.where('uid','==',request.auth.uid)` query (see initWardsCloudSync
+    // in wards.html) is safe and allow it, while rejecting any query that
+    // isn't constrained the same way — a bare `.collection(
+    // 'groupMemberships').get()` with no uid filter would be denied
+    // outright, not silently filtered. Hospital/group admins looking up
+    // a specific patient's memberships still go through `get`, unaffected.
+    allow list: if resource.data.uid == request.auth.uid;
     // Only created/deleted as part of the *same batched write* that adds
     // or removes the uid from the corresponding group's `members` map —
     // so whoever is allowed to make that group change is allowed here too.
@@ -293,7 +321,18 @@ match /databases/{database}/documents {
   match /wardGroups/{groupId} {
     allow get: if isMemberPath(/databases/$(database)/documents/wardGroups/$(groupId))
       || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
-    allow list: if signedIn(); // each returned doc still individually checked against `get` above (also how a dept/hospital admin's "all groups I administer" query gets scoped)
+    // Same reasoning as hospitals/departments above: an unconstrained
+    // `signedIn()` list rule would let any signed-in user enumerate every
+    // ward group (name + members map) across every hospital in the
+    // project — a real cross-tenant leak, not just a within-hospital one.
+    // The app never actually lists this collection in bulk; it discovers
+    // "which groups am I in" via the separately-indexed, properly
+    // uid-constrained groupMemberships collection below, then reads each
+    // group by its known id. If a dept/hospital-admin "all groups I
+    // administer" browser gets built later, give it a real query
+    // constraint (e.g. `.where('hospitalId','==',id)`) matched by a rule
+    // condition on that same field — not a blanket allow.
+    allow list: if false;
     allow create: if isValidNewGroup();
     // hospitalId AND departmentId are both locked on update (must match
     // their existing values) — otherwise a group admin could re-parent
@@ -320,7 +359,14 @@ match /databases/{database}/documents {
         || isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
         || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId))
       );
-      allow list: if signedIn(); // a newly-registered user scans for invites matching their own email client-side
+      // Not queried anywhere in the app yet (no invite UI exists — see
+      // README's "what's still pending"), so denied outright rather than
+      // left as an unconstrained `signedIn()` allow, which would let any
+      // signed-in user enumerate every pending invite's email address
+      // across every ward group. When invite UI is built, this should
+      // become `resource.data.email == request.auth.token.email` matched
+      // against an actual `.where('email','==', myEmail)` query.
+      allow list: if false;
       allow create, delete: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
         || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
     }

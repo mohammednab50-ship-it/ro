@@ -94,6 +94,26 @@ multi-hospital tenancy model (`hospitals/{hospitalId}`, and the removal of
 the global `superAdmin` flag) was added — repeat the copy/paste/Publish
 steps whenever this file changes.
 
+**A real tenant-isolation gap was found and fixed before anyone published
+these rules, so nothing was ever exposed live.** The first version of the
+multi-hospital rules had `allow list: if signedIn()` on `hospitals`,
+`departments`, and `wardGroups`, inherited unchanged from the old
+single-hospital rules. In Firestore, `list` is a separate rule from `get`/
+`read` and isn't filtered per-document the way a comment in the old file
+implied — a condition with no check on the actual document data allows an
+*unconstrained* query, so any signed-in user (any hospital, or none) could
+have run something like `.collection('hospitals').get()` and received
+every hospital's name and full admin list (uids + emails) across the whole
+project, not just their own — same for departments and ward groups. Fixed
+by checking what the app actually queries (`wards.html` never lists these
+collections in bulk — it only ever reads a specific document by an ID it
+already has, except `groupMemberships`, which does a real
+`.where('uid','==',uid)` query) and tightening the rules to match: `list`
+is now denied outright on `hospitals`/`departments`/`wardGroups`/`invites`
+(unused, and unsafe if ever allowed unconstrained), and `groupMemberships`'
+`list` rule now actually checks `resource.data.uid == request.auth.uid` to
+match its real query instead of a blanket `signedIn()`.
+
 **What's still pending:**
 - Rounds (`index.html`) has Firebase Auth but its own bookmarks are not
   yet synced to Firestore — that's a separate, not-yet-built piece of work
