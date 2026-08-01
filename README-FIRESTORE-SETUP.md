@@ -1,8 +1,10 @@
 # Firestore setup for ward/group access control
 
-This covers the two things I can't do for you (no CLI access to your Firebase
-project from this environment): publishing the security rules, and
-bootstrapping the very first super-admin.
+This is a single shared Firebase project (`wards-a4e41`) built for **true
+multi-hospital tenancy** — many separate hospitals can use it at once, each
+fully isolated from the others' data, with no cross-hospital backdoor of any
+kind. This covers the one thing I can't do for you from this environment (no
+CLI access to your Firebase project): publishing the security rules.
 
 ## 1. Publish the security rules
 
@@ -16,34 +18,33 @@ Whenever the rules in `firestore.rules` change in the repo (I'll flag it when
 it happens), repeat this — there's no automatic deploy from the repo to your
 project without CLI credentials I don't have.
 
-## 2. Bootstrap the first super-admin
+## 2. Becoming a hospital's admin — self-service, no console step
 
-The super-admin flag can only be granted by an *existing* super-admin — which
-means the very first one has to be set by hand, once, directly in the
-database. After that, they can promote/demote others from inside the app.
+There is no manual bootstrap anymore. Creating a hospital *in the app* is how
+you become its admin:
 
-1. Sign in to Rounds as whoever should be the first super-admin (the
-   hospital's choice, per your earlier answer — could be you, could be
-   someone else). This creates their `users/{uid}` profile document
-   automatically.
-2. Open the [Firestore Data browser](https://console.firebase.google.com/project/wards-a4e41/firestore/data)
-   and find that person's document under the `users` collection — the
-   document ID is their Firebase Auth UID. If you're not sure which one is
-   theirs, check the `email` field on each doc, or find their UID under
-   **Authentication → Users** in the console (the UID column) and match it.
-3. Open that document, edit the `superAdmin` field, and set it to the boolean
-   value `true` (not the string `"true"` — use the type dropdown next to the
-   field to make sure it's Boolean).
-4. Save. That person is now a super-admin and can manage every department and
-   every ward group — across all patient departments (General/ICU/Surgery/
-   Pediatrics/Maternity, tagged per-patient in one unified system) — from
-   within the app, and can grant/revoke super-admin status for others going
-   forward.
+1. Sign in to Wards (the cloud-sync icon next to Display settings in the
+   header — same account works for Rounds too).
+2. In the sync panel, click **Create hospital…**, give it a name, and submit.
+   You're immediately that hospital's sole admin — server-enforced by the
+   rules, not just something the app claims.
+3. That's it. You can now create ward groups under your hospital from the
+   same panel (select your hospital, then **Create ward group…**).
 
-Department admins don't need this manual step — once a super-admin exists,
-they create departments and assign department admins entirely from within
-the app; only the very first hospital-wide super-admin needs this one-time
-console edit.
+Each hospital is a fully separate tenant sharing the one Firestore project:
+a hospital's admin can only ever see and manage that hospital's own
+departments and ward groups, never another hospital's — there is no
+"super-admin who can see everything" role in this model at all. If you need
+more than one hospital admin, or a department-admin tier, that's still done
+by hand in the Firestore console for now (see "what's still pending" below)
+— only the *very first* admin of each hospital needs zero console work,
+which is the whole point of this change.
+
+**Note if you set this project up before this change:** the old
+`users/{uid}.superAdmin` flag no longer means anything and has been removed
+from the rules entirely — nobody has bootstrapped it yet on this fresh
+project, so there's nothing to migrate. If you had already flipped it by
+hand, it's simply ignored now; create a hospital instead.
 
 ## 3. Google Drive backups (admin-owned, not the live database)
 
@@ -71,21 +72,26 @@ to matter, but out of scope for the client-only build happening now.
 ## Status: Wards is now wired to Firestore (optional, opt-in)
 
 Wards now has its own sign-in (same Firebase project/accounts as Rounds —
-email/password or Google) and, once signed in, a "Ward group" selector in
-the cloud-sync panel (the icon next to Display settings in the header). A
-user with no ward group selected keeps using Wards exactly as before —
-100% local, no account required. Selecting a group makes new patients
-sync to `wardGroups/{groupId}/patients/{patientId}` in real time
-(`onSnapshot`, with Firestore's own offline persistence turned on via
-`enablePersistence`), and writes a lightweight audit entry to
+email/password or Google) and, once signed in, a "Hospital" section and a
+"Ward group" selector in the cloud-sync panel (the icon next to Display
+settings in the header). A user with no ward group selected keeps using
+Wards exactly as before — 100% local, no account required. Selecting a
+group makes new patients sync to `wardGroups/{groupId}/patients/{patientId}`
+in real time (`onSnapshot`, with Firestore's own offline persistence turned
+on via `enablePersistence`), and writes a lightweight audit entry to
 `wardGroups/{groupId}/auditLog` for patient add/remove, a new vitals
 reading, and an escalation logged. A small dot on the cloud-sync icon
 shows sync status (grey = not syncing, amber pulsing = writes pending,
 green = synced, red = error), driven by Firestore's own
 `SnapshotMetadata.hasPendingWrites` rather than a hand-rolled queue.
 
+Ward groups now always belong to a hospital (`hospitalId`, required by the
+rules) — create or select your hospital in the same panel before creating a
+ward group. See "Becoming a hospital's admin" above.
+
 **Re-publish `firestore.rules`** (step 1 above) if you haven't since the
-`auditLog` subcollection rules were added — repeat the copy/paste/Publish
+multi-hospital tenancy model (`hospitals/{hospitalId}`, and the removal of
+the global `superAdmin` flag) was added — repeat the copy/paste/Publish
 steps whenever this file changes.
 
 **What's still pending:**
@@ -93,9 +99,17 @@ steps whenever this file changes.
   yet synced to Firestore — that's a separate, not-yet-built piece of work
   distinct from the Wards patient-sync work described above.
 - The department tier (department admins, `departments/{deptId}`) has no
-  in-app UI yet — only the ward-group tier (create/join/select a group) is
-  wired up. A department admin or super-admin still has to be set up by
-  hand in the Firestore console for now.
+  in-app UI yet — only the hospital tier and the ward-group tier
+  (create/join/select a group) are wired up. A department still has to be
+  created and its admins assigned by hand in the Firestore console for now
+  (a department requires a `hospitalId` pointing at a hospital you already
+  administer).
+- There's no in-app UI yet to add a *second* admin to a hospital you
+  created, or to see/manage hospitals across devices beyond the one that
+  created/selected them (the app remembers "my hospitals" client-side per
+  account, then re-verifies against the live doc — there's no server-side
+  index of "which hospitals is this uid an admin of" yet). Add a co-admin
+  by hand in the console for now (edit the hospital doc's `admins` map).
 - Invites (`wardGroups/{groupId}/invites`) have rules but no in-app UI —
   for now, adding a teammate to a ward group's `members` map has to be
   done by hand in the Firestore console (or by whoever built this next).
