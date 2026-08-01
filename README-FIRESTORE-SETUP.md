@@ -6,8 +6,8 @@ bootstrapping the very first super-admin.
 
 ## 1. Publish the security rules
 
-1. Open the [Firestore Rules editor](https://console.firebase.google.com/project/rounds-46bd6/firestore/rules)
-   for the `rounds-46bd6` project.
+1. Open the [Firestore Rules editor](https://console.firebase.google.com/project/wards-a4e41/firestore/rules)
+   for the `wards-a4e41` project.
 2. Select all the existing text in the editor and delete it.
 3. Copy the entire contents of `firestore.rules` (in this repo) and paste it in.
 4. Click **Publish**.
@@ -26,7 +26,7 @@ database. After that, they can promote/demote others from inside the app.
    hospital's choice, per your earlier answer — could be you, could be
    someone else). This creates their `users/{uid}` profile document
    automatically.
-2. Open the [Firestore Data browser](https://console.firebase.google.com/project/rounds-46bd6/firestore/data)
+2. Open the [Firestore Data browser](https://console.firebase.google.com/project/wards-a4e41/firestore/data)
    and find that person's document under the `users` collection — the
    document ID is their Firebase Auth UID. If you're not sure which one is
    theirs, check the `email` field on each doc, or find their UID under
