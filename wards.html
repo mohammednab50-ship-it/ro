@@ -1772,6 +1772,8 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-timeline-time{font-family:var(--ff-mono);font-size:11px;color:var(--ink-faint);display:block;}
 .vitals-timeline-kind{font-weight:800;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin-right:6px;}
 .vitals-compare-cell-flag{color:var(--caution);font-weight:800;}
+.ws-flowsheet-cols{display:flex;flex-wrap:wrap;gap:6px 14px;padding:2px 0 10px;font-size:12.5px;color:var(--ink-soft);}
+.ws-flowsheet-cols label{display:flex;align-items:center;gap:5px;white-space:nowrap;}
 .vitals-board-card{text-align:left;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
   padding:14px 16px;cursor:pointer;font-family:var(--ff-sans);color:var(--ink);transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);}
 .vitals-board-card:hover{border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
@@ -2597,6 +2599,20 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <option value="es-ES">Español (Spain)</option>
           </select>
         </div>
+        <div class="ws-row">
+          <span class="ws-label">Flowsheet columns<span class="ws-sub">Vitals table — hide what you don't need</span></span>
+        </div>
+        <div class="ws-flowsheet-cols" id="wards-flowsheet-cols">
+          <label><input type="checkbox" data-flow-col="hr" checked> HR</label>
+          <label><input type="checkbox" data-flow-col="bp" checked> BP</label>
+          <label><input type="checkbox" data-flow-col="rr" checked> RR</label>
+          <label><input type="checkbox" data-flow-col="spo2" checked> SpO&#8322;</label>
+          <label><input type="checkbox" data-flow-col="temp" checked> Temp</label>
+          <label><input type="checkbox" data-flow-col="gcs" checked> GCS</label>
+          <label><input type="checkbox" data-flow-col="uop" checked> UOP</label>
+          <label><input type="checkbox" data-flow-col="news2" checked> NEWS2</label>
+          <label><input type="checkbox" data-flow-col="notes" checked> Notes</label>
+        </div>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-cbsafe-toggle"> Colour-blind-safe palette</label>
         <p class="qh-note">Shifts status colours (NEWS2 bands, trend badges, isolation flags) off a red/green-only scheme and adds icon/label redundancy.</p>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-battery-saver-toggle"> Battery saver</label>
@@ -2995,7 +3011,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <table class="vitals-table" id="vitals-table">
           <thead>
             <tr>
-              <th>Time</th><th>HR</th><th>BP</th><th>RR</th><th>SpO&#8322;</th><th>Temp</th><th>GCS</th><th>UOP</th><th title="NEWS2-style early warning score">NEWS2</th><th>Notes</th><th></th>
+              <th data-col="time">Time</th><th data-col="hr">HR</th><th data-col="bp">BP</th><th data-col="rr">RR</th><th data-col="spo2">SpO&#8322;</th><th data-col="temp">Temp</th><th data-col="gcs">GCS</th><th data-col="uop">UOP</th><th data-col="news2" title="NEWS2-style early warning score">NEWS2</th><th data-col="notes">Notes</th><th></th>
             </tr>
           </thead>
           <tbody id="vitals-table-body"></tbody>
@@ -4824,6 +4840,8 @@ function initVitals(){
   setupRoundingChecklist();
   setupPatientCompare();
   setupPatientTimeline();
+  setupFlowsheetColumnSettings();
+  applyFlowsheetColumnVisibility();
   setupReadingIntervalSelect();
   setupIoBalanceForm();
   setupMarSection();
@@ -6479,6 +6497,44 @@ function vitalsEntryMatchesSearch(entry, needle){
   return haystack.includes(needle);
 }
 
+const WARDS_FLOWSHEET_COLS_KEY = 'wards_flowsheet_cols_v1';
+const FLOWSHEET_TOGGLABLE_COLS = ['hr', 'bp', 'rr', 'spo2', 'temp', 'gcs', 'uop', 'news2', 'notes'];
+function getHiddenFlowsheetCols(){
+  try{
+    const raw = localStorage.getItem(WARDS_FLOWSHEET_COLS_KEY);
+    if(!raw) return [];
+    const arr = JSON.parse(raw);
+    return Array.isArray(arr) ? arr.filter(c => FLOWSHEET_TOGGLABLE_COLS.includes(c)) : [];
+  }catch(e){ return []; }
+}
+function saveHiddenFlowsheetCols(cols){
+  try{ localStorage.setItem(WARDS_FLOWSHEET_COLS_KEY, JSON.stringify(cols)); }catch(e){}
+}
+function applyFlowsheetColumnVisibility(){
+  const hidden = getHiddenFlowsheetCols();
+  const table = document.getElementById('vitals-table');
+  if(!table) return;
+  FLOWSHEET_TOGGLABLE_COLS.forEach(col => {
+    const isHidden = hidden.includes(col);
+    table.querySelectorAll(`[data-col="${col}"]`).forEach(el => { el.style.display = isHidden ? 'none' : ''; });
+  });
+}
+function setupFlowsheetColumnSettings(){
+  const wrap = document.getElementById('wards-flowsheet-cols');
+  if(!wrap || wrap.dataset.wired) return;
+  wrap.dataset.wired = '1';
+  const hidden = getHiddenFlowsheetCols();
+  wrap.querySelectorAll('[data-flow-col]').forEach(cb => { cb.checked = !hidden.includes(cb.dataset.flowCol); });
+  wrap.addEventListener('change', e => {
+    const cb = e.target.closest('[data-flow-col]');
+    if(!cb) return;
+    const current = new Set(getHiddenFlowsheetCols());
+    if(cb.checked) current.delete(cb.dataset.flowCol); else current.add(cb.dataset.flowCol);
+    saveHiddenFlowsheetCols(Array.from(current));
+    applyFlowsheetColumnVisibility();
+  });
+}
+
 function renderVitalsTable(){
   const body = document.getElementById('vitals-table-body');
   const emptyMsg = document.getElementById('vitals-table-empty');
@@ -6515,16 +6571,16 @@ function renderVitalsTable(){
       ? `<td class="vitals-td-news2 n2-${n2.level}" title="${escapeHtml(news2LevelLabel(n2.level))}">${n2.score}</td>`
       : '<td class="vitals-td-news2">—</td>';
     tr.innerHTML = `
-      <td>${escapeHtml(fmtVitalsTime(entry.ts))}${shiftBandTagHtml(entry.ts)}</td>
-      <td class="${flagClass.trim()}">${escapeHtml(entry.hr || '—')}</td>
-      <td class="${flagClass.trim()}">${bp}</td>
-      <td>${escapeHtml(entry.rr || '—')}</td>
-      <td class="${flagClass.trim()}">${escapeHtml(entry.spo2 || '—')}</td>
-      <td class="${flagClass.trim()}">${escapeHtml(entry.temp || '—')}</td>
-      <td>${escapeHtml(entry.gcs || '—')}</td>
-      <td>${escapeHtml(entry.uop || '—')}</td>
-      ${n2Cell}
-      <td class="vitals-td-notes">${escapeHtml(entry.notes || '')}${entry.hasPhoto ? `<button type="button" class="note-photo-view-btn" data-view-note-photo="${entry.id}" title="View attached photo">📷</button>` : ''}</td>
+      <td data-col="time">${escapeHtml(fmtVitalsTime(entry.ts))}${shiftBandTagHtml(entry.ts)}</td>
+      <td data-col="hr" class="${flagClass.trim()}">${escapeHtml(entry.hr || '—')}</td>
+      <td data-col="bp" class="${flagClass.trim()}">${bp}</td>
+      <td data-col="rr">${escapeHtml(entry.rr || '—')}</td>
+      <td data-col="spo2" class="${flagClass.trim()}">${escapeHtml(entry.spo2 || '—')}</td>
+      <td data-col="temp" class="${flagClass.trim()}">${escapeHtml(entry.temp || '—')}</td>
+      <td data-col="gcs">${escapeHtml(entry.gcs || '—')}</td>
+      <td data-col="uop">${escapeHtml(entry.uop || '—')}</td>
+      ${n2Cell.replace('<td', '<td data-col="news2"')}
+      <td data-col="notes" class="vitals-td-notes">${escapeHtml(entry.notes || '')}${entry.hasPhoto ? `<button type="button" class="note-photo-view-btn" data-view-note-photo="${entry.id}" title="View attached photo">📷</button>` : ''}</td>
       <td><button type="button" class="vitals-row-delete" aria-label="Delete this reading" data-entry-id="${entry.id}">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button></td>`;
@@ -6541,6 +6597,7 @@ function renderVitalsTable(){
       deleteVitalsRow(pt.id, btn.dataset.entryId);
     });
   }
+  applyFlowsheetColumnVisibility();
 }
 
 /* ---- tiny CSS/SVG sparklines for HR + BP, oldest-to-newest ---- */
