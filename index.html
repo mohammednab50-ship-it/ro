@@ -1286,6 +1286,21 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 /* ---- search-everywhere concept-match tag ---- */
 .gs-semantic-tag{display:inline-block;font-family:var(--ff-mono);font-size:9.5px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--shell-ink-soft);border:1px solid var(--shell-line);border-radius:20px;padding:1px 6px;margin-left:6px;}
 
+/* ---- quiz confidence + calibration ---- */
+.quiz-confidence-row{display:flex;gap:8px;margin-top:12px;}
+.quiz-confidence-btn{flex:1;border:1px solid var(--shell-line);background:none;border-radius:var(--r-pill);padding:9px 6px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--shell-ink-soft);cursor:pointer;}
+.quiz-confidence-btn:hover{border-color:var(--evidence-bright);color:var(--evidence-bright);}
+.quiz-confidence-label{font-family:var(--ff-sans);font-size:12px;color:var(--shell-ink-soft);margin:12px 0 0;text-align:center;}
+.quiz-header-row{display:flex;align-items:center;justify-content:space-between;gap:10px;}
+.quiz-calibration-btn{background:none;border:1px solid var(--shell-line);border-radius:var(--r-pill);padding:5px 12px;font-family:var(--ff-sans);font-size:11.5px;font-weight:600;color:var(--shell-ink-soft);cursor:pointer;white-space:nowrap;}
+.quiz-calibration-btn:hover{border-color:var(--evidence-bright);color:var(--evidence-bright);}
+.calibration-panel{border:1px solid var(--shell-line);border-radius:var(--r-md);padding:14px 16px;margin:14px 0;background:rgba(255,255,255,0.03);}
+.calibration-row{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:6px 0;font-family:var(--ff-sans);font-size:13px;color:var(--shell-ink);border-bottom:1px dashed var(--shell-line);}
+.calibration-row:last-child{border-bottom:none;}
+.calibration-pct{font-family:var(--ff-mono);font-weight:700;}
+.calibration-note{font-family:var(--ff-sans);font-size:11.5px;color:var(--shell-ink-soft);margin:8px 0 0;}
+
+
 /* ---- print-only study sheet ---- */
 #study-sheet{display:none;}
 .ss-title{font-family:var(--ff-sans);font-size:22px;font-weight:700;margin:0 0 4px;}
@@ -2267,8 +2282,12 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   <div class="rename-card settings-card global-search-card quiz-card" role="document">
     <button type="button" class="onb-close" id="quiz-close" aria-label="Close quiz">&times;</button>
     <p class="onb-eyebrow">SPACED REPETITION</p>
-    <h2 class="onb-title serif" id="quiz-title">Quiz</h2>
+    <div class="quiz-header-row">
+      <h2 class="onb-title serif" id="quiz-title">Quiz</h2>
+      <button type="button" class="quiz-calibration-btn" id="quiz-calibration-btn">Calibration</button>
+    </div>
     <p class="settings-sub" style="display:block;margin:6px 0 14px;">Self-testing on your saved articles, conditions and formulary drugs. Rate your recall honestly — it decides when a card comes back.</p>
+    <div id="quiz-calibration-panel" class="calibration-panel" hidden></div>
     <div id="quiz-empty" class="cmp-empty" hidden></div>
     <div id="quiz-body" hidden>
       <div class="quiz-progress" id="quiz-progress"></div>
@@ -2278,7 +2297,13 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
         <p class="quiz-sub" id="quiz-sub"></p>
         <div class="quiz-answer" id="quiz-answer" hidden></div>
       </div>
-      <button type="button" class="results-export-btn" id="quiz-reveal-btn">Reveal answer</button>
+      <div id="quiz-confidence-row" class="quiz-confidence-row">
+        <button type="button" class="quiz-confidence-btn" data-conf="low">Low confidence</button>
+        <button type="button" class="quiz-confidence-btn" data-conf="medium">Medium confidence</button>
+        <button type="button" class="quiz-confidence-btn" data-conf="high">High confidence</button>
+      </div>
+      <p class="quiz-confidence-label" id="quiz-confidence-label">How confident are you before you see the answer?</p>
+      <button type="button" class="results-export-btn" id="quiz-reveal-btn" hidden>Reveal answer</button>
       <div class="quiz-rate-row" id="quiz-rate-row" hidden>
         <button type="button" class="quiz-rate-btn quiz-rate-again" data-rate="again">Again</button>
         <button type="button" class="quiz-rate-btn quiz-rate-hard" data-rate="hard">Hard</button>
@@ -12316,6 +12341,54 @@ function openQuiz(){
   modal.hidden = false;
   document.addEventListener('keydown', onQuizKey);
 }
+/* ---- Confidence-calibrated scoring: before the answer is revealed the
+   learner rates Low/Medium/High confidence; once the answer is rated
+   "Good"/"Easy" it's counted as recalled correctly for calibration
+   purposes ("Again"/"Hard" count as not recalled). This is the classic
+   med-ed calibration check — comparing stated confidence to actual
+   recall to catch overconfidence. ---- */
+const CALIBRATION_KEY = 'rounds_calibration_v1';
+function getCalibrationState(){
+  try{ return JSON.parse(localStorage.getItem(CALIBRATION_KEY) || '{}'); }catch(e){ return {}; }
+}
+function setCalibrationState(obj){ try{ localStorage.setItem(CALIBRATION_KEY, JSON.stringify(obj)); }catch(e){} }
+function recordCalibration(level, correct){
+  if(!level) return;
+  const state = getCalibrationState();
+  const row = state[level] || { correct: 0, total: 0 };
+  row.total += 1;
+  if(correct) row.correct += 1;
+  state[level] = row;
+  setCalibrationState(state);
+}
+function renderCalibrationPanel(){
+  const panel = document.getElementById('quiz-calibration-panel');
+  if(!panel) return;
+  const state = getCalibrationState();
+  const levels = [['high', 'High confidence'], ['medium', 'Medium confidence'], ['low', 'Low confidence']];
+  const rows = levels.map(([key, label]) => {
+    const row = state[key];
+    const pct = row && row.total ? Math.round((row.correct / row.total) * 100) : null;
+    return `<div class="calibration-row"><span>${escapeHtml(label)}</span><span class="calibration-pct">${pct == null ? '—' : pct + '% correct'}${row ? ` <span class="quiz-sub" style="display:inline;margin:0;">(${row.total})</span>` : ''}</span></div>`;
+  }).join('');
+  const highRow = state.high, lowRow = state.low;
+  let note = 'Rate your confidence before each reveal to build up this picture.';
+  if(highRow && highRow.total >= 3 && lowRow && lowRow.total >= 3){
+    const highPct = Math.round((highRow.correct / highRow.total) * 100);
+    const lowPct = Math.round((lowRow.correct / lowRow.total) * 100);
+    note = highPct - lowPct <= 15
+      ? 'Your High-confidence recall isn\'t much better than Low-confidence — worth double-checking answers you feel sure about.'
+      : 'Your confidence tracks your actual recall reasonably well.';
+  }
+  panel.innerHTML = `<p class="settings-sub" style="display:block;margin:0 0 8px;">When you said... how often were you actually right? ("Good"/"Easy" counts as correct.)</p>${rows}<p class="calibration-note">${escapeHtml(note)}</p>`;
+}
+function toggleCalibrationPanel(){
+  const panel = document.getElementById('quiz-calibration-panel');
+  if(!panel) return;
+  if(panel.hidden){ renderCalibrationPanel(); panel.hidden = false; }
+  else panel.hidden = true;
+}
+
 function renderQuizCard(){
   const bodyEl = document.getElementById('quiz-body');
   const summaryEl = document.getElementById('quiz-summary');
@@ -12332,6 +12405,7 @@ function renderQuizCard(){
   bodyEl.hidden = false;
   summaryEl.hidden = true;
   const item = quizSession.queue[quizSession.idx];
+  quizSession.confidence = null;
   document.getElementById('quiz-progress').textContent = `Card ${quizSession.idx + 1} of ${quizSession.total}`;
   document.getElementById('quiz-type-tag').textContent = item.type;
   document.getElementById('quiz-question').textContent = item.q;
@@ -12339,19 +12413,29 @@ function renderQuizCard(){
   const answerEl = document.getElementById('quiz-answer');
   answerEl.innerHTML = item.answerHtml;
   answerEl.hidden = true;
-  document.getElementById('quiz-reveal-btn').hidden = false;
+  document.getElementById('quiz-reveal-btn').hidden = true;
+  document.getElementById('quiz-confidence-row').hidden = false;
+  document.getElementById('quiz-confidence-label').hidden = false;
   document.getElementById('quiz-rate-row').hidden = true;
 }
 function revealQuizAnswer(){
   document.getElementById('quiz-answer').hidden = false;
   document.getElementById('quiz-reveal-btn').hidden = true;
+  document.getElementById('quiz-confidence-row').hidden = true;
+  document.getElementById('quiz-confidence-label').hidden = true;
   document.getElementById('quiz-rate-row').hidden = false;
   haptic('Light');
+}
+function chooseQuizConfidence(level){
+  if(!quizSession) return;
+  quizSession.confidence = level;
+  revealQuizAnswer();
 }
 function rateQuizCard(rating){
   if(!quizSession) return;
   const item = quizSession.queue[quizSession.idx];
   srsRate(item.key, rating);
+  recordCalibration(quizSession.confidence, rating === 'good' || rating === 'easy');
   quizSession.resultCounts[rating] = (quizSession.resultCounts[rating] || 0) + 1;
   quizSession.idx++;
   haptic('Light');
@@ -12373,9 +12457,14 @@ function setupQuiz(){
   if(modal) modal.onclick = (e) => { if(e.target === modal) closeQuiz(); };
   const revealBtn = document.getElementById('quiz-reveal-btn');
   if(revealBtn) revealBtn.onclick = revealQuizAnswer;
+  document.querySelectorAll('.quiz-confidence-btn[data-conf]').forEach(btn => {
+    btn.onclick = () => chooseQuizConfidence(btn.dataset.conf);
+  });
   document.querySelectorAll('.quiz-rate-btn[data-rate]').forEach(btn => {
     btn.onclick = () => rateQuizCard(btn.dataset.rate);
   });
+  const calBtn = document.getElementById('quiz-calibration-btn');
+  if(calBtn) calBtn.onclick = () => { haptic('Light'); toggleCalibrationPanel(); };
 }
 
 /* ============================================================
