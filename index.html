@@ -210,14 +210,15 @@ body > header{background:transparent;position:sticky;top:0;z-index:50;padding:14
 .header-inner{max-width:1280px;margin:0 auto;padding:12px 14px 12px 22px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:28px;
   background:var(--header-bg);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
   border:1px solid var(--header-line);border-radius:var(--r-pill);box-shadow:var(--shadow-md);}
-@media (max-width:880px){.header-inner{grid-template-columns:1fr auto;gap:16px;border-radius:var(--r-lg);}.header-search{grid-column:1 / -1;}}
+@media (max-width:880px){.header-inner{grid-template-columns:1fr auto;gap:16px;border-radius:var(--r-lg);}.header-search{grid-column:1 / -1;flex-wrap:wrap;padding-bottom:6px;}.header-search input{flex-basis:100%;order:-1;}}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
 .brand-mark{width:32px;height:32px;border-radius:10px;background:var(--cta-bg);display:grid;place-items:center;color:var(--cta-ink);font-family:var(--ff-display);font-weight:800;font-size:16px;line-height:1;flex-shrink:0;}
 .brand-words{display:flex;flex-direction:column;gap:2px;line-height:1;}
 .brand-name{font-family:var(--ff-display);font-size:21px;font-weight:800;margin:0;letter-spacing:-0.03em;color:var(--header-ink);line-height:1;}
 .brand-tagline{font-family:var(--ff-sans);font-size:10px;font-weight:600;color:var(--header-ink-soft);text-transform:uppercase;letter-spacing:var(--tracking-eyebrow);padding-left:1px;}
 
-.header-search{display:flex;align-items:center;gap:8px;background:var(--paper-deep);border:1px solid var(--header-line);border-radius:var(--r-pill);padding:4px 4px 4px 18px;transition:border-color var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out);}
+.header-search{display:flex;align-items:center;gap:8px;background:var(--paper-deep);border:1px solid var(--header-line);border-radius:var(--r-pill);padding:4px 4px 4px 18px;transition:border-color var(--dur-base) var(--ease-out),box-shadow var(--dur-base) var(--ease-out);min-width:0;overflow-x:auto;scrollbar-width:none;}
+.header-search::-webkit-scrollbar{display:none;}
 .header-search:focus-within{border-color:var(--evidence);background:var(--surface);box-shadow:0 0 0 3px var(--evidence-bg);}
 .header-search .search-icon{width:18px;height:18px;color:var(--header-ink-soft);flex-shrink:0;}
 .header-search input{flex:1;border:none;background:transparent;color:var(--header-ink);font-family:var(--ff-sans);font-size:13.5px;padding:10px 0;outline:none;min-width:0;}
@@ -1153,10 +1154,10 @@ body.locked{overflow:hidden;}
   background:rgba(5,6,5,0.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   animation:login-fade var(--dur-base) var(--ease-out);}
 .onb-overlay[hidden]{display:none;}
-.onb-card{position:relative;width:100%;max-width:440px;background:var(--shell-raised);border:1px solid var(--shell-line);
+.onb-card{position:relative;width:100%;max-width:440px;max-height:88vh;background:var(--shell-raised);border:1px solid var(--shell-line);
   border-radius:var(--r-lg);padding:38px 34px 24px;box-shadow:0 30px 80px rgba(0,0,0,0.6);
   background-image:radial-gradient(560px 300px at 80% -20%, rgba(91,156,255,0.12), transparent 60%);
-  animation:login-rise var(--dur-slow) var(--ease-out) both;overflow:hidden;}
+  animation:login-rise var(--dur-slow) var(--ease-out) both;overflow-y:auto;}
 .onb-close{position:absolute;top:14px;right:16px;width:32px;height:32px;border:none;background:none;color:var(--shell-ink-soft);
   font-size:26px;line-height:1;cursor:pointer;border-radius:var(--r-sm);transition:color var(--dur-fast) var(--ease-out);z-index:2;}
 .onb-close:hover{color:var(--shell-ink);}
@@ -1215,7 +1216,7 @@ body.locked{overflow:hidden;}
   background:rgba(5,6,5,0.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   animation:login-fade var(--dur-base) var(--ease-out);}
 .rename-overlay[hidden]{display:none;}
-.rename-card{position:relative;width:100%;max-width:400px;background:var(--shell-raised);border:1px solid var(--shell-line);
+.rename-card{position:relative;width:100%;max-width:400px;max-height:88vh;overflow-y:auto;background:var(--shell-raised);border:1px solid var(--shell-line);
   border-radius:var(--r-lg);padding:34px 30px 24px;box-shadow:0 30px 80px rgba(0,0,0,0.6);
   background-image:radial-gradient(500px 260px at 80% -20%, rgba(91,156,255,0.12), transparent 60%);
   animation:login-rise var(--dur-slow) var(--ease-out) both;}
