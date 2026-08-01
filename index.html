@@ -517,6 +517,14 @@ main{min-width:0;}
 .bookmark-note-save{border:1px solid var(--line);background:none;border-radius:var(--r-pill);padding:6px 14px;font-family:var(--ff-sans);font-size:12px;font-weight:600;cursor:pointer;color:var(--ink-soft);}
 .bookmark-note-save:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
 .bookmark-note-saved{font-family:var(--ff-sans);font-size:11.5px;color:var(--fresh);font-weight:600;}
+.tc-reveal-select{border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);border-radius:var(--r-sm);padding:5px 8px;font-family:var(--ff-sans);font-size:12px;}
+.tc-reveal-custom{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:var(--r-sm);padding:5px 8px;font-family:var(--ff-sans);font-size:12px;}
+.tc-reveal-custom[hidden]{display:none;}
+.tc-unlocked-caption{display:block;font-family:var(--ff-sans);font-size:11.5px;color:var(--ink-faint);margin-top:6px;}
+.tc-locked-box{position:relative;}
+.tc-locked-blur{font-family:var(--ff-sans);font-size:13.5px;color:var(--ink-soft);line-height:1.5;filter:blur(5px);user-select:none;pointer-events:none;}
+.tc-locked-caption{font-family:var(--ff-sans);font-size:11.5px;font-weight:600;color:var(--ink-faint);margin-top:8px;}
+.tc-clear-btn{margin-top:8px;}
 .card-foot{display:flex;justify-content:space-between;align-items:center;padding-top:var(--space-4);border-top:1px solid var(--line-soft);gap:var(--space-3);flex-wrap:wrap;}
 .pmid-link{font-family:var(--ff-sans);font-size:13px;color:var(--evidence-dark);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:color var(--dur-fast) var(--ease-out);}
 .pmid-link:hover{color:var(--evidence);}
@@ -7311,10 +7319,10 @@ function setBookmarks(obj){
 function isBookmarked(pmid){ return !!getBookmarks()[pmid]; }
 function toggleBookmark(article){
   const bm = getBookmarks();
-  let added, removedArticle, removedNote;
+  let added, removedArticle, removedNoteRecord;
   if(bm[article.pmid]){
     removedArticle = bm[article.pmid];
-    removedNote = getBookmarkNote(article.pmid);
+    removedNoteRecord = getBookmarkNoteRecord(article.pmid);
     delete bm[article.pmid];
     added = false;
     removeBookmarkNote(article.pmid);
@@ -7324,6 +7332,7 @@ function toggleBookmark(article){
   setBookmarks(bm);
   if(added){
     showToast('Saved to your list', 'ok');
+    if(typeof maybeCelebrateMilestone === 'function') maybeCelebrateMilestone('bookmarks', Object.keys(getBookmarks()).length + Object.keys(getConditionBookmarks()).length);
   }else{
     showToast('Removed from saved.', null, {
       label: 'Undo',
@@ -7331,7 +7340,7 @@ function toggleBookmark(article){
         const bm2 = getBookmarks();
         bm2[removedArticle.pmid] = removedArticle;
         setBookmarks(bm2);
-        if(removedNote) setBookmarkNote(removedArticle.pmid, removedNote);
+        if(removedNoteRecord) restoreBookmarkNoteRecord(removedArticle.pmid, removedNoteRecord);
         if(state.viewingBookmarks) renderBookmarksView();
         else render();
         renderChapters();
@@ -7345,17 +7354,41 @@ function toggleBookmark(article){
 
 /* ---- Personal notes on saved articles (keyed by PMID, independent of
    the bookmark record itself so re-saving an article after removing it
-   doesn't silently resurrect a stale note). ---- */
+   doesn't silently resurrect a stale note). Each note is stored as a
+   {text, createdAt, revealAt} record — "time capsule" notes set a
+   future revealAt and stay visually locked until that date; legacy
+   notes (saved before this existed) are plain strings and normalize
+   to revealAt:null, i.e. always unlocked. ---- */
 const BOOKMARK_NOTES_KEY = 'rounds_bookmark_notes_v1';
 function getBookmarkNotes(){
   try { return JSON.parse(localStorage.getItem(BOOKMARK_NOTES_KEY) || '{}'); } catch(e){ return {}; }
 }
-function getBookmarkNote(pmid){ return getBookmarkNotes()[pmid] || ''; }
-function setBookmarkNote(pmid, text){
+function normalizeNoteRecord(raw){
+  if(!raw) return null;
+  if(typeof raw === 'string') return { text: raw, createdAt: null, revealAt: null };
+  return { text: raw.text || '', createdAt: raw.createdAt || null, revealAt: raw.revealAt || null };
+}
+function getBookmarkNoteRecord(pmid){ return normalizeNoteRecord(getBookmarkNotes()[pmid]); }
+function getBookmarkNote(pmid){ const r = getBookmarkNoteRecord(pmid); return r ? r.text : ''; }
+function isNoteLocked(record){ return !!(record && record.revealAt && Date.now() < record.revealAt); }
+function setBookmarkNote(pmid, text, revealAt){
   const notes = getBookmarkNotes();
   const trimmed = (text || '').trim();
-  if(trimmed) notes[pmid] = trimmed;
-  else delete notes[pmid];
+  if(!trimmed){ delete notes[pmid]; }
+  else {
+    const existing = normalizeNoteRecord(notes[pmid]);
+    notes[pmid] = {
+      text: trimmed,
+      createdAt: (existing && existing.createdAt) || Date.now(),
+      revealAt: revealAt || null
+    };
+  }
+  try{ localStorage.setItem(BOOKMARK_NOTES_KEY, JSON.stringify(notes)); }catch(e){}
+}
+function restoreBookmarkNoteRecord(pmid, record){
+  if(!record) return;
+  const notes = getBookmarkNotes();
+  notes[pmid] = record;
   try{ localStorage.setItem(BOOKMARK_NOTES_KEY, JSON.stringify(notes)); }catch(e){}
 }
 function removeBookmarkNote(pmid){
@@ -7502,6 +7535,10 @@ function daysAgo(dateStr){
   const d = new Date(dateStr);
   if(isNaN(d)) return null;
   return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+function daysBetween(fromMs, toMs){
+  if(!fromMs || !toMs) return 0;
+  return Math.max(0, Math.floor((toMs - fromMs) / 86400000));
 }
 
 function escapeHtml(s){
@@ -7976,16 +8013,38 @@ function articleCard(a, idx){
   // Personal note UI only makes sense in the Saved list — an unsaved
   // article has nowhere to persist a note against yet.
   const showNote = state.viewingBookmarks && saved;
-  const noteVal = showNote ? (getBookmarkNote(a.pmid) || '') : '';
-  const noteHtml = showNote ? `
+  const noteRecord = showNote ? getBookmarkNoteRecord(a.pmid) : null;
+  const noteLocked = isNoteLocked(noteRecord);
+  const noteVal = (showNote && !noteLocked && noteRecord) ? noteRecord.text : '';
+  const unlockedCaption = (showNote && !noteLocked && noteRecord && noteRecord.revealAt && noteRecord.createdAt)
+    ? `<span class="tc-unlocked-caption">Written ${daysBetween(noteRecord.createdAt, Date.now())}d ago — unlocked ${daysBetween(noteRecord.revealAt, Date.now()) <= 0 ? 'today' : 'since ' + new Date(noteRecord.revealAt).toLocaleDateString(roundsLocaleArg())}</span>`
+    : '';
+  const noteHtml = !showNote ? '' : noteLocked ? `
+      <div class="bookmark-note">
+        <label class="bookmark-note-label">Your note</label>
+        <div class="tc-locked-box">
+          <div class="tc-locked-blur" aria-hidden="true">${escapeHtml(noteRecord.text)}</div>
+          <div class="tc-locked-caption">🔒 Time-capsule note — written ${daysBetween(noteRecord.createdAt, Date.now())}d ago, unlocks ${new Date(noteRecord.revealAt).toLocaleDateString(roundsLocaleArg())}</div>
+          <button type="button" class="bookmark-note-save tc-clear-btn">Delete note instead</button>
+        </div>
+      </div>` : `
       <div class="bookmark-note">
         <label class="bookmark-note-label" for="note-${escapeHtml(a.pmid)}">Your note</label>
         <textarea id="note-${escapeHtml(a.pmid)}" class="bookmark-note-input" placeholder="e.g. relevant for morning report…" maxlength="500">${escapeHtml(noteVal)}</textarea>
+        ${unlockedCaption}
         <div class="bookmark-note-actions">
           <button type="button" class="bookmark-note-save">Save note</button>
+          <select class="tc-reveal-select" aria-label="Reveal this note after a delay">
+            <option value="">No delay</option>
+            <option value="7">Reveal in 1 week</option>
+            <option value="30">Reveal in 1 month</option>
+            <option value="90">Reveal in 3 months</option>
+            <option value="custom">Custom date…</option>
+          </select>
+          <input type="date" class="tc-reveal-custom" hidden>
           <span class="bookmark-note-saved" hidden>Saved</span>
         </div>
-      </div>` : '';
+      </div>`;
 
   const li = document.createElement('li');
   li.className = 'card ' + freshClass;
@@ -8019,14 +8078,41 @@ function articleCard(a, idx){
   if(cite) cite.onclick = () => copyCitation(a);
   const share = li.querySelector('.share-btn');
   if(share) share.onclick = () => shareArticle(a);
-  if(showNote){
+  if(showNote && noteLocked){
+    const clearBtn = li.querySelector('.tc-clear-btn');
+    if(clearBtn) clearBtn.onclick = () => {
+      removeBookmarkNote(a.pmid);
+      haptic('Light');
+      if(state.viewingBookmarks) renderBookmarksView();
+    };
+  } else if(showNote){
     const saveBtn = li.querySelector('.bookmark-note-save');
     const noteInput = li.querySelector('.bookmark-note-input');
     const savedFlag = li.querySelector('.bookmark-note-saved');
+    const revealSel = li.querySelector('.tc-reveal-select');
+    const revealCustom = li.querySelector('.tc-reveal-custom');
+    if(revealSel && revealCustom){
+      revealSel.onchange = () => { revealCustom.hidden = revealSel.value !== 'custom'; };
+    }
     if(saveBtn && noteInput){
       saveBtn.onclick = () => {
-        setBookmarkNote(a.pmid, noteInput.value);
+        let revealAt = null;
+        if(revealSel){
+          const v = revealSel.value;
+          if(v === 'custom' && revealCustom && revealCustom.value){
+            const d = new Date(revealCustom.value + 'T00:00:00');
+            if(!isNaN(d)) revealAt = d.getTime();
+          } else if(v && v !== 'custom'){
+            revealAt = Date.now() + parseInt(v, 10) * 86400000;
+          }
+        }
+        setBookmarkNote(a.pmid, noteInput.value, revealAt);
         haptic('Light');
+        if(revealAt && noteInput.value.trim()){
+          showToast('Note saved — locked until it reveals', 'ok');
+          if(state.viewingBookmarks) renderBookmarksView();
+          return;
+        }
         if(savedFlag){
           savedFlag.hidden = false;
           clearTimeout(savedFlag._t);
@@ -14429,7 +14515,7 @@ function buildStudySheetHtml(){
   const total = bm.length + condBm.length + drugs.length;
   let html = `<h1 class="ss-title">Rounds — Study sheet</h1><p class="ss-meta">${total} item${total === 1 ? '' : 's'} · generated ${escapeHtml(new Date().toLocaleDateString(roundsLocaleArg()))} · educational self-study aid, not a clinical protocol</p>`;
   bm.forEach(a => {
-    const note = getBookmarkNote(a.pmid);
+    const note = isNoteLocked(getBookmarkNoteRecord(a.pmid)) ? '' : getBookmarkNote(a.pmid);
     html += `<div class="ss-item"><span class="ss-tag">Literature</span><h3>${escapeHtml(a.title || 'Untitled')}</h3>` +
       `<p class="ss-sub">${escapeHtml([a.journal, a.date, a.authors].filter(Boolean).join(' · '))}${a.pmid ? ' · PMID ' + escapeHtml(a.pmid) : ''}</p>` +
       `<div class="ss-body"><p>${escapeHtml(((a.abstract || '').slice(0, 700)) || 'No abstract available.')}</p>${note ? `<p><strong>My note:</strong> ${escapeHtml(note)}</p>` : ''}</div></div>`;
