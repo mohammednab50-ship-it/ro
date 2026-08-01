@@ -1669,6 +1669,12 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-escalation-list li{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);display:flex;gap:8px;}
 .vitals-escalation-list li .esc-role{font-weight:700;color:var(--ink);}
 .vitals-escalation-list li .esc-time{color:var(--ink-faint);}
+.vitals-escalation-list li .esc-contact{color:var(--ink-soft);}
+.vitals-escalation-list li .esc-response-btn{margin-left:auto;}
+.vitals-escalation-list li .esc-responded{color:var(--fresh);font-weight:700;}
+.vitals-escalation-list li .esc-pending{color:var(--caution);font-weight:700;}
+.vitals-escalation-contact-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:220px;}
+.vitals-escalation-contact-wrap input{flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-size:13px;}
 
 /* ---- problem list ---- */
 .vitals-problem-list-panel{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
@@ -2832,6 +2838,12 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 
       <div class="vitals-escalation-trail">
         <div class="vitals-escalation-actions">
+          <label class="vitals-escalation-contact-wrap" title="Who to actually contact at this institution for an escalation on this patient — pre-fills into the log below">
+            <span class="vitals-escalation-trail-label">Escalation contact</span>
+            <input type="text" id="vitals-escalation-contact" maxlength="80" placeholder="e.g. Dr. Patel, bleep 1234">
+          </label>
+        </div>
+        <div class="vitals-escalation-actions" id="vitals-escalation-role-actions">
           <span class="vitals-escalation-trail-label">Notified:</span>
           <button type="button" class="vitals-btn-outline" data-escalate-role="senior">Senior</button>
           <button type="button" class="vitals-btn-outline" data-escalate-role="registrar">Registrar</button>
@@ -6284,6 +6296,8 @@ function renderVitalsMain(){
   renderMarSection(p);
   renderEscalationBanner(p);
   renderEscalationList(p);
+  const contactInput = document.getElementById('vitals-escalation-contact');
+  if(contactInput) contactInput.value = p.escalationContact || '';
   updateNews2Preview();
 }
 
@@ -7420,33 +7434,80 @@ function ensureEscalations(p){
   return p.escalations;
 }
 
+function fmtElapsedMins(ms){
+  const mins = Math.round(ms / 60000);
+  if(mins < 60) return `${mins}m`;
+  const h = Math.floor(mins / 60), m = mins % 60;
+  return `${h}h ${m}m`;
+}
+
 function renderEscalationList(p){
   const list = document.getElementById('vitals-escalation-list');
   if(!list) return;
   const entries = ((p && p.escalations) || []).slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
-  list.innerHTML = entries.map(e =>
-    `<li><span class="esc-role">Notified ${escapeHtml(ESCALATION_ROLE_LABELS[e.role] || e.role)}</span>` +
-    `<span class="esc-time">${escapeHtml(fmtVitalsTime(e.ts))}</span></li>`
-  ).join('');
+  const now = Date.now();
+  list.innerHTML = entries.map(e => {
+    const responded = !!e.respondedAt;
+    const responseHtml = responded
+      ? `<span class="esc-responded">Responded in ${fmtElapsedMins(new Date(e.respondedAt) - new Date(e.ts))}</span>`
+      : `<span class="esc-pending">Awaiting response — ${fmtElapsedMins(now - new Date(e.ts))} elapsed</span>` +
+        `<button type="button" class="vitals-btn-outline esc-response-btn" data-mark-responded="${e.id}">Mark as responded</button>`;
+    return `<li>` +
+      `<span class="esc-role">Notified ${escapeHtml(ESCALATION_ROLE_LABELS[e.role] || e.role)}</span>` +
+      `<span class="esc-time">${escapeHtml(fmtVitalsTime(e.ts))}</span>` +
+      (e.contact ? `<span class="esc-contact">via ${escapeHtml(e.contact)}</span>` : '') +
+      responseHtml +
+      `</li>`;
+  }).join('');
 }
 
 function setupEscalationTrail(){
-  const wrap = document.querySelector('.vitals-escalation-actions');
-  if(!wrap || wrap.dataset.wired) return;
-  wrap.dataset.wired = '1';
-  wrap.addEventListener('click', e => {
-    const btn = e.target.closest('[data-escalate-role]');
-    if(!btn) return;
-    const p = activePatient();
-    if(!p) return;
-    const role = btn.dataset.escalateRole;
-    ensureEscalations(p).push({ id: genVitalsId('esc'), ts: new Date().toISOString(), role });
-    saveVitalsData();
-    if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('escalation_logged', p, `Notified ${ESCALATION_ROLE_LABELS[role] || role}`);
-    renderEscalationList(p);
-    showToast(`Logged: notified ${ESCALATION_ROLE_LABELS[role] || role}.`);
-    haptic('Light');
-  });
+  const wrap = document.getElementById('vitals-escalation-role-actions');
+  const contactInput = document.getElementById('vitals-escalation-contact');
+  const list = document.getElementById('vitals-escalation-list');
+  if(wrap && !wrap.dataset.wired){
+    wrap.dataset.wired = '1';
+    wrap.addEventListener('click', e => {
+      const btn = e.target.closest('[data-escalate-role]');
+      if(!btn) return;
+      const p = activePatient();
+      if(!p) return;
+      const role = btn.dataset.escalateRole;
+      const contact = (p.escalationContact || '').trim();
+      ensureEscalations(p).push({ id: genVitalsId('esc'), ts: new Date().toISOString(), role, contact: contact || undefined, respondedAt: null });
+      saveVitalsData();
+      if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('escalation_logged', p, `Notified ${ESCALATION_ROLE_LABELS[role] || role}${contact ? ' (' + contact + ')' : ''}`);
+      renderEscalationList(p);
+      showToast(`Logged: notified ${ESCALATION_ROLE_LABELS[role] || role}.`);
+      haptic('Light');
+    });
+  }
+  if(contactInput && !contactInput.dataset.wired){
+    contactInput.dataset.wired = '1';
+    contactInput.addEventListener('change', () => {
+      const p = activePatient();
+      if(!p) return;
+      p.escalationContact = contactInput.value.trim();
+      saveVitalsData();
+    });
+  }
+  if(list && !list.dataset.wired){
+    list.dataset.wired = '1';
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('[data-mark-responded]');
+      if(!btn) return;
+      const p = activePatient();
+      if(!p) return;
+      const entry = (p.escalations || []).find(x => x.id === btn.dataset.markResponded);
+      if(!entry) return;
+      entry.respondedAt = new Date().toISOString();
+      saveVitalsData();
+      if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('escalation_responded', p, `Response logged for ${ESCALATION_ROLE_LABELS[entry.role] || entry.role} notification`);
+      renderEscalationList(p);
+      showToast('Response time logged.');
+      haptic('Light');
+    });
+  }
 }
 
 /* ---- rounding checklist — short department-specific systematic-review
