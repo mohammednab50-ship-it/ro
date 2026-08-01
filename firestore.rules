@@ -1,37 +1,67 @@
 rules_version = '2';
 
 // =====================================================================
-// Rounds/Wards — hospital > department > ward-group access control for
-// the unified, department-tagged patient system (Wards' single Patients
-// tab covers General/ICU/Surgery/Pediatrics/Maternity via a `department`
-// field on each patient doc — previously two independent group systems,
-// vitalsGroups and maternityGroups, now collapsed into one).
+// Rounds/Wards — multi-hospital, hospital > department > ward-group
+// access control for the unified, department-tagged patient system
+// (Wards' single Patients tab covers General/ICU/Surgery/Pediatrics/
+// Maternity via a `department` field on each patient doc — previously
+// two independent group systems, vitalsGroups and maternityGroups, now
+// collapsed into one).
 //
-// Three-tier hierarchy:
-//   Hospital super-admin  — `users/{uid}.superAdmin == true`. Sees/manages
-//     every department and every ward group. Bootstrapped manually once
-//     (see README-FIRESTORE-SETUP.md), then can promote/demote others and
-//     create departments from within the app.
-//   Department admin      — listed in a `departments/{deptId}.admins` map.
-//     Sees/manages every ward group tagged with that department's id, but
-//     nothing outside it.
+// This is a single shared Firebase project (`wards-a4e41`) serving MANY
+// independent hospitals at once. There is no global "super-admin" who
+// can see across hospitals — each hospital is its own fully isolated
+// tenant, and admin authority never crosses a `hospitalId` boundary.
+//
+// Four-tier hierarchy:
+//   Hospital admin        — listed in a `hospitals/{hospitalId}.admins`
+//     map. Sees/manages every department and every ward group that
+//     belongs to that specific hospital (via their `hospitalId` field),
+//     and nothing belonging to any other hospital. Self-service: any
+//     signed-in user can create a new hospital and automatically
+//     becomes its sole admin (server-enforced) — this is the entire
+//     bootstrap process; there is no manual console step anymore.
+//   Department admin      — listed in a `departments/{deptId}.admins`
+//     map. Sees/manages every ward group tagged with that department's
+//     id, but nothing outside it. A department always belongs to
+//     exactly one hospital (`hospitalId` field, required, immutable in
+//     practice since rules don't allow changing which hospital a doc
+//     belongs to via a plain field update check — see isValidNewDepartment).
 //   Ward-group admin       — whoever creates a wardGroups doc becomes its
 //     admin automatically (server-enforced, not just client convention).
 //     Can invite/remove members, rename, or delete just that one group. A
 //     group may optionally belong to a department (`departmentId` field)
-//     or stand alone with no department at all.
+//     but ALWAYS belongs to exactly one hospital (`hospitalId` field,
+//     required) — even a group with no department still needs to be
+//     reachable by its hospital's admin, so hospital scoping is never
+//     only reachable *through* a department.
+//   Ward-group member      — anyone added to a `wardGroups/{groupId}.members`
+//     map by an admin at or above that group.
 //
 // Security model: every level of membership above is enforced server-side
 // here, not just hidden in the UI — someone who isn't a member (and isn't
-// a department admin for that group's department, and isn't a super-admin)
-// cannot read or write anything under a group, regardless of what the
-// client app does or doesn't show them.
+// a department admin for that group's department, and isn't an admin of
+// the hospital that group/department belongs to) cannot read or write
+// anything under a group, regardless of what the client app does or
+// doesn't show them. Critically: a hospital admin's reach is *computed
+// from the target document's own `hospitalId` field*, not from any
+// client-supplied claim — so Hospital A's admin can never read or write
+// Hospital B's departments or ward groups, because isAboveGroupPath/
+// isAboveDeptPath always re-derive the owning hospital from the stored
+// document and check membership in THAT hospital's admins map only.
 //
 // Schema:
-//   users/{uid}                        { email, displayName, superAdmin }
+//   users/{uid}                        { email, displayName }
+//     — no global role flag of any kind lives here anymore; all
+//     authority is scoped per-hospital via hospitals/{id}.admins.
 //   usersByEmail/{emailKey}             { uid }   — invite-by-email lookup
-//   departments/{deptId}                { name, createdBy, createdAt, admins: { [uid]: {role:'admin', email, joinedAt} } }
-//   wardGroups/{groupId}                { name, createdBy, createdAt, departmentId (nullable), members: { [uid]: {role, email, joinedAt} } }
+//   hospitals/{hospitalId}              { name, createdBy, createdAt, admins: { [uid]: {role:'admin', email, joinedAt} } }
+//     — the tenancy root. Creating one is how a user becomes its sole
+//     admin; there is no other way to gain hospital-admin authority
+//     (mirrors departments/wardGroups: creator-becomes-admin is
+//     server-enforced by isValidNewHospital, not a client claim).
+//   departments/{deptId}                { name, hospitalId, createdBy, createdAt, admins: { [uid]: {role:'admin', email, joinedAt} } }
+//   wardGroups/{groupId}                { name, hospitalId, createdBy, createdAt, departmentId (nullable), members: { [uid]: {role, email, joinedAt} } }
 //   wardGroups/{groupId}/patients/{id}  — the actual patient records; each
 //     carries its own `department` field ('general'|'icu'|'surgery'|
 //     'pediatrics'|'maternity') picking which charting sections the app
@@ -42,10 +72,12 @@ rules_version = '2';
 //     — append-only audit trail. Any member can create an entry (Wards does,
 //     for patient add/remove, a new vitals reading, and an escalation
 //     logged); nobody can update one once written, and delete is
-//     super-admin only. Readable by a group admin or above (via the
-//     existing isGroupAdminPath/isAboveGroupPath helpers) — a rank-and-file
-//     member can write history but not browse it, matching "who did what"
-//     being an oversight tool rather than a general-purpose feed.
+//     restricted to that group's owning hospital's admin (no global
+//     super-admin exists to fall back to). Readable by a group admin or
+//     above (via the existing isGroupAdminPath/isAboveGroupPath helpers)
+//     — a rank-and-file member can write history but not browse it,
+//     matching "who did what" being an oversight tool rather than a
+//     general-purpose feed.
 //   groupMemberships/{uid}_{groupId}    { uid, groupId, role, groupName, joinedAt }
 //     — a flat join-collection purely so a signed-in user can list "which
 //     groups am I in" via a simple `where('uid','==',myUid)` query
@@ -65,10 +97,21 @@ function signedIn() {
   return request.auth != null;
 }
 
-function isSuperAdmin() {
+function hospitalDoc(hospitalId) {
+  return /databases/$(database)/documents/hospitals/$(hospitalId);
+}
+
+function isHospitalAdmin(hospitalId) {
+  return signedIn() && hospitalId != null
+    && exists(hospitalDoc(hospitalId))
+    && (request.auth.uid in get(hospitalDoc(hospitalId)).data.admins);
+}
+
+function isValidNewHospital() {
   return signedIn()
-    && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-    && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.superAdmin == true;
+    && request.resource.data.createdBy == request.auth.uid
+    && request.resource.data.admins.keys().hasOnly([request.auth.uid])
+    && request.resource.data.admins[request.auth.uid].role == 'admin';
 }
 
 function departmentDoc(deptId) {
@@ -81,11 +124,21 @@ function isDepartmentAdmin(deptId) {
     && (request.auth.uid in get(departmentDoc(deptId)).data.admins);
 }
 
+// A department admin, OR the admin of the hospital this department
+// belongs to (read from the department's own stored `hospitalId` —
+// never from anything the request itself supplies).
+function isAboveDeptPath(deptId) {
+  return exists(departmentDoc(deptId))
+    && isHospitalAdmin(get(departmentDoc(deptId)).data.hospitalId);
+}
+
 function isValidNewDepartment() {
   return signedIn()
     && request.resource.data.createdBy == request.auth.uid
     && request.resource.data.admins.keys().hasOnly([request.auth.uid])
-    && request.resource.data.admins[request.auth.uid].role == 'admin';
+    && request.resource.data.admins[request.auth.uid].role == 'admin'
+    && request.resource.data.hospitalId is string
+    && isHospitalAdmin(request.resource.data.hospitalId);
 }
 
 function groupDoc(groupId) {
@@ -103,29 +156,48 @@ function isGroupAdminPath(groupPath) {
 }
 
 // Anyone above ward-admin level who can also reach in: the group's own
-// department admin, or the hospital super-admin.
+// department admin, or the admin of the hospital the group itself
+// belongs to (via the group's own required `hospitalId` — this is what
+// makes a standalone group with no department still reachable by its
+// hospital's admin, rather than hospital scoping only working through
+// a department). Both branches re-derive the owning hospital from the
+// stored document, never from a client-supplied value.
 function isAboveGroupPath(groupPath) {
-  return isSuperAdmin()
-    || (exists(groupPath) && get(groupPath).data.departmentId != null
-        && isDepartmentAdmin(get(groupPath).data.departmentId));
+  return exists(groupPath)
+    && (
+      (get(groupPath).data.departmentId != null && isAboveDeptPath(get(groupPath).data.departmentId))
+      || isHospitalAdmin(get(groupPath).data.hospitalId)
+    );
 }
 
 // A brand-new group document must name its creator as its sole initial
 // member, with the admin role — this is what makes "creator becomes
 // admin" a server-enforced fact rather than something the client merely
-// claims. If it's being created under a department (departmentId set),
-// the creator must actually be that department's admin (or the hospital
-// super-admin) — otherwise anyone could tag a group as belonging to a
-// department they have no authority over.
+// claims. A group must always declare which hospital it belongs to, and
+// the creator must actually be an admin of that hospital (or, if it's
+// also being created under a department, that department's admin) —
+// otherwise anyone could tag a group as belonging to a hospital they
+// have no authority over. If a departmentId is given, its own stored
+// hospitalId must match the group's declared hospitalId too, so a group
+// can never be tagged with one hospital while secretly living under
+// another hospital's department.
 function isValidNewGroup() {
   return signedIn()
     && request.resource.data.createdBy == request.auth.uid
     && request.resource.data.members.keys().hasOnly([request.auth.uid])
     && request.resource.data.members[request.auth.uid].role == 'admin'
+    && request.resource.data.hospitalId is string
+    && exists(hospitalDoc(request.resource.data.hospitalId))
     && (
       !('departmentId' in request.resource.data) || request.resource.data.departmentId == null
-      || isDepartmentAdmin(request.resource.data.departmentId)
-      || isSuperAdmin()
+      || get(departmentDoc(request.resource.data.departmentId)).data.hospitalId == request.resource.data.hospitalId
+    )
+    && (
+      isHospitalAdmin(request.resource.data.hospitalId)
+      || (
+        'departmentId' in request.resource.data && request.resource.data.departmentId != null
+        && isDepartmentAdmin(request.resource.data.departmentId)
+      )
     );
 }
 
@@ -133,19 +205,16 @@ match /databases/{database}/documents {
 
   // ---- user profiles ----
   // Each signed-in user has exactly one profile doc, keyed by their own
-  // uid. They can read their own profile; only an existing super-admin
-  // can read someone else's, or grant/revoke the superAdmin flag on
-  // ANYONE's profile (a user flipping their own `superAdmin` field must
-  // be blocked, including at creation time).
+  // uid. They can read and write only their own profile — there is no
+  // global role flag here (no cross-hospital super-admin exists in this
+  // model), so there's nothing for one user to need to see or grant on
+  // another user's profile via this collection. Per-hospital authority
+  // lives entirely on `hospitals/{hospitalId}.admins` instead.
   match /users/{uid} {
-    allow read: if signedIn() && (request.auth.uid == uid || isSuperAdmin());
-    allow create: if signedIn() && request.auth.uid == uid
-      && request.resource.data.superAdmin == false;
-    allow update: if signedIn() && (
-        (request.auth.uid == uid && request.resource.data.superAdmin == resource.data.superAdmin)
-        || isSuperAdmin()
-      );
-    allow delete: if isSuperAdmin();
+    allow read: if signedIn() && request.auth.uid == uid;
+    allow create: if signedIn() && request.auth.uid == uid;
+    allow update: if signedIn() && request.auth.uid == uid;
+    allow delete: if signedIn() && request.auth.uid == uid;
   }
 
   // Invite-by-email lookup (email -> uid). Not sensitive beyond the
@@ -157,22 +226,48 @@ match /databases/{database}/documents {
     allow write: if signedIn() && request.resource.data.uid == request.auth.uid;
   }
 
+  // ---- hospitals (the tenancy root) ----
+  // Any signed-in user may create a hospital and becomes its sole admin
+  // (server-enforced by isValidNewHospital) — this self-service creation
+  // IS the bootstrap step; there is no manual "set superAdmin=true in the
+  // console" process in this model. Only that hospital's own admin(s) can
+  // read, update, or delete it afterward — no cross-hospital visibility
+  // at all, by design.
+  match /hospitals/{hospitalId} {
+    allow get: if isHospitalAdmin(hospitalId);
+    allow list: if signedIn(); // each returned doc still individually checked against `get` above
+    allow create: if isValidNewHospital();
+    allow update: if isHospitalAdmin(hospitalId);
+    allow delete: if isHospitalAdmin(hospitalId);
+  }
+
   // ---- departments ----
   match /departments/{deptId} {
-    allow get: if isDepartmentAdmin(deptId) || isSuperAdmin();
+    allow get: if isDepartmentAdmin(deptId) || isAboveDeptPath(deptId);
     allow list: if signedIn(); // each returned doc still individually checked against `get` above
     allow create: if isValidNewDepartment();
-    allow update: if isDepartmentAdmin(deptId) || isSuperAdmin();
-    allow delete: if isSuperAdmin(); // deleting a whole department is hospital-level only, not a department admin's own call
+    // hospitalId is locked on update (must match the existing value) —
+    // otherwise a department admin could re-parent their own department
+    // to a hospital they don't control (escaping that hospital's
+    // oversight) or to one they don't belong to at all (spoofing a
+    // relationship with it). Re-parenting isn't a supported operation.
+    allow update: if (isDepartmentAdmin(deptId) || isAboveDeptPath(deptId))
+      && request.resource.data.hospitalId == resource.data.hospitalId;
+    allow delete: if isAboveDeptPath(deptId); // deleting a whole department is hospital-admin-level only, not a department admin's own call
   }
 
   // ---- the read-side "my groups" index ----
   // Document id convention: `${uid}_${groupId}`. Only ever read via a
   // `where('uid','==', request.auth.uid)` query from the app (that's
-  // what lets Firestore accept the `list` rule below); a super-admin may
-  // read any of them for the admin console.
+  // what lets Firestore accept the `list` rule below); a hospital admin
+  // may read entries for groups within their own hospital only (via
+  // isAboveGroupPath, which re-derives the owning hospital from the
+  // referenced group's own stored `hospitalId`).
   match /groupMemberships/{membershipId} {
-    allow read: if signedIn() && (resource.data.uid == request.auth.uid || isSuperAdmin());
+    allow read: if signedIn() && (
+      resource.data.uid == request.auth.uid
+      || isAboveGroupPath(groupDoc(resource.data.groupId))
+    );
     allow list: if signedIn(); // scoping happens via the required uid-equality query, enforced by `read` above per returned doc
     // Only created/deleted as part of the *same batched write* that adds
     // or removes the uid from the corresponding group's `members` map —
@@ -182,14 +277,12 @@ match /databases/{database}/documents {
       && (
         isGroupAdminPath(groupDoc(request.resource.data.groupId))
         || isAboveGroupPath(groupDoc(request.resource.data.groupId))
-        || isSuperAdmin()
       );
     allow delete: if signedIn()
       && (
         resource.data.uid == request.auth.uid // anyone can remove themselves (leave a group)
         || isGroupAdminPath(groupDoc(resource.data.groupId))
         || isAboveGroupPath(groupDoc(resource.data.groupId))
-        || isSuperAdmin()
       );
   }
 
@@ -200,10 +293,20 @@ match /databases/{database}/documents {
   match /wardGroups/{groupId} {
     allow get: if isMemberPath(/databases/$(database)/documents/wardGroups/$(groupId))
       || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
-    allow list: if signedIn(); // each returned doc still individually checked against `get` above (also how a dept admin's "all groups in my department" query gets scoped)
+    allow list: if signedIn(); // each returned doc still individually checked against `get` above (also how a dept/hospital admin's "all groups I administer" query gets scoped)
     allow create: if isValidNewGroup();
-    allow update: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
-      || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
+    // hospitalId AND departmentId are both locked on update (must match
+    // their existing values) — otherwise a group admin could re-parent
+    // the group to a department belonging to a DIFFERENT hospital while
+    // keeping hospitalId unchanged, handing that foreign department's
+    // admin (via isAboveDeptPath, which trusts the department's own
+    // hospitalId) read/write access to this group's patient data — a
+    // cross-hospital leak. Re-parenting isn't a supported operation;
+    // create a new group under the new department/hospital instead.
+    allow update: if (isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
+        || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId)))
+      && request.resource.data.hospitalId == resource.data.hospitalId
+      && request.resource.data.departmentId == resource.data.departmentId;
     allow delete: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
       || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
 
@@ -224,16 +327,18 @@ match /databases/{database}/documents {
 
     // Append-only audit trail — any member can add an entry (Wards writes
     // one for patient add/remove, a new reading, and an escalation logged),
-    // but nobody can edit or erase history: only read/delete by a group
-    // admin or above, and even then only read — delete is super-admin only,
-    // matching this collection's "audit trail" purpose.
+    // but nobody can edit or erase history: only read by a group admin or
+    // above, and delete restricted to that group's owning hospital's
+    // admin specifically (not a plain group/department admin), matching
+    // this collection's "audit trail" purpose — no global super-admin
+    // exists to fall back to in this model.
     match /auditLog/{entryId} {
       allow read: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
         || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
       allow create: if isMemberPath(/databases/$(database)/documents/wardGroups/$(groupId))
         || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
       allow update: if false;
-      allow delete: if isSuperAdmin();
+      allow delete: if isHospitalAdmin(get(/databases/$(database)/documents/wardGroups/$(groupId)).data.hospitalId);
     }
   }
 
