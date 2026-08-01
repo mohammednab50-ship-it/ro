@@ -1675,6 +1675,7 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-escalation-list li .esc-pending{color:var(--caution);font-weight:700;}
 .vitals-escalation-contact-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:220px;}
 .vitals-escalation-contact-wrap input{flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-size:13px;}
+.vitals-drift-toggle-wrap{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);}
 
 /* ---- problem list ---- */
 .vitals-problem-list-panel{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
@@ -2980,6 +2981,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div class="vitals-form-toprow">
           <button type="button" class="vitals-btn-outline" id="vitals-fill-normal-btn" title="Fill HR/BP/RR/SpO2/Temp with typical-normal adult values as a starting point — adjust whatever's actually abnormal, then log">Fill normal values</button>
           <button type="button" class="vitals-btn-outline" id="vitals-copy-last-btn" title="Prefill every field from this patient's most recent reading — for a stable patient where you're just confirming unchanged vitals">Copy last reading</button>
+          <label class="vitals-drift-toggle-wrap" title="When on, and this patient looks stable and has been on the roster a while, Copy last reading applies a small realistic drift instead of an exact duplicate. Off by default — exact copy always available.">
+            <input type="checkbox" id="vitals-quickfill-drift-toggle"> Smart drift on copy
+          </label>
         </div>
         <div class="vitals-grid">
           <div class="vitals-field">
@@ -6139,8 +6143,52 @@ function setupVitalsNormalFillButton(){
 const COPY_LAST_FIELD_IDS = { 'v-hr':'hr', 'v-sbp':'sbp', 'v-dbp':'dbp', 'v-rr':'rr', 'v-spo2':'spo2', 'v-temp':'temp', 'v-gcs':'gcs', 'v-uop':'uop',
   'v-intake-oral':'intakeOral', 'v-intake-iv':'intakeIv', 'v-output-other':'outputOther' };
 
+const QUICKFILL_DRIFT_KEY = 'wards_quickfill_drift_v1';
+const QUICKFILL_DRIFT_MAGNITUDE = { hr: 3, sbp: 4, dbp: 3, rr: 1, spo2: 1, temp: 0.2 };
+const QUICKFILL_LONG_STAY_MS = 48 * 3600 * 1000;
+
+function getQuickfillDriftPref(){
+  try{ return localStorage.getItem(QUICKFILL_DRIFT_KEY) === '1'; }catch(e){ return false; }
+}
+function setQuickfillDriftPref(on){
+  try{ localStorage.setItem(QUICKFILL_DRIFT_KEY, on ? '1' : '0'); }catch(e){}
+}
+
+// "Stable" here means no worsening trend flagged across the standard
+// trend-tracked fields (see TREND_WORSENING_DIRECTION/detectVitalTrend
+// above) and, where a NEWS2 score exists, it isn't elevated.
+function patientLooksStableLongStay(p, last){
+  if(!p || !p.createdAt) return false;
+  const stayMs = Date.now() - new Date(p.createdAt).getTime();
+  if(isNaN(stayMs) || stayMs < QUICKFILL_LONG_STAY_MS) return false;
+  const anyWorsening = Object.keys(TREND_WORSENING_DIRECTION).some(field => {
+    const t = detectVitalTrend(field);
+    return t && t.worsening;
+  });
+  if(anyWorsening) return false;
+  if(last){
+    const n2 = computeNews2(last, p);
+    if(n2 && n2.dataPresent && (n2.score >= 5 || n2.anySingle3)) return false;
+  }
+  return true;
+}
+
+function driftedValue(v, magnitude, decimals){
+  const n = parseFloat(v);
+  if(isNaN(n) || !magnitude) return v;
+  const delta = (Math.random() * 2 - 1) * magnitude;
+  const result = n + delta;
+  return decimals ? result.toFixed(decimals) : String(Math.round(result));
+}
+
 function setupVitalsCopyLastButton(){
   const btn = document.getElementById('vitals-copy-last-btn');
+  const driftToggle = document.getElementById('vitals-quickfill-drift-toggle');
+  if(driftToggle && !driftToggle.dataset.wired){
+    driftToggle.dataset.wired = '1';
+    driftToggle.checked = getQuickfillDriftPref();
+    driftToggle.addEventListener('change', () => setQuickfillDriftPref(driftToggle.checked));
+  }
   if(!btn || btn.dataset.wired) return;
   btn.dataset.wired = '1';
   btn.addEventListener('click', () => {
@@ -6150,15 +6198,24 @@ function setupVitalsCopyLastButton(){
       return;
     }
     const last = log.slice().sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+    const p = activePatient();
+    const wantsDrift = driftToggle && driftToggle.checked;
+    const applyDrift = wantsDrift && patientLooksStableLongStay(p, last);
     Object.keys(COPY_LAST_FIELD_IDS).forEach(id => {
       const el = document.getElementById(id);
       if(!el) return;
-      const v = last[COPY_LAST_FIELD_IDS[id]];
-      el.value = (v === undefined || v === null) ? '' : v;
+      const field = COPY_LAST_FIELD_IDS[id];
+      let v = last[field];
+      if(v === undefined || v === null){ el.value = ''; el.dispatchEvent(new Event('input', { bubbles: true })); return; }
+      if(applyDrift && QUICKFILL_DRIFT_MAGNITUDE[field] !== undefined){
+        v = driftedValue(v, QUICKFILL_DRIFT_MAGNITUDE[field], field === 'temp' ? 1 : 0);
+      }
+      el.value = v;
       el.dispatchEvent(new Event('input', { bubbles: true }));
     });
     const o2El = document.getElementById('v-o2sup');
     if(o2El) o2El.checked = !!last.o2sup;
+    if(wantsDrift) showToast(applyDrift ? 'Copied with a small realistic drift.' : 'Copied exactly — patient doesn\'t yet qualify as stable/long-stay for drift.');
     haptic('Light');
   });
 }
