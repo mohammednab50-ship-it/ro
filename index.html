@@ -323,6 +323,26 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .wnd-list{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 12px;padding-left:16px;}
 .wnd-actions{display:flex;gap:8px;}
 
+/* ---- "Case of the day" mystery vignette — same gentle corner-card
+   pattern, top-right so it can coexist with the bottom corner cards. ---- */
+.case-of-day-card{position:fixed;top:20px;right:20px;z-index:1340;width:320px;max-width:calc(100vw - 40px);
+  max-height:80vh;overflow-y:auto;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-md);
+  box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,0.25));padding:16px 18px;
+  opacity:0;transform:translateY(-14px);pointer-events:none;
+  transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
+.case-of-day-card.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+.cod-eyebrow{font-family:var(--ff-sans);font-size:10.5px;font-weight:700;letter-spacing:0.06em;color:var(--evidence-dark, var(--ink-faint));margin-bottom:4px;display:flex;justify-content:space-between;gap:8px;align-items:center;}
+.cod-close{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:15px;line-height:1;padding:2px;}
+.cod-specialty{font-family:var(--ff-sans);font-size:11px;color:var(--ink-faint);margin-bottom:6px;}
+.cod-stem{font-family:var(--ff-serif,var(--ff-sans));font-size:13.5px;color:var(--ink);line-height:1.5;margin-bottom:10px;}
+.cod-guess-input{width:100%;border:1px solid var(--line);border-radius:var(--r-sm);padding:7px 9px;font-family:var(--ff-sans);font-size:12.5px;color:var(--ink);background:var(--paper);margin-bottom:10px;}
+.cod-reveal{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);line-height:1.55;margin-bottom:10px;}
+.cod-reveal p{margin:0 0 6px;}
+.cod-reveal ul{margin:0;padding-left:16px;}
+.cod-reveal ul li{margin-bottom:4px;}
+.cod-actions{display:flex;gap:8px;}
+
 .rounds-demo-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
   padding:8px 20px;background:#664d03;color:#fff3cd;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
 .rounds-demo-banner button{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;
@@ -12120,6 +12140,7 @@ function enterApp(user){
   const whatsNewShown = maybeShowWhatsNew();
   maybeShowDigest(whatsNewShown);
   if(typeof setupWardsAppLockGate === 'function') setupWardsAppLockGate();
+  setTimeout(() => { if(typeof maybeShowCaseOfDay === 'function') maybeShowCaseOfDay(); }, 1600);
 }
 
 function displayNameFor(user){
@@ -14178,6 +14199,57 @@ const CASES = [
     relatedCondition: 'Acute kidney injury', relatedDrugs: ['vancomycin']
   }
 ];
+
+/* ============================================================
+   "Case of the day" — a passive daily nudge, distinct from the
+   on-demand Teaching cases modal above. Rotates through the same
+   CASES bank (deterministic pick per calendar date, so everyone
+   opening the app that day sees the same one) and appears at most
+   once per day as a dismissable corner card, never a modal.
+   ============================================================ */
+const CASE_OF_DAY_SEEN_KEY = 'rounds_case_of_day_seen_v1';
+function caseOfDayIndexForDate(dateStr){
+  const h = Math.abs(parseInt(contentHash(dateStr), 10) || 0);
+  return h % CASES.length;
+}
+function maybeShowCaseOfDay(){
+  try{
+    const today = new Date().toISOString().slice(0, 10);
+    if(localStorage.getItem(CASE_OF_DAY_SEEN_KEY) === today) return;
+    localStorage.setItem(CASE_OF_DAY_SEEN_KEY, today);
+    showCaseOfDayCard(CASES[caseOfDayIndexForDate(today)]);
+  }catch(e){}
+}
+function showCaseOfDayCard(c){
+  const el = document.createElement('div');
+  el.className = 'case-of-day-card';
+  el.innerHTML = `
+    <div class="cod-eyebrow"><span>CASE OF THE DAY — GUESS IT</span><button type="button" class="cod-close" aria-label="Dismiss">&times;</button></div>
+    <div class="cod-specialty"></div>
+    <div class="cod-stem"></div>
+    <input type="text" class="cod-guess-input" maxlength="120" placeholder="Your guess (just for you — not scored)">
+    <div class="cod-reveal" hidden></div>
+    <div class="cod-actions">
+      <button type="button" class="otd-btn otd-btn-primary cod-reveal-btn">Reveal diagnosis</button>
+      <button type="button" class="otd-btn cod-dismiss-btn">Dismiss</button>
+    </div>`;
+  el.querySelector('.cod-specialty').textContent = c.specialty;
+  el.querySelector('.cod-stem').textContent = c.stem;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  const dismiss = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  const reveal = () => {
+    const revealEl = el.querySelector('.cod-reveal');
+    revealEl.innerHTML = `<p><strong>${escapeHtml(c.diagnosis)}</strong></p><ul>${c.points.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`;
+    revealEl.hidden = false;
+    el.querySelector('.cod-reveal-btn').hidden = true;
+    el.querySelector('.cod-guess-input').disabled = true;
+    haptic('Light');
+  };
+  el.querySelector('.cod-reveal-btn').addEventListener('click', reveal);
+  el.querySelector('.cod-close').addEventListener('click', dismiss);
+  el.querySelector('.cod-dismiss-btn').addEventListener('click', dismiss);
+}
 
 let casesState = { idx: 0, revealed: false, mode: 'curated', own: null };
 
