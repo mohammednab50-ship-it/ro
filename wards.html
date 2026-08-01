@@ -2548,6 +2548,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-quicknote-item select{flex:1;min-width:120px;padding:6px 8px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-size:12.5px;}
 @keyframes wardsSyncPulse{0%,100%{opacity:1;}50%{opacity:.35;}}
 
+.wards-lights-down{position:fixed;inset:0;z-index:1500;display:grid;place-items:center;background:#040507;opacity:0;pointer-events:none;transition:opacity .38s ease;}
+.wards-lights-down[hidden]{display:none;}
+.wards-lights-down.wld-show{opacity:1;pointer-events:auto;}
+.wards-lights-down .wld-msg{font-family:var(--ff-display);font-size:20px;color:#eef1f6;letter-spacing:.02em;opacity:0;transform:translateY(6px);transition:opacity .3s ease .12s,transform .3s ease .12s;}
+.wards-lights-down.wld-show .wld-msg{opacity:1;transform:translateY(0);}
 .wards-lock-overlay{position:fixed;inset:0;z-index:900;display:none;place-items:center;background:var(--bg,#0b0d10);padding:20px;}
 .wards-lock-overlay.show{display:grid;}
 .wards-lock-card{max-width:320px;width:100%;background:var(--surface);border-radius:var(--r-md);padding:28px 24px;text-align:center;box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,.3));}
@@ -2886,6 +2891,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <div id="vitals-endshift" class="vitals-board" hidden>
       <p class="vitals-disclaimer" style="margin-bottom:var(--space-4);">Personal recap and an aggregate of what's due — a charting aid to sanity-check before you hand over, not an official end-of-shift report.</p>
       <div id="vitals-endshift-content"></div>
+      <button type="button" class="vitals-btn-primary" id="vitals-shift-done-btn" style="margin-top:var(--space-4);">Mark my shift as done</button>
     </div>
 
     <div id="vitals-archive" class="vitals-board" hidden>
@@ -3598,6 +3604,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <div id="wards-history-list" style="max-height:50vh;overflow-y:auto;font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);"></div>
     <p class="wards-qr-disclaimer">Audit entries for this patient within the synced ward group — who changed what, and when.</p>
   </div>
+</div>
+
+<div class="wards-lights-down" id="wards-lights-down" hidden aria-hidden="true">
+  <span class="wld-msg">Shift done. Nice work.</span>
 </div>
 
 <div class="wards-lock-overlay" id="wards-lock-overlay">
@@ -5178,6 +5188,7 @@ function initVitals(){
   applyFlowsheetColumnVisibility();
   setupShiftPresets();
   setupVitalsEndShiftToggle();
+  setupShiftDoneButton();
   setupVitalsImport();
   setupReadingIntervalSelect();
   setupIoBalanceForm();
@@ -8792,6 +8803,35 @@ function setupVitalsEndShiftToggle(){
   if(!btn || btn.dataset.wired) return;
   btn.dataset.wired = '1';
   btn.addEventListener('click', () => setVitalsEndShiftActive(!vitalsEndShiftActive));
+}
+
+/* ---- Shift-end "lights down" — a brief (<1s), skippable dim-and-fade
+   cue for the explicit moment the user marks their shift as over. Reuses
+   wardsReducedMotionPreferred() (see fireHandoffBaton() above) and the
+   same battery-saver class check used throughout this file — on either,
+   this is a silent no-op rather than a degraded animation. ---- */
+function fireLightsDownTransition(){
+  const el = document.getElementById('wards-lights-down');
+  if(!el) return;
+  if(wardsReducedMotionPreferred() || document.documentElement.classList.contains('wards-battery-saver')){
+    showToast('Shift done — nice work.', 'ok');
+    return;
+  }
+  el.hidden = false;
+  requestAnimationFrame(() => el.classList.add('wld-show'));
+  setTimeout(() => {
+    el.classList.remove('wld-show');
+    setTimeout(() => { el.hidden = true; }, 400);
+  }, 700);
+}
+function setupShiftDoneButton(){
+  const btn = document.getElementById('vitals-shift-done-btn');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => {
+    haptic('Light');
+    fireLightsDownTransition();
+  });
 }
 
 /* ---- "What's new since I last opened this" digest — a small, dismissable,
