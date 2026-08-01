@@ -724,6 +724,9 @@ details.guideline-updates[open] > summary .section-chevron{transform:rotate(180d
 .condition-refs a:hover{border-color:var(--evidence);background:var(--evidence-bg);}
 .condition-refs a::after{content:'↗';font-family:var(--ff-mono);font-size:11px;color:var(--ink-faint);}
 .condition-disclaimer{font-family:var(--ff-sans);font-size:12px;color:var(--ink-faint);line-height:1.6;margin:0 0 var(--space-7);padding:12px 16px;border-left:2px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-sm);color:var(--caution);}
+.condition-controversy{font-family:var(--ff-sans);font-size:12.5px;line-height:1.6;margin:0 0 var(--space-7);padding:12px 16px;border-left:2px solid var(--evidence);background:var(--evidence-bg);border-radius:var(--r-sm);color:var(--evidence-dark);display:flex;gap:10px;align-items:flex-start;}
+.condition-controversy .cc-icon{flex-shrink:0;font-size:14px;line-height:1.5;}
+.condition-controversy strong{color:var(--evidence-dark);}
 .condition-divider{font-family:var(--ff-mono);font-size:10.5px;font-weight:600;text-transform:uppercase;letter-spacing:var(--tracking-eyebrow);color:var(--ink-faint);margin:var(--space-8) 0 var(--space-5);padding-bottom:10px;border-bottom:1px solid var(--line);}
 
 /* ---- syndromes view (A-Z / by-system reference index) ---- */
@@ -747,6 +750,8 @@ details.guideline-updates[open] > summary .section-chevron{transform:rotate(180d
 .syndrome-mech-more-btn:hover{text-decoration:underline;}
 .syndrome-desc-full{font-family:var(--ff-serif);font-size:14.5px;color:var(--ink-soft);line-height:1.5;margin-top:4px;display:block;}
 .syndrome-desc-full[hidden]{display:none;}
+.syndrome-analogy{font-family:var(--ff-serif);font-style:italic;font-size:13.5px;color:var(--ink-faint);line-height:1.5;margin-top:4px;display:block;}
+.syndrome-analogy-label{font-family:var(--ff-sans);font-style:normal;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:0.04em;color:var(--evidence-dark, var(--ink-faint));margin-right:4px;}
 .syndrome-sys-tag{font-family:var(--ff-mono);font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:var(--tracking-wide);color:var(--ink-faint);white-space:nowrap;}
 .syndrome-row a.syndrome-src{font-family:var(--ff-mono);font-size:11px;color:var(--evidence-dark);text-decoration:none;font-weight:600;white-space:nowrap;}
 .syndrome-row a.syndrome-src:hover{text-decoration:underline;}
@@ -3579,6 +3584,7 @@ const GUIDELINES = {
 const CONDITIONS = [
   {
     name:'Hyponatremia', system:'nephrology',
+    controversy:'Correction-rate ceilings differ by source. The European multi-society guideline used as this entry\'s primary reference caps correction at ≤10 mmol/L in the first 24h and ≤8 mmol/L in each subsequent 24h; some US expert-panel guidance (e.g. Verbalis et al. 2013) has permitted a somewhat faster ceiling. When sources disagree, follow the more conservative limit and your local protocol.',
     aliases:['hyponatraemia','low sodium','low na','siadh'],
     scope:'Adults · Original summary based on The Washington Manual of Medical Therapeutics, Chapter 12 (pp. 462–469), cross-checked against current emergency guidance. Local protocols take priority.',
     sourceNote:'Primary reference in this app: The Washington Manual of Medical Therapeutics, Chapter 12: Fluid and Electrolyte Management, Hyponatremia, pp. 462–469 (user-provided PDF).',
@@ -3627,6 +3633,7 @@ const CONDITIONS = [
   },
   {
     name:'Type 2 diabetes mellitus', system:'endocrinology',
+    controversy:'NICE\'s stepwise algorithm still sequences add-on drugs largely by HbA1c control, while ADA/EASD consensus recommends starting an SGLT2 inhibitor or GLP-1 receptor agonist early for patients with established cardiovascular, renal, or heart-failure risk regardless of HbA1c. Both are defensible; the difference is philosophy (glycaemic-control-first vs cardiorenal-risk-first), not an error in either.',
     aliases:['t2dm','diabetes','sugar','dm','high blood sugar','madhumeha'],
     sa:[
       'South Asians develop T2DM ~a decade earlier and at lower BMI — use Asian cutoffs: overweight ≥23, obese ≥25 kg/m². Waist ≥90 cm (men) / ≥80 cm (women).',
@@ -3649,6 +3656,7 @@ const CONDITIONS = [
   },
   {
     name:'Hypertension', system:'cardiology',
+    controversy:'The diagnostic/treatment threshold itself differs by guideline: US ACC/AHA (2017) defines hypertension at ≥130/80 mmHg and treats many patients to that target, while ESC and NICE guidance uses a ≥140/90 mmHg threshold for diagnosis and treatment target in most adults. This is a genuine, unresolved difference between major societies, not a simple regional preference.',
     aliases:['htn','high bp','high blood pressure','raised bp','uccha raktchap'],
     sa:[
       'Very high population burden and low awareness/control rates; India Hypertension Control Initiative (IHCI) pushes standardised drug-and-dose protocols in primary care.',
@@ -3708,6 +3716,7 @@ const CONDITIONS = [
   },
   {
     name:'Chronic kidney disease', system:'nephrology',
+    controversy:'eGFR equations differ across settings. The US National Kidney Foundation/ASN (2021) recommend a race-free CKD-EPI creatinine equation; other equations (including older CKD-EPI versions and Cockcroft-Gault used for drug dosing) remain in use elsewhere, and adoption of the race-free equation has not been uniform internationally. The equation used can shift a patient\'s reported CKD stage.',
     aliases:['ckd','renal failure','kidney disease','crf'],
     sa:[
       'High burden of diabetic and hypertensive nephropathy plus a distinct CKD of unknown aetiology (CKDu) in agricultural belts (e.g. parts of Andhra/Sri Lanka).',
@@ -3863,6 +3872,7 @@ const CONDITIONS = [
   },
   {
     name:'Dyslipidaemia', system:'endocrinology',
+    controversy:'European ESC/EAS guidance sets explicit LDL-C targets (e.g. <1.4 mmol/L for very-high-risk patients). US ACC/AHA guidance has historically been risk-based statin-intensity without a universal fixed target, adding a target only for a very-high-risk subgroup in its 2018 update. Practically: one tradition treats to a number, the other treats to an intensity tier.',
     aliases:['dyslipidemia','high cholesterol','hyperlipidemia','lipids','ldl'],
     sa:[
       'South Asians show atherogenic pattern: high triglycerides, low HDL, high lipoprotein(a) and small dense LDL — high ASCVD risk at "normal" LDL.',
@@ -3901,6 +3911,7 @@ const CONDITIONS = [
   },
   {
     name:'Iron deficiency anaemia', system:'hematology',
+    controversy:'Dosing frequency for oral iron is unsettled. Hepcidin-based physiology studies (e.g. Stoffel et al.) suggest alternate-day dosing improves fractional absorption and cuts GI side effects versus daily dosing, but most established national programmes and product labelling still default to daily or twice-daily dosing. Guidance is shifting but not yet consistent.',
     aliases:['anemia','anaemia','iron deficiency','ida','low hemoglobin','pandu'],
     sa:[
       'Extremely high prevalence in women and children; Anaemia Mukt Bharat programme drives supplementation and screening.',
@@ -4034,6 +4045,7 @@ const CONDITIONS = [
   },
   {
     name:'Depression', system:'psychiatry',
+    controversy:'NICE\'s stepped-care model explicitly discourages antidepressants as first-line for less-severe depression, favouring guided self-help or psychological therapy first with medication reserved for more severe/persistent presentations. Many US primary-care pathways start an SSRI at first presentation of mild-to-moderate depression alongside offering therapy. Both are guideline-based; they weigh the evidence on mild-depression drug efficacy differently.',
     aliases:['depression','mdd','low mood','mental health','udasi'],
     sa:[
       'Large treatment gap and stigma; somatic presentations (body aches, fatigue, "gas") are common instead of stated low mood.',
@@ -4091,6 +4103,7 @@ const CONDITIONS = [
   },
   {
     name:'Gestational diabetes mellitus', system:'obgyn',
+    controversy:'Diagnostic strategy is genuinely split. IADPSG/WHO one-step criteria (a single 75g OGTT, also the basis for DIPSI used in parts of India) diagnose more women than the traditional US two-step approach (50g glucose challenge screen, then 100g OGTT only if positive) still endorsed by ACOG. The two approaches identify different, only partly overlapping, patient populations.',
     aliases:['gdm','gestational diabetes','pregnancy diabetes'],
     sa:[
       'High prevalence in South Asian pregnancies; India follows a single-step DIPSI test (2-hr 75 g OGTT, ≥140 mg/dL) usable in the fasting or non-fasting state for field feasibility.',
@@ -4205,6 +4218,7 @@ const CONDITIONS = [
   },
   {
     name:'Atrial fibrillation', system:'cardiology',
+    controversy:'The CHA2DS2-VASc threshold for starting anticoagulation differs: ESC guidance supports considering anticoagulation from a score of 1 in men / 2 in women, while US ACC/AHA/ACCP guidance has generally set the threshold a point higher (≥2 in men / ≥3 in women) before routinely recommending it. Shared decision-making is advised either way at the lower scores.',
     aliases:['af','afib','atrial fibrillation','irregular heartbeat','palpitations'],
     sa:[
       'Rheumatic (valvular) AF remains common in South Asia — a mitral-stenosis-associated AF changes anticoagulation choice (warfarin, not a DOAC).',
@@ -4225,6 +4239,7 @@ const CONDITIONS = [
   },
   {
     name:'Venous thromboembolism (DVT & PE)', system:'cardiology',
+    controversy:'For cancer-associated VTE specifically, guidance has diverged on first-line anticoagulant: NICE and more recent ASH/ASCO updates now support DOACs as an option for many patients, but LMWH remains preferred or equally weighted in some pathways (especially with GI/GU malignancy, where DOAC bleeding risk is higher) — this is an active, evolving disagreement rather than settled practice.',
     aliases:['vte','dvt','deep vein thrombosis','pulmonary embolism','pe','blood clot','clot in leg','clot in lung'],
     sa:[
       'Under-recognised; consider provoked (surgery, immobility, pregnancy, malignancy) and unprovoked events. Peripartum VTE risk is relevant given high birth rates.',
@@ -4265,6 +4280,7 @@ const CONDITIONS = [
   },
   {
     name:'Sepsis & septic shock', system:'em',
+    controversy:'The Surviving Sepsis Campaign\'s "1-hour bundle" (broad-spectrum antibiotics within 1 hour of recognition) has drawn explicit public pushback from emergency medicine bodies (e.g. ACEP, IDSA) concerned it pushes empirical antibiotics ahead of diagnostic clarity and stewardship, especially for patients where sepsis is only possible, not confirmed. This is a real, named disagreement between societies, not just implementation difficulty.',
     aliases:['sepsis','septic shock','severe sepsis','bloodstream infection','sirs'],
     sa:[
       'Tropical infections (dengue, malaria, typhoid, leptospirosis, scrub typhus) frequently present as undifferentiated sepsis — keep a broad, region-aware differential.',
@@ -4305,6 +4321,7 @@ const CONDITIONS = [
   },
   {
     name:'Upper GI bleeding', system:'gastroenterology',
+    controversy:'Post-endoscopic PPI dosing intensity is debated: continuous high-dose IV infusion has long been the traditional default (and remains favoured in some protocols) after high-risk stigmata, but trial and meta-analysis evidence supports intermittent high-dose bolus dosing as non-inferior, and it has been adopted more broadly outside the US. Local protocols still vary on which is first-line.',
     aliases:['ugib','gi bleed','haematemesis','melena','melaena','variceal bleed','peptic ulcer bleed'],
     sa:[
       'High burden of variceal bleeding from viral/alcoholic cirrhosis and, in endemic areas, from NCPF/portal hypertension — variceal and non-variceal causes need different pathways.',
@@ -4385,6 +4402,7 @@ const CONDITIONS = [
   },
   {
     name:'Osteoarthritis', system:'rheumatology',
+    controversy:'NICE\'s 2022 update explicitly removed its recommendation for routine paracetamol and topical capsaicin, citing limited effect size, while ACR and OARSI guidance still list paracetamol as a reasonable option, particularly for patients wanting to avoid NSAIDs. Same evidence base, different thresholds for what counts as "worth recommending."',
     aliases:['oa','osteoarthritis','degenerative joint disease','knee arthritis','joint pain'],
     sa:[
       'Very high knee-OA burden, with earlier and more severe disease in women; obesity, squatting/floor-sitting postures and physically demanding work contribute.',
@@ -4585,6 +4603,7 @@ const CONDITIONS = [
   },
   {
     name:'Osteoporosis & fragility fracture', system:'orthopedics',
+    controversy:'FRAX-based intervention thresholds are not universal: the US (NOF/AACE) uses fixed 10-year fracture-risk thresholds to trigger treatment, while the UK\'s NOGG applies age-adjusted FRAX thresholds that rise with age. The same FRAX score can therefore fall on different sides of the "treat" line depending which country\'s threshold is applied.',
     aliases:['osteoporosis','brittle bones','fragility fracture','low bone density','hip fracture','bhurbhura haddi'],
     sa:[
       'Occurs at younger ages and lower BMD thresholds than in Western populations; widespread vitamin D and calcium deficiency and low peak bone mass contribute.',
@@ -4625,6 +4644,7 @@ const CONDITIONS = [
   },
   {
     name:'Anaphylaxis', system:'allergy',
+    controversy:'IM adrenaline dosing convention differs by source: UK Resuscitation Council guidance uses fixed age-band doses, while common US teaching (and many autoinjector labels) uses weight-based (mg/kg) dosing. Both deliver the same drug by the same route — check which convention your local protocol and available autoinjector actually follow before dosing.',
     aliases:['anaphylaxis','severe allergic reaction','allergic shock','anaphylactic shock'],
     sa:[
       'Common triggers include drugs (antibiotics, NSAIDs), stinging insects, and foods; snakebite antivenom and radiocontrast reactions are region-relevant.',
@@ -8809,6 +8829,7 @@ function conditionCardHtml(c){
   const flagKey = 'guideline:' + c.name;
   const crossChips = crossSpecialtyChipsHtml(CONDITION_CROSS_SPECIALTY[c.name]);
   const headActions = `<span class="condition-head-actions">${contradictFlagBtnHtml(flagKey, c.name, 'Guideline')}</span>`;
+  const controversyHtml = c.controversy ? `<p class="condition-controversy"><span class="cc-icon" aria-hidden="true">&#9878;</span><span><strong>Guidance differs:</strong> ${glossify(c.controversy)}</span></p>` : '';
   if(c.sections){
     const sections = c.sections.map(s => `<div class="condition-block ${s.title === 'Treatment' ? 'mgmt' : ''}">
       <p class="condition-block-label">${escapeHtml(s.title)}</p>
@@ -8819,6 +8840,7 @@ function conditionCardHtml(c){
       ${crossChips}
       ${c.scope ? `<p class="condition-disclaimer"><strong>Scope:</strong> ${escapeHtml(c.scope)}</p>` : ''}
       ${c.sourceNote ? `<p class="condition-disclaimer"><strong>Reference:</strong> ${escapeHtml(c.sourceNote)}</p>` : ''}
+      ${controversyHtml}
       ${sections}
       <div class="condition-block"><p class="condition-block-label">Guidelines &amp; sources</p><div class="condition-refs">${refs}</div></div>
     </article>`;
@@ -8830,6 +8852,7 @@ function conditionCardHtml(c){
       ${headActions}
     </div>
     ${crossChips}
+    ${controversyHtml}
     <div class="condition-block sa">
       <p class="condition-block-label">South Asia notes <span class="sa-flag">· epidemiology, thresholds &amp; access</span></p>
       <ul class="condition-list">${saItems}</ul>
