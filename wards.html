@@ -2669,6 +2669,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <span class="ws-label">App lock<span class="ws-sub" id="wards-applock-sub">Biometric/PIN gate before the app opens</span></span>
           <button type="button" class="settings-btn" id="wards-applock-btn">Set up</button>
         </div>
+        <label class="qh-row ws-row"><input type="checkbox" id="wards-retention-toggle"> Auto-purge old archived records</label>
+        <div class="qh-times ws-row">
+          <label>After <input type="number" id="wards-retention-days" min="7" max="3650" step="1" value="90" style="width:70px;"> days since archived</label>
+        </div>
+        <p class="qh-note">Off by default. When on, archived/discharged patients are permanently deleted from this device once they've been archived longer than this — checked each time the app opens. Does not affect active patients.</p>
       </div>
     </div>
   </div>
@@ -4980,6 +4985,8 @@ function initVitals(){
   setupVitalsNotePhotoView();
   setupPatientQr();
   setupPatientScan();
+  setupRetentionSettings();
+  runRetentionSweep();
   renderPatientList();
   if(getDefaultVitalsView() === 'board' && vitalsState.patients.length){
     setVitalsBoardActive(true);
@@ -5572,6 +5579,59 @@ function setupVitalsMapViewToggle(){
   if(!btn || btn.dataset.wired) return;
   btn.dataset.wired = '1';
   btn.addEventListener('click', () => setVitalsMapViewActive(!vitalsMapViewActive));
+}
+
+/* ---- configurable data-retention policy — auto-purges (hard-deletes)
+   archived patient records once they've been archived longer than a
+   configurable number of days. Never touches active patients; active
+   patients only leave the roster via the existing archive mechanism.
+   Off by default, checked once per app load. ---- */
+const RETENTION_KEY = 'wards_retention_v1';
+function getRetentionPrefs(){
+  try{
+    const raw = localStorage.getItem(RETENTION_KEY);
+    if(!raw) return { enabled: false, days: 90 };
+    const parsed = JSON.parse(raw);
+    return { enabled: !!parsed.enabled, days: (parsed.days > 0 ? parsed.days : 90) };
+  }catch(e){ return { enabled: false, days: 90 }; }
+}
+function saveRetentionPrefs(prefs){
+  try{ localStorage.setItem(RETENTION_KEY, JSON.stringify(prefs)); }catch(e){}
+}
+function runRetentionSweep(){
+  const prefs = getRetentionPrefs();
+  if(!prefs.enabled) return;
+  const cutoffMs = prefs.days * 86400000;
+  const now = Date.now();
+  const toPurge = vitalsState.patients.filter(p => {
+    if(!isPatientArchived(p) || !p.archivedAt) return false;
+    return (now - new Date(p.archivedAt).getTime()) > cutoffMs;
+  });
+  if(!toPurge.length) return;
+  toPurge.forEach(p => {
+    if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('retention_purged', p, `Auto-purged — archived over ${prefs.days} days ago`);
+    delete vitalsState.logs[p.id];
+  });
+  const purgeIds = new Set(toPurge.map(p => p.id));
+  vitalsState.patients = vitalsState.patients.filter(p => !purgeIds.has(p.id));
+  saveVitalsData();
+  showToast(`Data retention: auto-purged ${toPurge.length} archived record${toPurge.length === 1 ? '' : 's'} older than ${prefs.days} days.`);
+}
+function setupRetentionSettings(){
+  const toggle = document.getElementById('wards-retention-toggle');
+  const daysInput = document.getElementById('wards-retention-days');
+  const prefs = getRetentionPrefs();
+  if(toggle) toggle.checked = prefs.enabled;
+  if(daysInput) daysInput.value = prefs.days;
+  [toggle, daysInput].forEach(el => {
+    if(!el || el.dataset.wired) return;
+    el.dataset.wired = '1';
+    el.addEventListener('change', () => {
+      const days = daysInput ? Math.max(7, parseInt(daysInput.value, 10) || 90) : 90;
+      saveRetentionPrefs({ enabled: toggle ? toggle.checked : false, days });
+      if(daysInput) daysInput.value = days;
+    });
+  });
 }
 
 /* ---- CSV/JSON bulk import — parses, validates and previews rows before
