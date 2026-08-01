@@ -2943,6 +2943,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         </div>
         <div class="vitals-patient-actions">
           <button type="button" class="vitals-btn-outline" id="vitals-nickname-btn" title="A private memory-aid tag for this patient — just for you, never synced or exported">Nickname</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-borrowed-btn" title="Note that you briefly covered this patient for a colleague — a personal log, not a handover or escalation record">Borrowed a moment</button>
           <label class="vitals-isolation-select-wrap" title="Isolation / precaution status">
             <span>Isolation</span>
             <select id="vitals-isolation-select">
@@ -3067,6 +3068,17 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <button type="button" class="vitals-btn-primary" id="vitals-nickname-save">Save nickname</button>
           <button type="button" class="vitals-btn-outline" id="vitals-nickname-clear">Clear</button>
           <button type="button" class="vitals-btn-ghost" id="vitals-nickname-cancel">Close</button>
+        </div>
+      </div>
+
+      <div class="vitals-allergies-form" id="vitals-borrowed-form" hidden>
+        <div class="vitals-field">
+          <label for="vitals-borrowed-input">Borrowed a moment <span>a quick note for your own memory — not part of the escalation trail or SBAR</span></label>
+          <input type="text" id="vitals-borrowed-input" maxlength="200" placeholder="e.g. &quot;covered obs round for Priya, 14:00-14:20, all stable&quot;">
+        </div>
+        <div class="vitals-baselines-actions">
+          <button type="button" class="vitals-btn-primary" id="vitals-borrowed-save">Log it</button>
+          <button type="button" class="vitals-btn-ghost" id="vitals-borrowed-cancel">Close</button>
         </div>
       </div>
 
@@ -3618,6 +3630,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <p class="wards-qr-disclaimer">Not tied to a patient yet — triage each note below into a patient's notes, or discard it. Not a substitute for charting directly once you know who it's about.</p>
     <div class="wards-quicknote-inbox" id="wards-quicknote-inbox">
       <p class="vitals-dept-empty">Inbox is empty.</p>
+    </div>
+    <p class="vitals-dept-subtitle" style="margin-top:16px;">Borrowed moments — briefly covered a colleague's patient</p>
+    <div class="wards-quicknote-inbox" id="wards-borrowed-list">
+      <p class="vitals-dept-empty">No borrowed moments logged.</p>
     </div>
   </div>
 </div>
@@ -5206,6 +5222,7 @@ function initVitals(){
   setupAllergiesForm();
   setupNicknameForm();
   setupBedsideBrief();
+  setupBorrowedForm();
   setupIsolationSelect();
   setupMaternitySection();
   setupIcuSection();
@@ -7094,6 +7111,8 @@ function renderVitalsMain(){
   renderNicknameTag(p);
   const nicknameForm = document.getElementById('vitals-nickname-form');
   if(nicknameForm) nicknameForm.hidden = true; // avoid a stale form carrying over across patients
+  const borrowedForm = document.getElementById('vitals-borrowed-form');
+  if(borrowedForm) borrowedForm.hidden = true; // avoid a stale form carrying over across patients
 
   const historyBtn = document.getElementById('vitals-history-btn');
   if(historyBtn){
@@ -10165,6 +10184,80 @@ function triageQuickNote(noteId, patientId){
   showToast(`Added to ${p.name || 'patient'}'s notes.`, 'ok');
   haptic('Light');
 }
+/* ---- "Borrowed a moment" log — a lightweight personal note for briefly
+   covering a colleague's patient. Deliberately separate from the
+   escalation trail (p.escalations) and SBAR generator — never fed into
+   either. Shown inside the quick-note inbox modal alongside the triage
+   inbox, since both are the same "jot it down, sort out later, just for
+   me" pattern. ---- */
+const WARDS_BORROWED_KEY = 'wards_borrowed_moments_v1';
+function getBorrowedMoments(){
+  try{
+    const raw = localStorage.getItem(WARDS_BORROWED_KEY);
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  }catch(e){ return []; }
+}
+function saveBorrowedMoments(list){
+  try{ localStorage.setItem(WARDS_BORROWED_KEY, JSON.stringify(list)); }catch(e){}
+}
+function renderBorrowedList(){
+  const wrap = document.getElementById('wards-borrowed-list');
+  if(!wrap) return;
+  const items = getBorrowedMoments().slice().sort((a, b) => new Date(b.ts) - new Date(a.ts));
+  if(!items.length){ wrap.innerHTML = '<p class="vitals-dept-empty">No borrowed moments logged.</p>'; return; }
+  wrap.innerHTML = items.map(b =>
+    `<div class="wards-quicknote-item">` +
+      `<span class="wq-time">${escapeHtml(fmtVitalsTime(b.ts))}</span>` +
+      `<p><strong>${escapeHtml(b.patientName || 'Unnamed patient')}</strong> — ${escapeHtml(b.note)}</p>` +
+      `<div class="wq-actions">` +
+        `<button type="button" class="ws-shift-preset-del" data-discard-borrowed="${b.id}" aria-label="Discard entry">&times;</button>` +
+      `</div>` +
+    `</div>`
+  ).join('');
+}
+function setupBorrowedForm(){
+  const openBtn = document.getElementById('vitals-borrowed-btn');
+  const form = document.getElementById('vitals-borrowed-form');
+  const input = document.getElementById('vitals-borrowed-input');
+  const saveBtn = document.getElementById('vitals-borrowed-save');
+  const cancelBtn = document.getElementById('vitals-borrowed-cancel');
+  if(!openBtn || !form || openBtn.dataset.wired) return;
+  openBtn.dataset.wired = '1';
+
+  openBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(!p) return;
+    if(input) input.value = '';
+    form.hidden = !form.hidden;
+    if(!form.hidden && input) setTimeout(() => input.focus(), 30);
+  });
+  if(cancelBtn) cancelBtn.addEventListener('click', () => { form.hidden = true; });
+  if(saveBtn) saveBtn.addEventListener('click', () => {
+    const p = activePatient();
+    const text = input ? input.value.trim() : '';
+    if(!p || !text) return;
+    const list = getBorrowedMoments();
+    list.push({ id: genVitalsId('bm'), patientId: p.id, patientName: p.name || 'Unnamed', note: text, ts: new Date().toISOString() });
+    saveBorrowedMoments(list);
+    form.hidden = true;
+    renderBorrowedList();
+    haptic('Light');
+    showToast('Logged for your own reference.', 'ok');
+  });
+  const list = document.getElementById('wards-borrowed-list');
+  if(list && !list.dataset.wired){
+    list.dataset.wired = '1';
+    list.addEventListener('click', e => {
+      const discardBtn = e.target.closest('[data-discard-borrowed]');
+      if(discardBtn){
+        saveBorrowedMoments(getBorrowedMoments().filter(b => b.id !== discardBtn.dataset.discardBorrowed));
+        renderBorrowedList();
+      }
+    });
+  }
+}
+
 function setupQuickNoteCapture(){
   const btn = document.getElementById('wards-quicknote-btn');
   const modal = document.getElementById('wards-quicknote-modal');
@@ -10180,6 +10273,7 @@ function setupQuickNoteCapture(){
     btn.addEventListener('click', () => {
       if(!modal) return;
       renderQuickNoteInbox();
+      renderBorrowedList();
       modal.hidden = false;
       modal.classList.add('show');
       if(textArea) setTimeout(() => textArea.focus(), 30);
