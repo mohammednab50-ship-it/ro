@@ -1321,6 +1321,13 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .global-search-item:hover{background:rgba(255,255,255,0.06);}
 .global-search-item .gs-sub{display:block;font-size:11.5px;color:var(--shell-ink-soft);margin-top:2px;}
 .global-search-empty{padding:16px 4px;color:var(--shell-ink-soft);font-family:var(--ff-sans);font-size:13px;text-align:center;}
+.search-history-row{display:flex;align-items:center;gap:4px;}
+.search-history-row .search-history-item{flex:1;}
+.search-history-snapshot-btn{flex-shrink:0;border:1px solid var(--shell-line);background:none;color:var(--shell-ink-soft);font-size:14px;line-height:1;border-radius:var(--r-sm);padding:8px 10px;cursor:pointer;}
+.search-history-snapshot-btn:hover{color:var(--shell-ink);border-color:var(--shell-ink-soft);}
+.search-snapshot-head{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.search-snapshot-back{border:none;background:none;color:var(--evidence);font-family:var(--ff-sans);font-size:13px;font-weight:600;cursor:pointer;padding:6px 4px;flex-shrink:0;}
+.search-snapshot-title{font-family:var(--ff-sans);font-size:12px;color:var(--shell-ink-soft);line-height:1.4;}
 .uc-grid{display:flex;flex-direction:column;gap:16px;}
 .uc-row{display:flex;flex-direction:column;gap:6px;}
 .uc-label{font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--shell-ink-soft);}
@@ -6952,12 +6959,34 @@ function getSearchHistory(){
   try{ const v = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); return Array.isArray(v) ? v : []; }
   catch(e){ return []; }
 }
+let lastGlobalSearchGroups = null;
+const SEARCH_SNAPSHOT_DEFS = [
+  { key: 'literature', ref: a => a.title, label: a => a.title, sub: a => [a.journal, a.date].filter(Boolean).join(' · ') },
+  { key: 'drug', ref: d => d.brand || d.generic, label: d => d.brand || d.generic, sub: d => (d.brand && d.generic && d.generic !== d.brand) ? d.generic : '' },
+  { key: 'condition', ref: c => c.name, label: c => c.name, sub: c => c.desc ? c.desc.slice(0, 90) : '' },
+  { key: 'advance', ref: a => a.title, label: a => a.title, sub: a => a.journal || '' },
+  { key: 'trial', ref: t => t.title, label: t => t.title, sub: t => t.conditions || '' }
+];
+function buildSearchSnapshot(groups){
+  const snap = [];
+  for(const g of SEARCH_SNAPSHOT_DEFS){
+    for(const item of (groups[g.key] || [])){
+      if(snap.length >= 25) break;
+      snap.push({ group: g.key, ref: String(g.ref(item) || ''), label: g.label(item) || '(untitled)', sub: g.sub(item) || '' });
+    }
+  }
+  return snap;
+}
 function recordSearchHistory(qRaw){
   const q = String(qRaw || '').trim();
   if(q.length < 2) return;
   try{
     let list = getSearchHistory().filter(x => x.q.toLowerCase() !== q.toLowerCase());
-    list.unshift({ q, t: new Date().toISOString() });
+    const entry = { q, t: new Date().toISOString() };
+    if(lastGlobalSearchGroups && lastGlobalSearchGroups.q.toLowerCase() === q.toLowerCase()){
+      entry.snapshot = buildSearchSnapshot(lastGlobalSearchGroups.groups);
+    }
+    list.unshift(entry);
     if(list.length > SEARCH_HISTORY_MAX) list = list.slice(0, SEARCH_HISTORY_MAX);
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(list));
   }catch(e){}
@@ -13260,8 +13289,45 @@ function searchHistoryPanelHtml(){
   if(!hist.length) return '';
   return `<div class="global-search-group search-history-group">
     <h3>Recent searches <button type="button" class="search-history-clear" id="search-history-clear">Clear</button></h3>
-    ${hist.map((h,i) => `<button type="button" class="global-search-item search-history-item" data-rerun-idx="${i}">${escapeHtml(h.q)}</button>`).join('')}
+    ${hist.map((h,i) => `<div class="search-history-row">
+      <button type="button" class="global-search-item search-history-item" data-rerun-idx="${i}">${escapeHtml(h.q)}</button>
+      ${(h.snapshot && h.snapshot.length) ? `<button type="button" class="search-history-snapshot-btn" data-snapshot-idx="${i}" title="Show what I saw then" aria-label="Show what I saw then for ${escapeHtml(h.q)}">&#128065;</button>` : ''}
+    </div>`).join('')}
   </div>`;
+}
+function searchSnapshotViewHtml(entry){
+  const groupNames = { literature: 'Literature', drug: 'Drugs', condition: 'Conditions', advance: 'Advances', trial: 'Trials' };
+  const byGroup = {};
+  (entry.snapshot || []).forEach(it => { (byGroup[it.group] = byGroup[it.group] || []).push(it); });
+  const body = Object.keys(byGroup).length ? Object.keys(byGroup).map(g => `
+    <div class="global-search-group">
+      <h3>${escapeHtml(groupNames[g] || g)} (${byGroup[g].length})</h3>
+      ${byGroup[g].map(it => `<button type="button" class="global-search-item search-snapshot-item" data-group="${g}" data-ref="${escapeHtml(it.ref)}">${escapeHtml(it.label)}${it.sub ? `<span class="gs-sub">${escapeHtml(it.sub)}</span>` : ''}</button>`).join('')}
+    </div>`).join('') : '<div class="global-search-empty">No matches were captured for this search.</div>';
+  return `<div class="search-snapshot-view">
+    <div class="search-snapshot-head">
+      <button type="button" class="search-snapshot-back" id="search-snapshot-back">&lsaquo; Back</button>
+      <div class="search-snapshot-title">What "${escapeHtml(entry.q)}" found ${timeAgoShort(entry.t)} &mdash; this list won't change even if content has since</div>
+    </div>
+    ${body}
+  </div>`;
+}
+function snapshotRefToItem(group, ref){
+  if(group === 'literature') return { title: ref };
+  if(group === 'drug') return { brand: ref, generic: ref };
+  if(group === 'condition') return { name: ref };
+  return {};
+}
+function renderSearchSnapshotView(wrap, entry){
+  wrap.innerHTML = searchSnapshotViewHtml(entry);
+  const back = wrap.querySelector('#search-snapshot-back');
+  if(back) back.onclick = () => { renderGlobalSearchResults(document.getElementById('global-search-input')?.value || ''); };
+  wrap.querySelectorAll('.search-snapshot-item').forEach(btn => {
+    btn.onclick = () => {
+      const g = btn.dataset.group, ref = btn.dataset.ref;
+      jumpToGlobalSearchResult(g, snapshotRefToItem(g, ref));
+    };
+  });
 }
 function wireSearchHistoryPanel(wrap, input){
   const hist = getSearchHistory();
@@ -13273,6 +13339,15 @@ function wireSearchHistoryPanel(wrap, input){
       haptic('Light');
       renderGlobalSearchResults(item.q);
       recordSearchHistory(item.q);
+    };
+  });
+  wrap.querySelectorAll('[data-snapshot-idx]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const item = hist[Number(btn.dataset.snapshotIdx)];
+      if(!item) return;
+      haptic('Light');
+      renderSearchSnapshotView(wrap, item);
     };
   });
   const clearBtn = wrap.querySelector('#search-history-clear');
@@ -13288,6 +13363,7 @@ function renderGlobalSearchResults(qRaw){
     return;
   }
   const groups = collectGlobalSearchResults(q);
+  lastGlobalSearchGroups = { q, groups };
   const groupDefs = [
     { key: 'literature', name: 'Literature', render: a => ({ label: a.title, sub: [a.journal, a.date].filter(Boolean).join(' · ') }) },
     { key: 'drug', name: 'Drugs', render: d => ({ label: d.brand || d.generic, sub: (d.brand && d.generic && d.generic !== d.brand) ? d.generic : '' }) },

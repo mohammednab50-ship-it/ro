@@ -323,6 +323,26 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .wnd-list{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);line-height:1.5;margin:0 0 12px;padding-left:16px;}
 .wnd-actions{display:flex;gap:8px;}
 
+/* ---- "Case of the day" mystery vignette — same gentle corner-card
+   pattern, top-right so it can coexist with the bottom corner cards. ---- */
+.case-of-day-card{position:fixed;top:20px;right:20px;z-index:1340;width:320px;max-width:calc(100vw - 40px);
+  max-height:80vh;overflow-y:auto;
+  background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:var(--r-md);
+  box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,0.25));padding:16px 18px;
+  opacity:0;transform:translateY(-14px);pointer-events:none;
+  transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
+.case-of-day-card.show{opacity:1;transform:translateY(0);pointer-events:auto;}
+.cod-eyebrow{font-family:var(--ff-sans);font-size:10.5px;font-weight:700;letter-spacing:0.06em;color:var(--evidence-dark, var(--ink-faint));margin-bottom:4px;display:flex;justify-content:space-between;gap:8px;align-items:center;}
+.cod-close{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:15px;line-height:1;padding:2px;}
+.cod-specialty{font-family:var(--ff-sans);font-size:11px;color:var(--ink-faint);margin-bottom:6px;}
+.cod-stem{font-family:var(--ff-serif,var(--ff-sans));font-size:13.5px;color:var(--ink);line-height:1.5;margin-bottom:10px;}
+.cod-guess-input{width:100%;border:1px solid var(--line);border-radius:var(--r-sm);padding:7px 9px;font-family:var(--ff-sans);font-size:12.5px;color:var(--ink);background:var(--paper);margin-bottom:10px;}
+.cod-reveal{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);line-height:1.55;margin-bottom:10px;}
+.cod-reveal p{margin:0 0 6px;}
+.cod-reveal ul{margin:0;padding-left:16px;}
+.cod-reveal ul li{margin-bottom:4px;}
+.cod-actions{display:flex;gap:8px;}
+
 .rounds-demo-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
   padding:8px 20px;background:#664d03;color:#fff3cd;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
 .rounds-demo-banner button{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;
@@ -497,6 +517,14 @@ main{min-width:0;}
 .bookmark-note-save{border:1px solid var(--line);background:none;border-radius:var(--r-pill);padding:6px 14px;font-family:var(--ff-sans);font-size:12px;font-weight:600;cursor:pointer;color:var(--ink-soft);}
 .bookmark-note-save:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
 .bookmark-note-saved{font-family:var(--ff-sans);font-size:11.5px;color:var(--fresh);font-weight:600;}
+.tc-reveal-select{border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);border-radius:var(--r-sm);padding:5px 8px;font-family:var(--ff-sans);font-size:12px;}
+.tc-reveal-custom{border:1px solid var(--line);background:var(--paper);color:var(--ink);border-radius:var(--r-sm);padding:5px 8px;font-family:var(--ff-sans);font-size:12px;}
+.tc-reveal-custom[hidden]{display:none;}
+.tc-unlocked-caption{display:block;font-family:var(--ff-sans);font-size:11.5px;color:var(--ink-faint);margin-top:6px;}
+.tc-locked-box{position:relative;}
+.tc-locked-blur{font-family:var(--ff-sans);font-size:13.5px;color:var(--ink-soft);line-height:1.5;filter:blur(5px);user-select:none;pointer-events:none;}
+.tc-locked-caption{font-family:var(--ff-sans);font-size:11.5px;font-weight:600;color:var(--ink-faint);margin-top:8px;}
+.tc-clear-btn{margin-top:8px;}
 .card-foot{display:flex;justify-content:space-between;align-items:center;padding-top:var(--space-4);border-top:1px solid var(--line-soft);gap:var(--space-3);flex-wrap:wrap;}
 .pmid-link{font-family:var(--ff-sans);font-size:13px;color:var(--evidence-dark);font-weight:600;text-decoration:none;display:inline-flex;align-items:center;gap:6px;transition:color var(--dur-fast) var(--ease-out);}
 .pmid-link:hover{color:var(--evidence);}
@@ -1293,6 +1321,13 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .global-search-item:hover{background:rgba(255,255,255,0.06);}
 .global-search-item .gs-sub{display:block;font-size:11.5px;color:var(--shell-ink-soft);margin-top:2px;}
 .global-search-empty{padding:16px 4px;color:var(--shell-ink-soft);font-family:var(--ff-sans);font-size:13px;text-align:center;}
+.search-history-row{display:flex;align-items:center;gap:4px;}
+.search-history-row .search-history-item{flex:1;}
+.search-history-snapshot-btn{flex-shrink:0;border:1px solid var(--shell-line);background:none;color:var(--shell-ink-soft);font-size:14px;line-height:1;border-radius:var(--r-sm);padding:8px 10px;cursor:pointer;}
+.search-history-snapshot-btn:hover{color:var(--shell-ink);border-color:var(--shell-ink-soft);}
+.search-snapshot-head{display:flex;align-items:center;gap:10px;margin-bottom:4px;}
+.search-snapshot-back{border:none;background:none;color:var(--evidence);font-family:var(--ff-sans);font-size:13px;font-weight:600;cursor:pointer;padding:6px 4px;flex-shrink:0;}
+.search-snapshot-title{font-family:var(--ff-sans);font-size:12px;color:var(--shell-ink-soft);line-height:1.4;}
 .uc-grid{display:flex;flex-direction:column;gap:16px;}
 .uc-row{display:flex;flex-direction:column;gap:6px;}
 .uc-label{font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--shell-ink-soft);}
@@ -2108,6 +2143,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div class="settings-row">
       <div class="settings-label"><strong>Explain the mechanism</strong><span class="settings-sub">Plain-language one-liner first, full detail behind “show more” — Conditions</span></div>
       <button type="button" class="settings-btn" id="settings-plain-mech-toggle" aria-pressed="true">On</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Visual analogies</strong><span class="settings-sub">Physical metaphors for a curated set of Conditions, alongside the mechanism line</span></div>
+      <button type="button" class="settings-btn" id="settings-visual-analogy-toggle" aria-pressed="false">Off</button>
     </div>
 
     <div class="settings-row">
@@ -6919,12 +6959,34 @@ function getSearchHistory(){
   try{ const v = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); return Array.isArray(v) ? v : []; }
   catch(e){ return []; }
 }
+let lastGlobalSearchGroups = null;
+const SEARCH_SNAPSHOT_DEFS = [
+  { key: 'literature', ref: a => a.title, label: a => a.title, sub: a => [a.journal, a.date].filter(Boolean).join(' · ') },
+  { key: 'drug', ref: d => d.brand || d.generic, label: d => d.brand || d.generic, sub: d => (d.brand && d.generic && d.generic !== d.brand) ? d.generic : '' },
+  { key: 'condition', ref: c => c.name, label: c => c.name, sub: c => c.desc ? c.desc.slice(0, 90) : '' },
+  { key: 'advance', ref: a => a.title, label: a => a.title, sub: a => a.journal || '' },
+  { key: 'trial', ref: t => t.title, label: t => t.title, sub: t => t.conditions || '' }
+];
+function buildSearchSnapshot(groups){
+  const snap = [];
+  for(const g of SEARCH_SNAPSHOT_DEFS){
+    for(const item of (groups[g.key] || [])){
+      if(snap.length >= 25) break;
+      snap.push({ group: g.key, ref: String(g.ref(item) || ''), label: g.label(item) || '(untitled)', sub: g.sub(item) || '' });
+    }
+  }
+  return snap;
+}
 function recordSearchHistory(qRaw){
   const q = String(qRaw || '').trim();
   if(q.length < 2) return;
   try{
     let list = getSearchHistory().filter(x => x.q.toLowerCase() !== q.toLowerCase());
-    list.unshift({ q, t: new Date().toISOString() });
+    const entry = { q, t: new Date().toISOString() };
+    if(lastGlobalSearchGroups && lastGlobalSearchGroups.q.toLowerCase() === q.toLowerCase()){
+      entry.snapshot = buildSearchSnapshot(lastGlobalSearchGroups.groups);
+    }
+    list.unshift(entry);
     if(list.length > SEARCH_HISTORY_MAX) list = list.slice(0, SEARCH_HISTORY_MAX);
     localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(list));
   }catch(e){}
@@ -7286,10 +7348,10 @@ function setBookmarks(obj){
 function isBookmarked(pmid){ return !!getBookmarks()[pmid]; }
 function toggleBookmark(article){
   const bm = getBookmarks();
-  let added, removedArticle, removedNote;
+  let added, removedArticle, removedNoteRecord;
   if(bm[article.pmid]){
     removedArticle = bm[article.pmid];
-    removedNote = getBookmarkNote(article.pmid);
+    removedNoteRecord = getBookmarkNoteRecord(article.pmid);
     delete bm[article.pmid];
     added = false;
     removeBookmarkNote(article.pmid);
@@ -7299,6 +7361,7 @@ function toggleBookmark(article){
   setBookmarks(bm);
   if(added){
     showToast('Saved to your list', 'ok');
+    if(typeof maybeCelebrateMilestone === 'function') maybeCelebrateMilestone('bookmarks', Object.keys(getBookmarks()).length + Object.keys(getConditionBookmarks()).length);
   }else{
     showToast('Removed from saved.', null, {
       label: 'Undo',
@@ -7306,7 +7369,7 @@ function toggleBookmark(article){
         const bm2 = getBookmarks();
         bm2[removedArticle.pmid] = removedArticle;
         setBookmarks(bm2);
-        if(removedNote) setBookmarkNote(removedArticle.pmid, removedNote);
+        if(removedNoteRecord) restoreBookmarkNoteRecord(removedArticle.pmid, removedNoteRecord);
         if(state.viewingBookmarks) renderBookmarksView();
         else render();
         renderChapters();
@@ -7320,17 +7383,41 @@ function toggleBookmark(article){
 
 /* ---- Personal notes on saved articles (keyed by PMID, independent of
    the bookmark record itself so re-saving an article after removing it
-   doesn't silently resurrect a stale note). ---- */
+   doesn't silently resurrect a stale note). Each note is stored as a
+   {text, createdAt, revealAt} record — "time capsule" notes set a
+   future revealAt and stay visually locked until that date; legacy
+   notes (saved before this existed) are plain strings and normalize
+   to revealAt:null, i.e. always unlocked. ---- */
 const BOOKMARK_NOTES_KEY = 'rounds_bookmark_notes_v1';
 function getBookmarkNotes(){
   try { return JSON.parse(localStorage.getItem(BOOKMARK_NOTES_KEY) || '{}'); } catch(e){ return {}; }
 }
-function getBookmarkNote(pmid){ return getBookmarkNotes()[pmid] || ''; }
-function setBookmarkNote(pmid, text){
+function normalizeNoteRecord(raw){
+  if(!raw) return null;
+  if(typeof raw === 'string') return { text: raw, createdAt: null, revealAt: null };
+  return { text: raw.text || '', createdAt: raw.createdAt || null, revealAt: raw.revealAt || null };
+}
+function getBookmarkNoteRecord(pmid){ return normalizeNoteRecord(getBookmarkNotes()[pmid]); }
+function getBookmarkNote(pmid){ const r = getBookmarkNoteRecord(pmid); return r ? r.text : ''; }
+function isNoteLocked(record){ return !!(record && record.revealAt && Date.now() < record.revealAt); }
+function setBookmarkNote(pmid, text, revealAt){
   const notes = getBookmarkNotes();
   const trimmed = (text || '').trim();
-  if(trimmed) notes[pmid] = trimmed;
-  else delete notes[pmid];
+  if(!trimmed){ delete notes[pmid]; }
+  else {
+    const existing = normalizeNoteRecord(notes[pmid]);
+    notes[pmid] = {
+      text: trimmed,
+      createdAt: (existing && existing.createdAt) || Date.now(),
+      revealAt: revealAt || null
+    };
+  }
+  try{ localStorage.setItem(BOOKMARK_NOTES_KEY, JSON.stringify(notes)); }catch(e){}
+}
+function restoreBookmarkNoteRecord(pmid, record){
+  if(!record) return;
+  const notes = getBookmarkNotes();
+  notes[pmid] = record;
   try{ localStorage.setItem(BOOKMARK_NOTES_KEY, JSON.stringify(notes)); }catch(e){}
 }
 function removeBookmarkNote(pmid){
@@ -7477,6 +7564,10 @@ function daysAgo(dateStr){
   const d = new Date(dateStr);
   if(isNaN(d)) return null;
   return Math.floor((Date.now() - d.getTime()) / 86400000);
+}
+function daysBetween(fromMs, toMs){
+  if(!fromMs || !toMs) return 0;
+  return Math.max(0, Math.floor((toMs - fromMs) / 86400000));
 }
 
 function escapeHtml(s){
@@ -7951,16 +8042,38 @@ function articleCard(a, idx){
   // Personal note UI only makes sense in the Saved list — an unsaved
   // article has nowhere to persist a note against yet.
   const showNote = state.viewingBookmarks && saved;
-  const noteVal = showNote ? (getBookmarkNote(a.pmid) || '') : '';
-  const noteHtml = showNote ? `
+  const noteRecord = showNote ? getBookmarkNoteRecord(a.pmid) : null;
+  const noteLocked = isNoteLocked(noteRecord);
+  const noteVal = (showNote && !noteLocked && noteRecord) ? noteRecord.text : '';
+  const unlockedCaption = (showNote && !noteLocked && noteRecord && noteRecord.revealAt && noteRecord.createdAt)
+    ? `<span class="tc-unlocked-caption">Written ${daysBetween(noteRecord.createdAt, Date.now())}d ago — unlocked ${daysBetween(noteRecord.revealAt, Date.now()) <= 0 ? 'today' : 'since ' + new Date(noteRecord.revealAt).toLocaleDateString(roundsLocaleArg())}</span>`
+    : '';
+  const noteHtml = !showNote ? '' : noteLocked ? `
+      <div class="bookmark-note">
+        <label class="bookmark-note-label">Your note</label>
+        <div class="tc-locked-box">
+          <div class="tc-locked-blur" aria-hidden="true">${escapeHtml(noteRecord.text)}</div>
+          <div class="tc-locked-caption">🔒 Time-capsule note — written ${daysBetween(noteRecord.createdAt, Date.now())}d ago, unlocks ${new Date(noteRecord.revealAt).toLocaleDateString(roundsLocaleArg())}</div>
+          <button type="button" class="bookmark-note-save tc-clear-btn">Delete note instead</button>
+        </div>
+      </div>` : `
       <div class="bookmark-note">
         <label class="bookmark-note-label" for="note-${escapeHtml(a.pmid)}">Your note</label>
         <textarea id="note-${escapeHtml(a.pmid)}" class="bookmark-note-input" placeholder="e.g. relevant for morning report…" maxlength="500">${escapeHtml(noteVal)}</textarea>
+        ${unlockedCaption}
         <div class="bookmark-note-actions">
           <button type="button" class="bookmark-note-save">Save note</button>
+          <select class="tc-reveal-select" aria-label="Reveal this note after a delay">
+            <option value="">No delay</option>
+            <option value="7">Reveal in 1 week</option>
+            <option value="30">Reveal in 1 month</option>
+            <option value="90">Reveal in 3 months</option>
+            <option value="custom">Custom date…</option>
+          </select>
+          <input type="date" class="tc-reveal-custom" hidden>
           <span class="bookmark-note-saved" hidden>Saved</span>
         </div>
-      </div>` : '';
+      </div>`;
 
   const li = document.createElement('li');
   li.className = 'card ' + freshClass;
@@ -7994,14 +8107,41 @@ function articleCard(a, idx){
   if(cite) cite.onclick = () => copyCitation(a);
   const share = li.querySelector('.share-btn');
   if(share) share.onclick = () => shareArticle(a);
-  if(showNote){
+  if(showNote && noteLocked){
+    const clearBtn = li.querySelector('.tc-clear-btn');
+    if(clearBtn) clearBtn.onclick = () => {
+      removeBookmarkNote(a.pmid);
+      haptic('Light');
+      if(state.viewingBookmarks) renderBookmarksView();
+    };
+  } else if(showNote){
     const saveBtn = li.querySelector('.bookmark-note-save');
     const noteInput = li.querySelector('.bookmark-note-input');
     const savedFlag = li.querySelector('.bookmark-note-saved');
+    const revealSel = li.querySelector('.tc-reveal-select');
+    const revealCustom = li.querySelector('.tc-reveal-custom');
+    if(revealSel && revealCustom){
+      revealSel.onchange = () => { revealCustom.hidden = revealSel.value !== 'custom'; };
+    }
     if(saveBtn && noteInput){
       saveBtn.onclick = () => {
-        setBookmarkNote(a.pmid, noteInput.value);
+        let revealAt = null;
+        if(revealSel){
+          const v = revealSel.value;
+          if(v === 'custom' && revealCustom && revealCustom.value){
+            const d = new Date(revealCustom.value + 'T00:00:00');
+            if(!isNaN(d)) revealAt = d.getTime();
+          } else if(v && v !== 'custom'){
+            revealAt = Date.now() + parseInt(v, 10) * 86400000;
+          }
+        }
+        setBookmarkNote(a.pmid, noteInput.value, revealAt);
         haptic('Light');
+        if(revealAt && noteInput.value.trim()){
+          showToast('Note saved — locked until it reveals', 'ok');
+          if(state.viewingBookmarks) renderBookmarksView();
+          return;
+        }
         if(savedFlag){
           savedFlag.hidden = false;
           clearTimeout(savedFlag._t);
@@ -8894,6 +9034,36 @@ const SYNDROME_MECH_PLAIN = {
   'Brown-Séquard syndrome':'Half of the spinal cord is damaged, weakening one side and numbing the other to pain and temperature.'
 };
 
+/* Curated physical analogies for "Visual-analogy mode" — intuition
+   metaphors, not literal restatements of SYNDROME_MECH_PLAIN above.
+   Kept deliberately small: only entries where the metaphor genuinely
+   clicks, not a forced one for every syndrome. */
+const VISUAL_ANALOGY = {
+  'Nephrotic syndrome':'Think of the kidney\'s filter as fine coffee-filter paper. Nephrotic syndrome tears holes in that paper — protein grounds that should stay behind wash straight through into the urine, and the swelling is the "coffee" backing up wherever it pools in the body.',
+  'SIADH':'Picture a sponge that\'s been told to soak up every drop of water it touches and never wring out — the body keeps holding onto water it doesn\'t need, watering down the sodium in the blood like diluting a strong drink.',
+  'Compartment syndrome':'A muscle compartment is like a foot stuffed into a rigid ski boot. Swelling inside has nowhere to expand, so pressure just keeps climbing until it strangles its own blood supply.',
+  'Long QT syndrome':'The heart\'s electrical cycle is like a light switch with a sticky reset — it takes too long to fully "reset" before it can safely flip again, and that lag is when a dangerous rhythm can sneak in.',
+  'Wolff-Parkinson-White syndrome':'Normally there\'s one toll-bridge (the AV node) metering electrical traffic into the heart\'s pumping chambers. WPW builds an extra, unregulated side bridge — cars (signals) can pile through both at once and cause a traffic-jam rhythm.',
+  'Guillain-Barré syndrome':'Nerves are like wires with insulation. Here the immune system strips that insulation off, starting at the far ends — signals short-circuit and weakness climbs upward like water rising up a wick.',
+  'Cushing syndrome':'It\'s a furnace with the thermostat stuck on "high" — cortisol keeps pumping out regardless of what the body actually needs, and everything downstream (weight, skin, mood) runs hot for too long.',
+  'Conn syndrome':'An adrenal gland acting like a leaky faucet that won\'t shut off aldosterone — the kidneys keep obediently hoarding salt and flushing potassium even though nobody asked for more.',
+  'Zollinger-Ellison syndrome':'A gastrin-secreting tumor is like a stuck gas pedal for stomach acid — the stomach never gets to idle, so acid keeps pouring out whether or not there\'s food to digest.',
+  'Tumor lysis syndrome':'Like popping a large water balloon inside a small room all at once — everything the tumor cells were holding onto (potassium, phosphate, uric acid) floods the bloodstream faster than the body can mop it up.',
+  'Hemolytic uremic syndrome':'Tiny blood vessels fill with debris like a clogged cheese grater — red blood cells get shredded as they\'re forced through, using up platelets and clogging the kidneys\' tiny filters downstream.',
+  'Refeeding syndrome':'A starved body is like a car engine that\'s been sitting with no oil. Restart it too fast with a full tank (food/glucose) and the sudden demand for minerals like phosphate can seize the whole system.',
+  'Superior vena cava syndrome':'A kink in the main drainpipe at the top of the house backs water up into every sink connected to it — here a blocked chest vein backs blood up into the face, neck, and arms.',
+  'Budd-Chiari syndrome':'Picture the drain under a sink getting clogged — water backs up and the basin fills. Here the liver\'s draining veins clog, and the liver itself swells like a waterlogged sponge.',
+  'Marfan syndrome':'Connective tissue is the mortar holding the body\'s structural bricks together. With weak mortar, walls under normal pressure — the aorta, the lens of the eye, the joints — can bulge or give way that they otherwise wouldn\'t.',
+  'Down syndrome':'Every cell carries an instruction manual (chromosomes). An extra copy of one page (chromosome 21) means every cell reads a triple dose of those particular instructions while building the body — nudging development in a consistent, recognizable direction.',
+  'Serotonin syndrome':'It\'s like several people flooring the gas pedal on the same engine at once — different drugs push the brain\'s serotonin system from different directions, and together they rev it far past its normal range.',
+  'Neuroleptic malignant syndrome':'The drug slams the brake on the brain\'s dopamine "movement control room." Starved of that signal, muscles lock up rigid and the body\'s temperature control goes haywire along with it.',
+  'Acute respiratory distress syndrome':'Healthy air sacs are like dry balloons that inflate easily. In ARDS they become soaked sponges instead — no matter how hard or fast you breathe, oxygen struggles to cross into the blood.',
+  'Cauda equina syndrome':'The nerve roots at the very bottom of the spine really do fan out like a horse\'s tail bundled inside a narrow tunnel. Squeeze that tunnel and every strand inside gets pinched together at once — not just one nerve.',
+  'Bartter syndrome':'Imagine being born with a diuretic pill permanently stuck in the "on" position inside your kidney tubule — salt and potassium keep washing out the way they would on chronic water-pill therapy, without ever taking one.',
+  'Disseminated intravascular coagulation':'It\'s like grabbing every fire extinguisher in the building to fight small fires everywhere at once — by the time a real fire (bleeding) breaks out, there are none left, and the floor is slick with used extinguisher foam (clotting factors) besides.',
+  'Metabolic syndrome':'Several dashboard warning lights — belly fat, blood sugar, blood pressure, cholesterol — switching on together rather than one at a time, and each one lit makes the others more likely to stay lit too.'
+};
+
 function syndromeRowHtml(s){
   const src = `https://medlineplus.gov/search/?query=${encodeURIComponent(s.name)}`;
   const links = conditionLinksFor(s.name);
@@ -8906,9 +9076,11 @@ function syndromeRowHtml(s){
   }).join('<br>')}</div>` : '';
   const provenance = conditionProvenanceHtml(s);
   const plainMech = getPlainMechanism() ? SYNDROME_MECH_PLAIN[s.name] : null;
+  const analogy = getVisualAnalogyMode() ? VISUAL_ANALOGY[s.name] : null;
+  const analogyHtml = analogy ? `<span class="syndrome-analogy"><span class="syndrome-analogy-label">Think of it like:</span> ${escapeHtml(analogy)}</span>` : '';
   const descBody = plainMech
-    ? `<span class="syndrome-mech-plain">${escapeHtml(plainMech)}</span><button type="button" class="syndrome-mech-more-btn" data-mech-more="1" aria-expanded="false">Show full detail</button><div class="syndrome-desc-full" hidden>${glossify(s.desc)}</div>`
-    : glossify(s.desc);
+    ? `<span class="syndrome-mech-plain">${escapeHtml(plainMech)}</span>${analogyHtml}<button type="button" class="syndrome-mech-more-btn" data-mech-more="1" aria-expanded="false">Show full detail</button><div class="syndrome-desc-full" hidden>${glossify(s.desc)}</div>`
+    : `${glossify(s.desc)}${analogyHtml}`;
   return `<li class="syndrome-row" data-condition="${escapeHtml(s.name)}" data-entry-key="${escapeHtml('syndrome:' + s.name)}" data-rerender="syndromes">
     <span class="syndrome-name">${escapeHtml(s.name)}</span>
     <span class="syndrome-desc">${descBody}${crossSpecialtyChipsHtml(CONDITION_CROSS_SPECIALTY[s.name])}${provenance}${drugLinksHtml}</span>
@@ -12120,6 +12292,7 @@ function enterApp(user){
   const whatsNewShown = maybeShowWhatsNew();
   maybeShowDigest(whatsNewShown);
   if(typeof setupWardsAppLockGate === 'function') setupWardsAppLockGate();
+  setTimeout(() => { if(typeof maybeShowCaseOfDay === 'function') maybeShowCaseOfDay(); }, 1600);
 }
 
 function displayNameFor(user){
@@ -12395,6 +12568,17 @@ function openSettings(){
     };
     mechBtn.onclick = () => { setPlainMechanism(!getPlainMechanism()); syncMech(); };
     syncMech();
+  }
+
+  const analogyBtn = document.getElementById('settings-visual-analogy-toggle');
+  if(analogyBtn){
+    const syncAnalogy = () => {
+      const on = getVisualAnalogyMode();
+      analogyBtn.textContent = on ? 'On' : 'Off';
+      analogyBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    analogyBtn.onclick = () => { setVisualAnalogyMode(!getVisualAnalogyMode()); haptic('Light'); syncAnalogy(); };
+    syncAnalogy();
   }
 
   const bsBtn = document.getElementById('settings-battery-saver-toggle');
@@ -13105,8 +13289,45 @@ function searchHistoryPanelHtml(){
   if(!hist.length) return '';
   return `<div class="global-search-group search-history-group">
     <h3>Recent searches <button type="button" class="search-history-clear" id="search-history-clear">Clear</button></h3>
-    ${hist.map((h,i) => `<button type="button" class="global-search-item search-history-item" data-rerun-idx="${i}">${escapeHtml(h.q)}</button>`).join('')}
+    ${hist.map((h,i) => `<div class="search-history-row">
+      <button type="button" class="global-search-item search-history-item" data-rerun-idx="${i}">${escapeHtml(h.q)}</button>
+      ${(h.snapshot && h.snapshot.length) ? `<button type="button" class="search-history-snapshot-btn" data-snapshot-idx="${i}" title="Show what I saw then" aria-label="Show what I saw then for ${escapeHtml(h.q)}">&#128065;</button>` : ''}
+    </div>`).join('')}
   </div>`;
+}
+function searchSnapshotViewHtml(entry){
+  const groupNames = { literature: 'Literature', drug: 'Drugs', condition: 'Conditions', advance: 'Advances', trial: 'Trials' };
+  const byGroup = {};
+  (entry.snapshot || []).forEach(it => { (byGroup[it.group] = byGroup[it.group] || []).push(it); });
+  const body = Object.keys(byGroup).length ? Object.keys(byGroup).map(g => `
+    <div class="global-search-group">
+      <h3>${escapeHtml(groupNames[g] || g)} (${byGroup[g].length})</h3>
+      ${byGroup[g].map(it => `<button type="button" class="global-search-item search-snapshot-item" data-group="${g}" data-ref="${escapeHtml(it.ref)}">${escapeHtml(it.label)}${it.sub ? `<span class="gs-sub">${escapeHtml(it.sub)}</span>` : ''}</button>`).join('')}
+    </div>`).join('') : '<div class="global-search-empty">No matches were captured for this search.</div>';
+  return `<div class="search-snapshot-view">
+    <div class="search-snapshot-head">
+      <button type="button" class="search-snapshot-back" id="search-snapshot-back">&lsaquo; Back</button>
+      <div class="search-snapshot-title">What "${escapeHtml(entry.q)}" found ${timeAgoShort(entry.t)} &mdash; this list won't change even if content has since</div>
+    </div>
+    ${body}
+  </div>`;
+}
+function snapshotRefToItem(group, ref){
+  if(group === 'literature') return { title: ref };
+  if(group === 'drug') return { brand: ref, generic: ref };
+  if(group === 'condition') return { name: ref };
+  return {};
+}
+function renderSearchSnapshotView(wrap, entry){
+  wrap.innerHTML = searchSnapshotViewHtml(entry);
+  const back = wrap.querySelector('#search-snapshot-back');
+  if(back) back.onclick = () => { renderGlobalSearchResults(document.getElementById('global-search-input')?.value || ''); };
+  wrap.querySelectorAll('.search-snapshot-item').forEach(btn => {
+    btn.onclick = () => {
+      const g = btn.dataset.group, ref = btn.dataset.ref;
+      jumpToGlobalSearchResult(g, snapshotRefToItem(g, ref));
+    };
+  });
 }
 function wireSearchHistoryPanel(wrap, input){
   const hist = getSearchHistory();
@@ -13118,6 +13339,15 @@ function wireSearchHistoryPanel(wrap, input){
       haptic('Light');
       renderGlobalSearchResults(item.q);
       recordSearchHistory(item.q);
+    };
+  });
+  wrap.querySelectorAll('[data-snapshot-idx]').forEach(btn => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const item = hist[Number(btn.dataset.snapshotIdx)];
+      if(!item) return;
+      haptic('Light');
+      renderSearchSnapshotView(wrap, item);
     };
   });
   const clearBtn = wrap.querySelector('#search-history-clear');
@@ -13133,6 +13363,7 @@ function renderGlobalSearchResults(qRaw){
     return;
   }
   const groups = collectGlobalSearchResults(q);
+  lastGlobalSearchGroups = { q, groups };
   const groupDefs = [
     { key: 'literature', name: 'Literature', render: a => ({ label: a.title, sub: [a.journal, a.date].filter(Boolean).join(' · ') }) },
     { key: 'drug', name: 'Drugs', render: d => ({ label: d.brand || d.generic, sub: (d.brand && d.generic && d.generic !== d.brand) ? d.generic : '' }) },
@@ -14179,6 +14410,57 @@ const CASES = [
   }
 ];
 
+/* ============================================================
+   "Case of the day" — a passive daily nudge, distinct from the
+   on-demand Teaching cases modal above. Rotates through the same
+   CASES bank (deterministic pick per calendar date, so everyone
+   opening the app that day sees the same one) and appears at most
+   once per day as a dismissable corner card, never a modal.
+   ============================================================ */
+const CASE_OF_DAY_SEEN_KEY = 'rounds_case_of_day_seen_v1';
+function caseOfDayIndexForDate(dateStr){
+  const h = Math.abs(parseInt(contentHash(dateStr), 10) || 0);
+  return h % CASES.length;
+}
+function maybeShowCaseOfDay(){
+  try{
+    const today = new Date().toISOString().slice(0, 10);
+    if(localStorage.getItem(CASE_OF_DAY_SEEN_KEY) === today) return;
+    localStorage.setItem(CASE_OF_DAY_SEEN_KEY, today);
+    showCaseOfDayCard(CASES[caseOfDayIndexForDate(today)]);
+  }catch(e){}
+}
+function showCaseOfDayCard(c){
+  const el = document.createElement('div');
+  el.className = 'case-of-day-card';
+  el.innerHTML = `
+    <div class="cod-eyebrow"><span>CASE OF THE DAY — GUESS IT</span><button type="button" class="cod-close" aria-label="Dismiss">&times;</button></div>
+    <div class="cod-specialty"></div>
+    <div class="cod-stem"></div>
+    <input type="text" class="cod-guess-input" maxlength="120" placeholder="Your guess (just for you — not scored)">
+    <div class="cod-reveal" hidden></div>
+    <div class="cod-actions">
+      <button type="button" class="otd-btn otd-btn-primary cod-reveal-btn">Reveal diagnosis</button>
+      <button type="button" class="otd-btn cod-dismiss-btn">Dismiss</button>
+    </div>`;
+  el.querySelector('.cod-specialty').textContent = c.specialty;
+  el.querySelector('.cod-stem').textContent = c.stem;
+  document.body.appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  const dismiss = () => { el.classList.remove('show'); setTimeout(() => el.remove(), 300); };
+  const reveal = () => {
+    const revealEl = el.querySelector('.cod-reveal');
+    revealEl.innerHTML = `<p><strong>${escapeHtml(c.diagnosis)}</strong></p><ul>${c.points.map(p => `<li>${escapeHtml(p)}</li>`).join('')}</ul>`;
+    revealEl.hidden = false;
+    el.querySelector('.cod-reveal-btn').hidden = true;
+    el.querySelector('.cod-guess-input').disabled = true;
+    haptic('Light');
+  };
+  el.querySelector('.cod-reveal-btn').addEventListener('click', reveal);
+  el.querySelector('.cod-close').addEventListener('click', dismiss);
+  el.querySelector('.cod-dismiss-btn').addEventListener('click', dismiss);
+}
+
 let casesState = { idx: 0, revealed: false, mode: 'curated', own: null };
 
 function renderCase(){
@@ -14309,7 +14591,7 @@ function buildStudySheetHtml(){
   const total = bm.length + condBm.length + drugs.length;
   let html = `<h1 class="ss-title">Rounds — Study sheet</h1><p class="ss-meta">${total} item${total === 1 ? '' : 's'} · generated ${escapeHtml(new Date().toLocaleDateString(roundsLocaleArg()))} · educational self-study aid, not a clinical protocol</p>`;
   bm.forEach(a => {
-    const note = getBookmarkNote(a.pmid);
+    const note = isNoteLocked(getBookmarkNoteRecord(a.pmid)) ? '' : getBookmarkNote(a.pmid);
     html += `<div class="ss-item"><span class="ss-tag">Literature</span><h3>${escapeHtml(a.title || 'Untitled')}</h3>` +
       `<p class="ss-sub">${escapeHtml([a.journal, a.date, a.authors].filter(Boolean).join(' · '))}${a.pmid ? ' · PMID ' + escapeHtml(a.pmid) : ''}</p>` +
       `<div class="ss-body"><p>${escapeHtml(((a.abstract || '').slice(0, 700)) || 'No abstract available.')}</p>${note ? `<p><strong>My note:</strong> ${escapeHtml(note)}</p>` : ''}</div></div>`;
