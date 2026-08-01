@@ -800,6 +800,8 @@ mark.user-hl{background:var(--evidence-bg);color:inherit;border-bottom:2px solid
 .boss-timer{font-family:var(--ff-mono);font-weight:700;font-size:14px;}
 .boss-timer.low{color:var(--caution);}
 .provenance-banner{font-family:var(--ff-sans);font-size:12px;line-height:1.5;color:var(--caution);background:var(--caution-bg);border-left:2px solid var(--caution-line);padding:10px 14px;border-radius:var(--r-sm);margin:0 0 var(--space-3);}
+.rotation-banner{font-family:var(--ff-sans);font-size:12px;line-height:1.5;color:var(--ink-soft);background:var(--surface-raised);border:1px solid var(--line-soft);padding:10px 14px;border-radius:var(--r-sm);margin:0 0 var(--space-3);display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+.rotation-show-all-btn{font-family:var(--ff-sans);font-size:11.5px;font-weight:600;color:var(--evidence-bright);background:none;border:1px solid var(--evidence-bright);border-radius:var(--r-pill);padding:3px 10px;cursor:pointer;}
 .provenance-diff del{background:rgba(220,90,80,0.18);text-decoration:line-through;}
 .provenance-diff ins{background:rgba(80,170,110,0.2);text-decoration:none;}
 .cmp-table-wrap{overflow-x:auto;margin-top:var(--space-6);}
@@ -2087,6 +2089,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div class="settings-row">
       <div class="settings-label"><strong>Default department</strong><span class="settings-sub">Opens here on launch</span></div>
       <select id="settings-default-specialty" class="settings-select"></select>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Just for this rotation</strong><span class="settings-sub">Narrow Conditions/Advances/Drugs to your Default department above</span></div>
+      <button type="button" class="settings-btn" id="settings-rotation-toggle" aria-pressed="false">Off</button>
     </div>
 
     <div class="settings-row">
@@ -6782,6 +6789,41 @@ const TAB_OPTIONS = [
 ];
 const LAST_SPECIALTY_KEY = 'rounds_last_specialty_v1';
 const PINNED_SPECIALTIES_KEY = 'rounds_pinned_specialties_v1';
+/* ============================================================
+   "Just for this rotation" — narrows Conditions/Advances/Drugs to
+   the Default department (state.specialty, already set via the
+   existing Settings > Default department picker) instead of a
+   separate parallel specialty-picker.
+   ============================================================ */
+const ROTATION_MODE_KEY = 'rounds_rotation_mode_v1';
+function isRotationModeOn(){ try{ return localStorage.getItem(ROTATION_MODE_KEY) === '1'; }catch(e){ return false; } }
+function setRotationMode(on){
+  try{ localStorage.setItem(ROTATION_MODE_KEY, on ? '1' : '0'); }catch(e){}
+  if(typeof renderSyndromeGroups === 'function') renderSyndromeGroups();
+  if(typeof renderSimpleList === 'function'){ renderSimpleList('genetic'); renderSimpleList('congenital'); }
+  if(typeof rebuildDrugSuggestChips === 'function') rebuildDrugSuggestChips();
+  if(typeof applyRotationToAdvances === 'function') applyRotationToAdvances();
+}
+function currentRotationSpecialty(){
+  if(!isRotationModeOn()) return null;
+  return (typeof state !== 'undefined' && state.specialty) ? state.specialty : null;
+}
+function rotationBannerHtml(anchorId, tag){
+  const sp = currentRotationSpecialty();
+  if(!sp) return '';
+  const t = tag || 'div';
+  return `<${t} class="rotation-banner">Showing just <strong>${escapeHtml(sp.name)}</strong> — your current rotation. <button type="button" class="rotation-show-all-btn" data-rotation-off="${escapeHtml(anchorId||'')}">Show everything</button></${t}>`;
+}
+document.addEventListener('click', e => {
+  const btn = e.target.closest('.rotation-show-all-btn');
+  if(!btn) return;
+  setRotationMode(false);
+  haptic('Light');
+  showToast('Showing everything again', 'ok');
+});
+/* PubMed "advances" fields don't share exact ids with SPECIALTIES —
+   map the handful that differ, best-effort only. */
+const ADVANCE_FIELD_ALIASES = { endocrinology:'endocrine', pulmonology:'pulmonary', gastroenterology:'gi' };
 function getPinnedSpecialties(){
   try{ const v = JSON.parse(localStorage.getItem(PINNED_SPECIALTIES_KEY) || '[]'); return Array.isArray(v) ? v : []; }
   catch(e){ return []; }
@@ -8741,17 +8783,20 @@ function renderSyndromeGroups(){
   const q = syndromesState.query || '';
   let sorted = [...SYNDROMES].sort((a,b) => a.name.localeCompare(b.name));
   if(q){ sorted = sorted.filter(s => s.name.toLowerCase().includes(q) || (s.desc && s.desc.toLowerCase().includes(q))); }
+  const rotSp = currentRotationSpecialty();
+  if(rotSp) sorted = sorted.filter(s => s.system === rotSp.id);
+  const banner = rotationBannerHtml('syndrome-groups');
 
   if(!sorted.length){
     jump.innerHTML = '';
-    wrap.innerHTML = `<p class="drug-generic" style="font-style:normal;">No syndromes match “${escapeHtml(q)}”.</p>`;
+    wrap.innerHTML = banner + `<p class="drug-generic" style="font-style:normal;">${rotSp ? `No syndromes in ${escapeHtml(rotSp.name)}` + (q ? ` match “${escapeHtml(q)}”.` : '.') : `No syndromes match “${escapeHtml(q)}”.`}</p>`;
     return;
   }
 
   if(syndromesState.mode === 'system'){
     const present = SYNDROME_SYSTEM_ORDER.filter(sysId => sorted.some(s => s.system === sysId));
     jump.innerHTML = present.map(sysId => `<a href="#syn-sys-${sysId}">${escapeHtml(SYNDROME_SYSTEMS[sysId] || sysId)}</a>`).join('');
-    wrap.innerHTML = present.map(sysId => {
+    wrap.innerHTML = banner + present.map(sysId => {
       const items = sorted.filter(s => s.system === sysId);
       return `<section class="syndrome-group" id="syn-sys-${sysId}">
         <div class="syndrome-group-head">
@@ -8767,7 +8812,7 @@ function renderSyndromeGroups(){
 
   const letters = [...new Set(sorted.map(s => s.name[0].toUpperCase()))];
   jump.innerHTML = letters.map(letter => `<a href="#syn-az-${letter}">${letter}</a>`).join('');
-  wrap.innerHTML = letters.map(letter => {
+  wrap.innerHTML = banner + letters.map(letter => {
     const items = sorted.filter(s => s.name[0].toUpperCase() === letter);
     return `<section class="syndrome-group" id="syn-az-${letter}">
       <div class="syndrome-group-head">
@@ -8815,17 +8860,20 @@ function renderSimpleList(kind){
   const q = syndromesState[kind + 'Query'] || '';
   let sorted = [...cfg.data()].sort((a,b) => a.name.localeCompare(b.name));
   if(q){ sorted = sorted.filter(s => s.name.toLowerCase().includes(q) || (s.desc && s.desc.toLowerCase().includes(q))); }
+  const rotSp = currentRotationSpecialty();
+  if(rotSp) sorted = sorted.filter(s => s.system === rotSp.id);
+  const banner = rotationBannerHtml(cfg.groups);
 
   if(!sorted.length){
     jump.innerHTML = '';
-    wrap.innerHTML = `<p class="drug-generic" style="font-style:normal;">No ${cfg.noun}s match “${escapeHtml(q)}”.</p>`;
+    wrap.innerHTML = banner + `<p class="drug-generic" style="font-style:normal;">${rotSp ? `No ${cfg.noun}s in ${escapeHtml(rotSp.name)}` + (q ? ` match “${escapeHtml(q)}”.` : '.') : `No ${cfg.noun}s match “${escapeHtml(q)}”.`}</p>`;
     return;
   }
 
   if(syndromesState[kind + 'Mode'] === 'system'){
     const present = SYNDROME_SYSTEM_ORDER.filter(sysId => sorted.some(s => s.system === sysId));
     jump.innerHTML = present.map(sysId => `<a href="#${kind}-sys-${sysId}">${escapeHtml(SYNDROME_SYSTEMS[sysId] || sysId)}</a>`).join('');
-    wrap.innerHTML = present.map(sysId => {
+    wrap.innerHTML = banner + present.map(sysId => {
       const items = sorted.filter(s => s.system === sysId);
       return `<section class="syndrome-group" id="${kind}-sys-${sysId}">
         <div class="syndrome-group-head">
@@ -8840,7 +8888,7 @@ function renderSimpleList(kind){
 
   const letters = [...new Set(sorted.map(s => (s.name[0] || '#').toUpperCase()))];
   jump.innerHTML = letters.map(letter => `<a href="#${kind}-az-${letter}">${letter}</a>`).join('');
-  wrap.innerHTML = letters.map(letter => {
+  wrap.innerHTML = banner + letters.map(letter => {
     const items = sorted.filter(s => (s.name[0] || '#').toUpperCase() === letter);
     return `<section class="syndrome-group" id="${kind}-az-${letter}">
       <div class="syndrome-group-head">
@@ -9274,17 +9322,46 @@ function setupSearch(){
   }
 }
 
-function setupDrugSearch(){
-  const btn = document.getElementById('drug-search-btn');
+const DRUG_SUGGEST_DEFAULT = [
+  {drug:'metformin', label:'Metformin'}, {drug:'apixaban', label:'Apixaban'}, {drug:'amoxicillin', label:'Amoxicillin'},
+  {drug:'atorvastatin', label:'Atorvastatin'}, {drug:'sertraline', label:'Sertraline'}, {drug:'lisinopril', label:'Lisinopril'}
+];
+function wireDrugSuggestChips(){
   const inp = document.getElementById('drug-input');
-  if(btn) btn.onclick = lookupDrug;
-  if(inp) inp.addEventListener('keydown', e => { if(e.key === 'Enter') lookupDrug(); });
   document.querySelectorAll('#drug-suggest button').forEach(chip => {
     chip.onclick = () => {
       if(inp){ inp.value = chip.dataset.drug; inp.focus(); }
       lookupDrug();
     };
   });
+}
+/* "Just for this rotation" — swap the quick-lookup chips for drugs
+   tagged relevant to the current rotation via the existing
+   DRUG_CROSS_SPECIALTY map, instead of building a parallel per-
+   specialty drug list. Falls back to the defaults when too few
+   drugs are tagged for that specialty to be useful. */
+function rebuildDrugSuggestChips(){
+  const wrap = document.getElementById('drug-suggest');
+  if(!wrap) return;
+  const sp = currentRotationSpecialty();
+  let items = DRUG_SUGGEST_DEFAULT;
+  if(sp){
+    const matches = Object.keys(DRUG_CROSS_SPECIALTY)
+      .filter(id => DRUG_CROSS_SPECIALTY[id].includes(sp.id))
+      .map(id => RX_DRUGS.find(d => d.id === id))
+      .filter(Boolean)
+      .map(d => ({drug: d.generic, label: d.generic.charAt(0).toUpperCase() + d.generic.slice(1)}));
+    if(matches.length >= 3) items = matches.slice(0, 8);
+  }
+  wrap.innerHTML = items.map(it => `<button type="button" data-drug="${escapeHtml(it.drug)}">${escapeHtml(it.label)}</button>`).join('');
+  wireDrugSuggestChips();
+}
+function setupDrugSearch(){
+  const btn = document.getElementById('drug-search-btn');
+  const inp = document.getElementById('drug-input');
+  if(btn) btn.onclick = lookupDrug;
+  if(inp) inp.addEventListener('keydown', e => { if(e.key === 'Enter') lookupDrug(); });
+  rebuildDrugSuggestChips();
 }
 
 /* ============================================================
@@ -9384,7 +9461,22 @@ function initAdvances(){
   if(search){
     search.oninput = () => { advancesState.query = search.value.trim().toLowerCase(); renderAdvances(); };
   }
+  applyRotationToAdvances();
   fetchAdvances(false);
+}
+
+/* Best-effort "just for this rotation" default for Advances — only a
+   subset of ADVANCE_FIELDS lines up with a SPECIALTIES id (see
+   ADVANCE_FIELD_ALIASES), so this is a nudge, not a guarantee. */
+function applyRotationToAdvances(){
+  const filter = document.getElementById('advance-filter');
+  if(!filter || !filter.children.length) return;
+  const sp = currentRotationSpecialty();
+  const fieldId = sp ? (ADVANCE_FIELDS.some(f => f.id === sp.id) ? sp.id : ADVANCE_FIELD_ALIASES[sp.id]) : null;
+  const targetId = fieldId && ADVANCE_FIELDS.some(f => f.id === fieldId) ? fieldId : 'all';
+  advancesState.field = targetId;
+  filter.querySelectorAll('.syndrome-toggle-btn').forEach(b => b.setAttribute('aria-pressed', b.dataset.field === targetId ? 'true' : 'false'));
+  if(advancesState.fetched) renderAdvances();
 }
 
 async function fetchAdvances(force){
@@ -9469,6 +9561,12 @@ function renderAdvances(){
 
   container.innerHTML = '';
   if(jump) jump.innerHTML = '';
+  const rotSp = currentRotationSpecialty();
+  if(rotSp && selField !== 'all'){
+    const bannerEl = document.createElement('div');
+    bannerEl.innerHTML = rotationBannerHtml('advance-groups');
+    container.appendChild(bannerEl.firstElementChild);
+  }
   container.appendChild(advanceStatusBar());
   const refresh = document.getElementById('advance-refresh');
   if(refresh) refresh.onclick = () => fetchAdvances(true);
@@ -11056,12 +11154,15 @@ function renderFormularyList(){
   if(q) sorted = sorted.filter(d => d.generic.toLowerCase().includes(q) || d.brand.toLowerCase().includes(q));
   const stockedCount = RX_DRUGS.filter(d => formulary[d.id]).length;
   if(countEl) countEl.textContent = `${stockedCount} of ${RX_DRUGS.length} marked stocked`;
+  const rotSp = currentRotationSpecialty();
+  const banner = rotSp ? rotationBannerHtml('formulary-list', 'li') : '';
+  if(rotSp) sorted = sorted.filter(d => (DRUG_CROSS_SPECIALTY[d.id] || []).includes(rotSp.id));
   const visible = formularyState.onlyMine ? sorted.filter(d => formulary[d.id]) : sorted;
   if(!visible.length){
-    wrap.innerHTML = `<li class="cmp-empty">${formularyState.onlyMine ? 'No drugs marked as stocked yet.' : `No drugs match “${escapeHtml(q)}”.`}</li>`;
+    wrap.innerHTML = banner + `<li class="cmp-empty">${rotSp ? `No drugs tagged for ${escapeHtml(rotSp.name)} yet.` : (formularyState.onlyMine ? 'No drugs marked as stocked yet.' : `No drugs match “${escapeHtml(q)}”.`)}</li>`;
     return;
   }
-  wrap.innerHTML = visible.map(d => {
+  wrap.innerHTML = banner + visible.map(d => {
     const on = !!formulary[d.id];
     return `<li class="formulary-item${(!formularyState.onlyMine && !on) ? ' is-dimmed' : ''}">
       <span class="formulary-item-info">
@@ -12092,6 +12193,17 @@ function openSettings(){
       if(sp){ state.specialty = sp; state.customTerm = null; state.viewingBookmarks = false; renderChapters(); fetchArticles(); }
       haptic('Light');
     };
+  }
+
+  const rotBtn = document.getElementById('settings-rotation-toggle');
+  if(rotBtn){
+    const syncRot = () => {
+      const on = isRotationModeOn();
+      rotBtn.textContent = on ? 'On' : 'Off';
+      rotBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    rotBtn.onclick = () => { setRotationMode(!isRotationModeOn()); syncRot(); showToast(isRotationModeOn() ? 'Narrowed to your rotation' : 'Showing everything again', 'ok'); };
+    syncRot();
   }
 
   const tabSel = document.getElementById('settings-default-tab');
