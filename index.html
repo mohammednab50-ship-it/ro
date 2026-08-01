@@ -2131,6 +2131,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Visual analogies</strong><span class="settings-sub">Physical metaphors for a curated set of Conditions, alongside the mechanism line</span></div>
+      <button type="button" class="settings-btn" id="settings-visual-analogy-toggle" aria-pressed="false">Off</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Battery saver</strong><span class="settings-sub" id="settings-battery-saver-sub">Reduce animation, auto on low battery</span></div>
       <button type="button" class="settings-btn" id="settings-battery-saver-toggle" aria-pressed="false">Off</button>
     </div>
@@ -8914,6 +8919,36 @@ const SYNDROME_MECH_PLAIN = {
   'Brown-Séquard syndrome':'Half of the spinal cord is damaged, weakening one side and numbing the other to pain and temperature.'
 };
 
+/* Curated physical analogies for "Visual-analogy mode" — intuition
+   metaphors, not literal restatements of SYNDROME_MECH_PLAIN above.
+   Kept deliberately small: only entries where the metaphor genuinely
+   clicks, not a forced one for every syndrome. */
+const VISUAL_ANALOGY = {
+  'Nephrotic syndrome':'Think of the kidney\'s filter as fine coffee-filter paper. Nephrotic syndrome tears holes in that paper — protein grounds that should stay behind wash straight through into the urine, and the swelling is the "coffee" backing up wherever it pools in the body.',
+  'SIADH':'Picture a sponge that\'s been told to soak up every drop of water it touches and never wring out — the body keeps holding onto water it doesn\'t need, watering down the sodium in the blood like diluting a strong drink.',
+  'Compartment syndrome':'A muscle compartment is like a foot stuffed into a rigid ski boot. Swelling inside has nowhere to expand, so pressure just keeps climbing until it strangles its own blood supply.',
+  'Long QT syndrome':'The heart\'s electrical cycle is like a light switch with a sticky reset — it takes too long to fully "reset" before it can safely flip again, and that lag is when a dangerous rhythm can sneak in.',
+  'Wolff-Parkinson-White syndrome':'Normally there\'s one toll-bridge (the AV node) metering electrical traffic into the heart\'s pumping chambers. WPW builds an extra, unregulated side bridge — cars (signals) can pile through both at once and cause a traffic-jam rhythm.',
+  'Guillain-Barré syndrome':'Nerves are like wires with insulation. Here the immune system strips that insulation off, starting at the far ends — signals short-circuit and weakness climbs upward like water rising up a wick.',
+  'Cushing syndrome':'It\'s a furnace with the thermostat stuck on "high" — cortisol keeps pumping out regardless of what the body actually needs, and everything downstream (weight, skin, mood) runs hot for too long.',
+  'Conn syndrome':'An adrenal gland acting like a leaky faucet that won\'t shut off aldosterone — the kidneys keep obediently hoarding salt and flushing potassium even though nobody asked for more.',
+  'Zollinger-Ellison syndrome':'A gastrin-secreting tumor is like a stuck gas pedal for stomach acid — the stomach never gets to idle, so acid keeps pouring out whether or not there\'s food to digest.',
+  'Tumor lysis syndrome':'Like popping a large water balloon inside a small room all at once — everything the tumor cells were holding onto (potassium, phosphate, uric acid) floods the bloodstream faster than the body can mop it up.',
+  'Hemolytic uremic syndrome':'Tiny blood vessels fill with debris like a clogged cheese grater — red blood cells get shredded as they\'re forced through, using up platelets and clogging the kidneys\' tiny filters downstream.',
+  'Refeeding syndrome':'A starved body is like a car engine that\'s been sitting with no oil. Restart it too fast with a full tank (food/glucose) and the sudden demand for minerals like phosphate can seize the whole system.',
+  'Superior vena cava syndrome':'A kink in the main drainpipe at the top of the house backs water up into every sink connected to it — here a blocked chest vein backs blood up into the face, neck, and arms.',
+  'Budd-Chiari syndrome':'Picture the drain under a sink getting clogged — water backs up and the basin fills. Here the liver\'s draining veins clog, and the liver itself swells like a waterlogged sponge.',
+  'Marfan syndrome':'Connective tissue is the mortar holding the body\'s structural bricks together. With weak mortar, walls under normal pressure — the aorta, the lens of the eye, the joints — can bulge or give way that they otherwise wouldn\'t.',
+  'Down syndrome':'Every cell carries an instruction manual (chromosomes). An extra copy of one page (chromosome 21) means every cell reads a triple dose of those particular instructions while building the body — nudging development in a consistent, recognizable direction.',
+  'Serotonin syndrome':'It\'s like several people flooring the gas pedal on the same engine at once — different drugs push the brain\'s serotonin system from different directions, and together they rev it far past its normal range.',
+  'Neuroleptic malignant syndrome':'The drug slams the brake on the brain\'s dopamine "movement control room." Starved of that signal, muscles lock up rigid and the body\'s temperature control goes haywire along with it.',
+  'Acute respiratory distress syndrome':'Healthy air sacs are like dry balloons that inflate easily. In ARDS they become soaked sponges instead — no matter how hard or fast you breathe, oxygen struggles to cross into the blood.',
+  'Cauda equina syndrome':'The nerve roots at the very bottom of the spine really do fan out like a horse\'s tail bundled inside a narrow tunnel. Squeeze that tunnel and every strand inside gets pinched together at once — not just one nerve.',
+  'Bartter syndrome':'Imagine being born with a diuretic pill permanently stuck in the "on" position inside your kidney tubule — salt and potassium keep washing out the way they would on chronic water-pill therapy, without ever taking one.',
+  'Disseminated intravascular coagulation':'It\'s like grabbing every fire extinguisher in the building to fight small fires everywhere at once — by the time a real fire (bleeding) breaks out, there are none left, and the floor is slick with used extinguisher foam (clotting factors) besides.',
+  'Metabolic syndrome':'Several dashboard warning lights — belly fat, blood sugar, blood pressure, cholesterol — switching on together rather than one at a time, and each one lit makes the others more likely to stay lit too.'
+};
+
 function syndromeRowHtml(s){
   const src = `https://medlineplus.gov/search/?query=${encodeURIComponent(s.name)}`;
   const links = conditionLinksFor(s.name);
@@ -8926,9 +8961,11 @@ function syndromeRowHtml(s){
   }).join('<br>')}</div>` : '';
   const provenance = conditionProvenanceHtml(s);
   const plainMech = getPlainMechanism() ? SYNDROME_MECH_PLAIN[s.name] : null;
+  const analogy = getVisualAnalogyMode() ? VISUAL_ANALOGY[s.name] : null;
+  const analogyHtml = analogy ? `<span class="syndrome-analogy"><span class="syndrome-analogy-label">Think of it like:</span> ${escapeHtml(analogy)}</span>` : '';
   const descBody = plainMech
-    ? `<span class="syndrome-mech-plain">${escapeHtml(plainMech)}</span><button type="button" class="syndrome-mech-more-btn" data-mech-more="1" aria-expanded="false">Show full detail</button><div class="syndrome-desc-full" hidden>${glossify(s.desc)}</div>`
-    : glossify(s.desc);
+    ? `<span class="syndrome-mech-plain">${escapeHtml(plainMech)}</span>${analogyHtml}<button type="button" class="syndrome-mech-more-btn" data-mech-more="1" aria-expanded="false">Show full detail</button><div class="syndrome-desc-full" hidden>${glossify(s.desc)}</div>`
+    : `${glossify(s.desc)}${analogyHtml}`;
   return `<li class="syndrome-row" data-condition="${escapeHtml(s.name)}" data-entry-key="${escapeHtml('syndrome:' + s.name)}" data-rerender="syndromes">
     <span class="syndrome-name">${escapeHtml(s.name)}</span>
     <span class="syndrome-desc">${descBody}${crossSpecialtyChipsHtml(CONDITION_CROSS_SPECIALTY[s.name])}${provenance}${drugLinksHtml}</span>
@@ -12416,6 +12453,17 @@ function openSettings(){
     };
     mechBtn.onclick = () => { setPlainMechanism(!getPlainMechanism()); syncMech(); };
     syncMech();
+  }
+
+  const analogyBtn = document.getElementById('settings-visual-analogy-toggle');
+  if(analogyBtn){
+    const syncAnalogy = () => {
+      const on = getVisualAnalogyMode();
+      analogyBtn.textContent = on ? 'On' : 'Off';
+      analogyBtn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    };
+    analogyBtn.onclick = () => { setVisualAnalogyMode(!getVisualAnalogyMode()); haptic('Light'); syncAnalogy(); };
+    syncAnalogy();
   }
 
   const bsBtn = document.getElementById('settings-battery-saver-toggle');
