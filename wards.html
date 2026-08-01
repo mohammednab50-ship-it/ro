@@ -1764,6 +1764,14 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-bed-tile-n2.n2-low{background:var(--surface-raised);color:var(--ink-soft);}
 .vitals-bed-tile-n2.n2-medium{background:var(--fresh-bg);color:var(--fresh);}
 .vitals-bed-tile-n2.n2-high{background:var(--caution-bg);color:var(--caution);}
+.vitals-checklist-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:8px;}
+.vitals-checklist-list li label{display:flex;align-items:center;gap:8px;font-size:14px;}
+.vitals-timeline-list{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:10px;border-left:2px solid var(--line);padding-left:14px;}
+.vitals-timeline-list li{position:relative;font-size:13px;}
+.vitals-timeline-list li::before{content:"";position:absolute;left:-18.5px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--evidence);}
+.vitals-timeline-time{font-family:var(--ff-mono);font-size:11px;color:var(--ink-faint);display:block;}
+.vitals-timeline-kind{font-weight:800;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin-right:6px;}
+.vitals-compare-cell-flag{color:var(--caution);font-weight:800;}
 .vitals-board-card{text-align:left;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
   padding:14px 16px;cursor:pointer;font-family:var(--ff-sans);color:var(--ink);transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);}
 .vitals-board-card:hover{border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
@@ -2740,6 +2748,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <button type="button" class="vitals-btn-outline" id="vitals-allergies-btn" title="Set this patient's known allergies">Allergies</button>
           <button type="button" class="vitals-btn-outline" id="vitals-baselines-btn" title="Set this patient's own normal-range overrides">Baselines</button>
           <button type="button" class="vitals-btn-outline" id="vitals-sbar-btn" title="Generate a Situation-Background-Assessment-Recommendation handover summary">SBAR handover</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-checklist-btn" title="Department-specific rounding checklist — resets each day">Rounding checklist</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-compare-btn" title="Compare this patient's latest vitals side-by-side with another active patient">Compare patients</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-timeline-btn" title="Chronological timeline merging readings, notes, escalations and problems">Timeline</button>
           <button type="button" class="vitals-btn-outline" id="vitals-print-btn" title="Print a one-page vitals summary">Print summary</button>
           <button type="button" class="vitals-btn-outline" id="vitals-export-btn">Export CSV</button>
           <button type="button" class="vitals-btn-outline" id="vitals-history-btn" title="Audit trail — who changed what, and when (synced patients only)" hidden>History</button>
@@ -2783,6 +2794,37 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <button type="button" class="vitals-btn-primary" id="vitals-sbar-copy-btn">Copy</button>
           <button type="button" class="vitals-btn-outline" id="vitals-sbar-print-btn">Print</button>
           <button type="button" class="vitals-btn-ghost" id="vitals-sbar-close-btn">Close</button>
+        </div>
+      </div>
+
+      <div class="vitals-allergies-form" id="vitals-checklist-panel" hidden>
+        <div class="vitals-field">
+          <label>Rounding checklist <span>department-specific systematic review — resets each day, this device only</span></label>
+          <ul class="vitals-checklist-list" id="vitals-checklist-list"></ul>
+        </div>
+        <div class="vitals-baselines-actions">
+          <button type="button" class="vitals-btn-ghost" id="vitals-checklist-close-btn">Close</button>
+        </div>
+      </div>
+
+      <div class="vitals-allergies-form" id="vitals-compare-panel" hidden>
+        <div class="vitals-field">
+          <label>Two-patient compare <span>quick side-by-side handoff snapshot — active patients only</span></label>
+          <select id="vitals-compare-select-b"></select>
+        </div>
+        <div id="vitals-compare-table-wrap" class="vitals-table-wrap"></div>
+        <div class="vitals-baselines-actions">
+          <button type="button" class="vitals-btn-ghost" id="vitals-compare-close-btn">Close</button>
+        </div>
+      </div>
+
+      <div class="vitals-allergies-form" id="vitals-timeline-panel" hidden>
+        <div class="vitals-field">
+          <label>Timeline <span>readings, notes, escalations and problem-list events, merged chronologically</span></label>
+          <ul class="vitals-timeline-list" id="vitals-timeline-list"></ul>
+        </div>
+        <div class="vitals-baselines-actions">
+          <button type="button" class="vitals-btn-ghost" id="vitals-timeline-close-btn">Close</button>
         </div>
       </div>
 
@@ -4779,6 +4821,9 @@ function initVitals(){
   setupVitalsCopyLastButton();
   setupEscalationTrail();
   setupProblemList();
+  setupRoundingChecklist();
+  setupPatientCompare();
+  setupPatientTimeline();
   setupReadingIntervalSelect();
   setupIoBalanceForm();
   setupMarSection();
@@ -7235,6 +7280,159 @@ function setupEscalationTrail(){
     showToast(`Logged: notified ${ESCALATION_ROLE_LABELS[role] || role}.`);
     haptic('Light');
   });
+}
+
+/* ---- rounding checklist — short department-specific systematic-review
+   prompts, checked off per patient per calendar day (device-local only,
+   resets daily rather than persisting forever). ---- */
+const ROUNDING_CHECKLISTS = {
+  general: ['IV line site — clean, no signs of phlebitis', 'Urinary catheter (if present) — patent, bag secured', 'Pressure areas / skin integrity', 'Mobility & falls risk', 'Bowel function', 'Pain control adequate'],
+  icu: ['ET/trach tube position & cuff pressure', 'Central/arterial line sites & dressings', 'Drains — output & site', 'Sedation level (target RASS)', 'Pressure areas / skin integrity', 'Feeding tube position confirmed'],
+  surgery: ['Wound / dressing — clean, dry, intact', 'Surgical drains — output & site', 'Urinary catheter (if present)', 'IV line site', 'Pain control adequate', 'Bowel function / flatus'],
+  pediatrics: ['IV line site', 'Weight-based fluids/meds double-checked', 'Feeding tolerance', 'Skin / nappy area', 'Parent or carer concerns addressed'],
+  maternity: ['Fundal height & lochia (if postnatal)', 'Perineum / C-section wound', 'IV line site', 'Catheter (if present)', 'Feeding / latch (if postnatal)']
+};
+function wardsTodayKey(){
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function ensureRoundingChecklist(p){
+  const today = wardsTodayKey();
+  if(!p.roundingChecklist || p.roundingChecklist.date !== today) p.roundingChecklist = { date: today, checked: {} };
+  return p.roundingChecklist;
+}
+function renderRoundingChecklist(p){
+  const list = document.getElementById('vitals-checklist-list');
+  if(!list || !p) return;
+  const items = ROUNDING_CHECKLISTS[p.department || 'general'] || ROUNDING_CHECKLISTS.general;
+  const state = ensureRoundingChecklist(p);
+  list.innerHTML = items.map((item, i) => {
+    const id = 'chk_' + i;
+    return `<li><label><input type="checkbox" data-chk-id="${id}" ${state.checked[id] ? 'checked' : ''}> ${escapeHtml(item)}</label></li>`;
+  }).join('');
+}
+function setupRoundingChecklist(){
+  const btn = document.getElementById('vitals-checklist-btn');
+  const panel = document.getElementById('vitals-checklist-panel');
+  const closeBtn = document.getElementById('vitals-checklist-close-btn');
+  const list = document.getElementById('vitals-checklist-list');
+  if(btn && !btn.dataset.wired){
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => {
+      const p = activePatient();
+      if(!p || !panel) return;
+      panel.hidden = false;
+      renderRoundingChecklist(p);
+    });
+  }
+  if(closeBtn && !closeBtn.dataset.wired){
+    closeBtn.dataset.wired = '1';
+    closeBtn.addEventListener('click', () => { if(panel) panel.hidden = true; });
+  }
+  if(list && !list.dataset.wired){
+    list.dataset.wired = '1';
+    list.addEventListener('change', e => {
+      const cb = e.target.closest('[data-chk-id]');
+      if(!cb) return;
+      const p = activePatient();
+      if(!p) return;
+      ensureRoundingChecklist(p).checked[cb.dataset.chkId] = cb.checked;
+      saveVitalsData();
+    });
+  }
+}
+
+/* ---- two-patient quick compare — side-by-side latest vitals/NEWS2/key
+   fields for a fast handoff sanity check, active patients only. ---- */
+function renderPatientCompare(){
+  const select = document.getElementById('vitals-compare-select-b');
+  const wrap = document.getElementById('vitals-compare-table-wrap');
+  const p = activePatient();
+  if(!select || !wrap || !p) return;
+  const others = vitalsState.patients.filter(x => isPatientActive(x) && x.id !== p.id);
+  const prevVal = select.value;
+  select.innerHTML = others.map(o => `<option value="${escapeHtml(o.id)}">${escapeHtml(o.bed || '—')} — ${escapeHtml(o.name || 'Unnamed')}</option>`).join('');
+  if(prevVal && others.some(o => o.id === prevVal)) select.value = prevVal;
+  const other = vitalsState.patients.find(x => x.id === select.value) || others[0];
+  if(!other){
+    wrap.innerHTML = '<p class="vitals-dept-empty">No other active patients to compare against.</p>';
+    return;
+  }
+  const la = latestVitalsEntryFor(p), lb = latestVitalsEntryFor(other);
+  const na = la ? computeNews2(la, p) : null, nb = lb ? computeNews2(lb, other) : null;
+  const row = (label, va, vb) => `<tr><th>${escapeHtml(label)}</th><td>${va}</td><td>${vb}</td></tr>`;
+  const v = (entry, field) => entry && entry[field] ? escapeHtml(entry[field]) : '—';
+  wrap.innerHTML = `<table class="vitals-table"><thead><tr><th></th>` +
+    `<th>${escapeHtml(p.bed || '—')} — ${escapeHtml(p.name || 'Unnamed')}</th>` +
+    `<th>${escapeHtml(other.bed || '—')} — ${escapeHtml(other.name || 'Unnamed')}</th></tr></thead><tbody>` +
+    row('Department', escapeHtml(DEPT_LABELS[p.department || 'general'] || ''), escapeHtml(DEPT_LABELS[other.department || 'general'] || '')) +
+    row('HR', v(la, 'hr'), v(lb, 'hr')) +
+    row('BP', la ? `${v(la, 'sbp')}/${v(la, 'dbp')}` : '—', lb ? `${v(lb, 'sbp')}/${v(lb, 'dbp')}` : '—') +
+    row('RR', v(la, 'rr'), v(lb, 'rr')) +
+    row('SpO&#8322;', v(la, 'spo2'), v(lb, 'spo2')) +
+    row('Temp', v(la, 'temp'), v(lb, 'temp')) +
+    row('NEWS2', na && na.dataPresent ? `<span class="n2-${na.level}">${na.score}</span>` : '—', nb && nb.dataPresent ? `<span class="n2-${nb.level}">${nb.score}</span>` : '—') +
+    row('Isolation', escapeHtml(p.isolation && p.isolation !== 'none' ? p.isolation : 'None'), escapeHtml(other.isolation && other.isolation !== 'none' ? other.isolation : 'None')) +
+    row('Active problems', String((p.problems || []).filter(pr => !pr.resolvedAt).length), String((other.problems || []).filter(pr => !pr.resolvedAt).length)) +
+    `</tbody></table>`;
+}
+function setupPatientCompare(){
+  const btn = document.getElementById('vitals-compare-btn');
+  const panel = document.getElementById('vitals-compare-panel');
+  const closeBtn = document.getElementById('vitals-compare-close-btn');
+  const select = document.getElementById('vitals-compare-select-b');
+  if(btn && !btn.dataset.wired){
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => { if(panel) panel.hidden = false; renderPatientCompare(); });
+  }
+  if(closeBtn && !closeBtn.dataset.wired){
+    closeBtn.dataset.wired = '1';
+    closeBtn.addEventListener('click', () => { if(panel) panel.hidden = true; });
+  }
+  if(select && !select.dataset.wired){
+    select.dataset.wired = '1';
+    select.addEventListener('change', renderPatientCompare);
+  }
+}
+
+/* ---- patient timeline — readings, notes, escalations and problem-list
+   events merged into one chronological scrubber, as an alternative to
+   scanning the separate lists/tables. ---- */
+function buildPatientTimeline(p){
+  const events = [];
+  (vitalsState.logs[p.id] || []).forEach(r => {
+    events.push({ ts: r.ts, kind: 'Reading', text: `HR ${r.hr || '—'} · BP ${r.sbp || '—'}/${r.dbp || '—'} · SpO₂ ${r.spo2 || '—'} · RR ${r.rr || '—'} · Temp ${r.temp || '—'}` });
+    if((r.notes || '').trim()) events.push({ ts: r.ts, kind: 'Note', text: r.notes.trim() });
+  });
+  (p.escalations || []).forEach(e => events.push({ ts: e.ts, kind: 'Escalation', text: `Notified ${ESCALATION_ROLE_LABELS[e.role] || e.role}` + (e.respondedAt ? ` — responded ${fmtVitalsTime(e.respondedAt)}` : '') }));
+  (p.problems || []).forEach(pr => {
+    if(pr.addedAt) events.push({ ts: pr.addedAt, kind: 'Problem added', text: pr.text || '' });
+    if(pr.resolvedAt) events.push({ ts: pr.resolvedAt, kind: 'Problem resolved', text: pr.text || '' });
+  });
+  return events.filter(e => e.ts).sort((a, b) => new Date(b.ts) - new Date(a.ts));
+}
+function renderPatientTimeline(){
+  const list = document.getElementById('vitals-timeline-list');
+  const p = activePatient();
+  if(!list || !p) return;
+  const events = buildPatientTimeline(p);
+  if(!events.length){ list.innerHTML = '<li>No timeline events yet.</li>'; return; }
+  list.innerHTML = events.map(e =>
+    `<li><span class="vitals-timeline-time">${escapeHtml(fmtVitalsTime(e.ts))}</span><span class="vitals-timeline-kind">${escapeHtml(e.kind)}</span>${escapeHtml(e.text)}</li>`
+  ).join('');
+}
+function setupPatientTimeline(){
+  const btn = document.getElementById('vitals-timeline-btn');
+  const panel = document.getElementById('vitals-timeline-panel');
+  const closeBtn = document.getElementById('vitals-timeline-close-btn');
+  if(btn && !btn.dataset.wired){
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => { if(panel) panel.hidden = false; renderPatientTimeline(); });
+  }
+  if(closeBtn && !closeBtn.dataset.wired){
+    closeBtn.dataset.wired = '1';
+    closeBtn.addEventListener('click', () => { if(panel) panel.hidden = true; });
+  }
 }
 
 /* ============================================================
