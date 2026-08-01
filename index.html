@@ -12188,26 +12188,50 @@ function setupUnitConverter(){
 /* ============================================================
    Spaced-repetition quiz — built from bookmarked literature, bookmarked
    Condition cards, and drugs marked "stocked" in My Formulary.
-   Leitner-box scheduling: a card's box (0–5) sets its next-due interval;
-   "Again" resets the box, "Hard"/"Good"/"Easy" step it down/up/up-more.
+   SM-2-style scheduling: each card tracks an ease factor (starts at 2.5,
+   nudged up on "Easy" and down on "Hard"/"Again", floor 1.3) and an
+   interval in days; the next interval is previousInterval * ease (with
+   "Again" resetting the interval short and "Hard" growing it slowly).
+   Existing cards saved under the old fixed Leitner-box scheme are
+   migrated in place the first time they're read — box N maps to the
+   old SRS_INTERVALS[N] as its starting interval, ease defaults to 2.5.
    ============================================================ */
 const SRS_KEY = 'rounds_srs_v1';
-const SRS_INTERVALS = [0, 1, 3, 7, 16, 35]; // days, indexed by box
+const SRS_INTERVALS = [0, 1, 3, 7, 16, 35]; // days, indexed by box — legacy, used only for migration
 
+const SRS_EASE_DEFAULT = 2.5;
+const SRS_EASE_MIN = 1.3;
+function migrateSrsCard(card){
+  // Old cards only had {box, due, reps}. Give them a starting ease/interval
+  // derived from their existing box so nothing resets or breaks in place.
+  if(card.ease == null) card.ease = SRS_EASE_DEFAULT;
+  if(card.interval == null) card.interval = SRS_INTERVALS[Math.min(card.box || 0, SRS_INTERVALS.length - 1)] || 1;
+  return card;
+}
 function getSrsState(){
-  try{ return JSON.parse(localStorage.getItem(SRS_KEY) || '{}'); }catch(e){ return {}; }
+  let raw;
+  try{ raw = JSON.parse(localStorage.getItem(SRS_KEY) || '{}'); }catch(e){ raw = {}; }
+  Object.keys(raw).forEach(k => { raw[k] = migrateSrsCard(raw[k] || {}); });
+  return raw;
 }
 function setSrsState(obj){ try{ localStorage.setItem(SRS_KEY, JSON.stringify(obj)); }catch(e){} }
 function srsRate(key, rating){
   const state = getSrsState();
-  const card = state[key] || { box: 0, due: 0, reps: 0 };
-  if(rating === 'again') card.box = 0;
-  else if(rating === 'hard') card.box = Math.max(0, card.box - 1);
-  else if(rating === 'good') card.box = Math.min(SRS_INTERVALS.length - 1, card.box + 1);
-  else if(rating === 'easy') card.box = Math.min(SRS_INTERVALS.length - 1, card.box + 2);
+  const card = migrateSrsCard(state[key] || { box: 0, due: 0, reps: 0, ease: SRS_EASE_DEFAULT, interval: 0 });
+  if(rating === 'again'){
+    card.ease = Math.max(SRS_EASE_MIN, card.ease - 0.2);
+    card.interval = 1 / 24; // resurface within the hour rather than a fixed box reset
+    card.box = 0;
+  } else {
+    if(rating === 'hard') card.ease = Math.max(SRS_EASE_MIN, card.ease - 0.15);
+    else if(rating === 'easy') card.ease += 0.15;
+    const prevInterval = card.interval > 0 ? card.interval : 1;
+    card.interval = rating === 'hard' ? Math.max(1, prevInterval * 1.2) : Math.max(1, prevInterval * card.ease);
+    card.box = Math.min(SRS_INTERVALS.length - 1, (card.box || 0) + (rating === 'easy' ? 2 : 1));
+  }
   card.reps = (card.reps || 0) + 1;
   card.lastResult = rating;
-  card.due = Date.now() + SRS_INTERVALS[card.box] * 86400000;
+  card.due = Date.now() + card.interval * 86400000;
   state[key] = card;
   setSrsState(state);
 }
