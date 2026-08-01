@@ -6884,6 +6884,29 @@ const FONTSIZE_KEY = 'rounds_fontsize_v1';
    Recently viewed — last N "detail" views across Drugs/Conditions/
    Advances/Trials, so backtracking doesn't require re-searching.
    ============================================================ */
+/* ============================================================
+   Search history — the last ~15 "search everywhere" queries, kept
+   distinct from recently-viewed entries above (those are individual
+   items opened; this is the raw search terms typed).
+   ============================================================ */
+const SEARCH_HISTORY_KEY = 'rounds_search_history_v1';
+const SEARCH_HISTORY_MAX = 15;
+function getSearchHistory(){
+  try{ const v = JSON.parse(localStorage.getItem(SEARCH_HISTORY_KEY) || '[]'); return Array.isArray(v) ? v : []; }
+  catch(e){ return []; }
+}
+function recordSearchHistory(qRaw){
+  const q = String(qRaw || '').trim();
+  if(q.length < 2) return;
+  try{
+    let list = getSearchHistory().filter(x => x.q.toLowerCase() !== q.toLowerCase());
+    list.unshift({ q, t: new Date().toISOString() });
+    if(list.length > SEARCH_HISTORY_MAX) list = list.slice(0, SEARCH_HISTORY_MAX);
+    localStorage.setItem(SEARCH_HISTORY_KEY, JSON.stringify(list));
+  }catch(e){}
+}
+function clearSearchHistory(){ try{ localStorage.removeItem(SEARCH_HISTORY_KEY); }catch(e){} }
+
 const RECENTLY_VIEWED_KEY = 'rounds_recently_viewed_v1';
 const RECENTLY_VIEWED_MAX = 10;
 const RECENTLY_VIEWED_LABELS = {drug:'Drug', condition:'Condition', advance:'Advance', trial:'Trial'};
@@ -12820,11 +12843,38 @@ function collectGlobalSearchResults(qRaw){
   return groups;
 }
 
+function searchHistoryPanelHtml(){
+  const hist = getSearchHistory();
+  if(!hist.length) return '';
+  return `<div class="global-search-group search-history-group">
+    <h3>Recent searches <button type="button" class="search-history-clear" id="search-history-clear">Clear</button></h3>
+    ${hist.map((h,i) => `<button type="button" class="global-search-item search-history-item" data-rerun-idx="${i}">${escapeHtml(h.q)}</button>`).join('')}
+  </div>`;
+}
+function wireSearchHistoryPanel(wrap, input){
+  const hist = getSearchHistory();
+  wrap.querySelectorAll('[data-rerun-idx]').forEach(btn => {
+    btn.onclick = () => {
+      const item = hist[Number(btn.dataset.rerunIdx)];
+      if(!item || !input) return;
+      input.value = item.q;
+      haptic('Light');
+      renderGlobalSearchResults(item.q);
+      recordSearchHistory(item.q);
+    };
+  });
+  const clearBtn = wrap.querySelector('#search-history-clear');
+  if(clearBtn) clearBtn.onclick = (e) => { e.stopPropagation(); clearSearchHistory(); renderGlobalSearchResults(''); };
+}
 function renderGlobalSearchResults(qRaw){
   const wrap = document.getElementById('global-search-results');
   if(!wrap) return;
   const q = qRaw.trim();
-  if(!q){ wrap.innerHTML = ''; return; }
+  if(!q){
+    wrap.innerHTML = searchHistoryPanelHtml();
+    wireSearchHistoryPanel(wrap, document.getElementById('global-search-input'));
+    return;
+  }
   const groups = collectGlobalSearchResults(q);
   const groupDefs = [
     { key: 'literature', name: 'Literature', render: a => ({ label: a.title, sub: [a.journal, a.date].filter(Boolean).join(' · ') }) },
@@ -12887,7 +12937,13 @@ function openGlobalSearch(prefill){
   if(input){
     input.value = prefill || '';
     renderGlobalSearchResults(input.value);
-    input.oninput = () => renderGlobalSearchResults(input.value);
+    if(prefill && prefill.trim()) recordSearchHistory(prefill);
+    let historyTimer = null;
+    input.oninput = () => {
+      renderGlobalSearchResults(input.value);
+      clearTimeout(historyTimer);
+      historyTimer = setTimeout(() => recordSearchHistory(input.value), 800);
+    };
   }
   function close(){
     modal.hidden = true;
