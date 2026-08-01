@@ -1552,6 +1552,8 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-kicker{font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--evidence-dark);margin:0 0 6px;}
 .vitals-patient-name{font-family:var(--ff-display);font-size:clamp(26px,3.2vw,36px);font-weight:800;letter-spacing:-0.02em;color:var(--ink);margin:0;}
 .vitals-patient-sub{font-family:var(--ff-sans);font-size:13px;color:var(--ink-faint);margin:4px 0 0;}
+.vitals-nickname-tag{display:inline-block;margin:4px 0 0;font-family:var(--ff-sans);font-size:12.5px;font-style:italic;color:var(--ink-soft);background:var(--surface-2,var(--surface));border:1px dashed var(--line);border-radius:var(--r-sm);padding:2px 8px;}
+.vitals-nickname-tag[hidden]{display:none;}
 .vitals-patient-actions{display:flex;gap:8px;flex-wrap:wrap;}
 
 .vitals-baselines-form{margin:0 0 var(--space-5);padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);}
@@ -2905,9 +2907,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div>
           <p class="vitals-kicker" id="vitals-patient-kicker">BED —</p>
           <h3 class="vitals-patient-name" id="vitals-patient-name">—</h3>
+          <span class="vitals-nickname-tag" id="vitals-nickname-tag" hidden></span>
           <p class="vitals-patient-sub" id="vitals-patient-sub"></p>
         </div>
         <div class="vitals-patient-actions">
+          <button type="button" class="vitals-btn-outline" id="vitals-nickname-btn" title="A private memory-aid tag for this patient — just for you, never synced or exported">Nickname</button>
           <label class="vitals-isolation-select-wrap" title="Isolation / precaution status">
             <span>Isolation</span>
             <select id="vitals-isolation-select">
@@ -3020,6 +3024,18 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         </div>
         <div class="vitals-baselines-actions">
           <button type="button" class="vitals-btn-ghost" id="vitals-timeline-close-btn">Close</button>
+        </div>
+      </div>
+
+      <div class="vitals-allergies-form" id="vitals-nickname-form" hidden>
+        <div class="vitals-field">
+          <label for="vitals-nickname-input">Nickname / mnemonic <span>private memory aid, just for you — kept on this device only, never synced, never included in any export or print-out</span></label>
+          <input type="text" id="vitals-nickname-input" maxlength="60" placeholder="e.g. &quot;bed by the window, loves crosswords&quot;">
+        </div>
+        <div class="vitals-baselines-actions">
+          <button type="button" class="vitals-btn-primary" id="vitals-nickname-save">Save nickname</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-nickname-clear">Clear</button>
+          <button type="button" class="vitals-btn-ghost" id="vitals-nickname-cancel">Close</button>
         </div>
       </div>
 
@@ -5143,6 +5159,7 @@ function initVitals(){
   setupVitalsOverdueFilterToggle();
   setupVitalsNews2Preview();
   setupAllergiesForm();
+  setupNicknameForm();
   setupIsolationSelect();
   setupMaternitySection();
   setupIcuSection();
@@ -6964,6 +6981,9 @@ function renderVitalsMain(){
   if(kicker) kicker.textContent = 'BED ' + (p.bed || '—').toUpperCase() + ' · ' + DEPT_LABELS[p.department || 'general'];
   if(nameEl) nameEl.textContent = p.name;
   if(subEl) subEl.textContent = p.mrn ? `MRN ${p.mrn}` : '';
+  renderNicknameTag(p);
+  const nicknameForm = document.getElementById('vitals-nickname-form');
+  if(nicknameForm) nicknameForm.hidden = true; // avoid a stale form carrying over across patients
 
   const historyBtn = document.getElementById('vitals-history-btn');
   if(historyBtn){
@@ -8033,6 +8053,78 @@ function renderAllergyBanner(p){
   if(!text){ banner.hidden = true; banner.innerHTML = ''; return; }
   banner.hidden = false;
   banner.innerHTML = `&#9888; Allergies: <span class="allergy-list">${escapeHtml(text)}</span>`;
+}
+
+/* ---- Nickname / mnemonic — a private, personal memory-aid tag kept in
+   its own localStorage structure keyed by patient id, entirely outside
+   vitalsState.patients. This is deliberate: scheduleWardsSyncPush() and
+   pushWardsGroupPatients() push whole patient objects wholesale to
+   Firestore, and every export (CSV/SBAR/print) reads only known fields
+   off those same patient objects — keeping the nickname out of the
+   patient object entirely is what guarantees it never syncs and never
+   appears in an export, rather than relying on remembering to strip it
+   from each call site individually. ---- */
+const WARDS_NICKNAMES_KEY = 'wards_nicknames_v1';
+let wardsNicknames = null;
+function loadWardsNicknames(){
+  if(wardsNicknames) return wardsNicknames;
+  try{
+    const raw = localStorage.getItem(WARDS_NICKNAMES_KEY);
+    const parsed = raw ? JSON.parse(raw) : {};
+    wardsNicknames = (parsed && typeof parsed === 'object') ? parsed : {};
+  }catch(e){ wardsNicknames = {}; }
+  return wardsNicknames;
+}
+function getWardsNickname(patientId){
+  return loadWardsNicknames()[patientId] || '';
+}
+function setWardsNickname(patientId, value){
+  const map = loadWardsNicknames();
+  const trimmed = (value || '').trim();
+  if(trimmed) map[patientId] = trimmed; else delete map[patientId];
+  try{ localStorage.setItem(WARDS_NICKNAMES_KEY, JSON.stringify(map)); }catch(e){}
+}
+function renderNicknameTag(p){
+  const tag = document.getElementById('vitals-nickname-tag');
+  if(!tag) return;
+  const nick = p ? getWardsNickname(p.id) : '';
+  if(!nick){ tag.hidden = true; tag.textContent = ''; return; }
+  tag.hidden = false;
+  tag.textContent = `"${nick}"`;
+}
+function setupNicknameForm(){
+  const openBtn = document.getElementById('vitals-nickname-btn');
+  const form = document.getElementById('vitals-nickname-form');
+  const input = document.getElementById('vitals-nickname-input');
+  const saveBtn = document.getElementById('vitals-nickname-save');
+  const clearBtn = document.getElementById('vitals-nickname-clear');
+  const cancelBtn = document.getElementById('vitals-nickname-cancel');
+  if(!openBtn || !form || openBtn.dataset.wired) return;
+  openBtn.dataset.wired = '1';
+
+  openBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(!p) return;
+    if(input) input.value = getWardsNickname(p.id);
+    form.hidden = !form.hidden;
+    if(!form.hidden && input) setTimeout(() => input.focus(), 30);
+  });
+  if(cancelBtn) cancelBtn.addEventListener('click', () => { form.hidden = true; });
+  if(saveBtn) saveBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(!p) return;
+    setWardsNickname(p.id, input ? input.value : '');
+    form.hidden = true;
+    renderNicknameTag(p);
+    haptic('Light');
+  });
+  if(clearBtn) clearBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(!p) return;
+    if(input) input.value = '';
+    setWardsNickname(p.id, '');
+    renderNicknameTag(p);
+  });
 }
 
 function setupAllergiesForm(){
