@@ -356,6 +356,20 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .threeam-body{font-family:var(--ff-sans);font-size:22px;line-height:1.5;font-weight:600;color:var(--ink);margin:14px 0 10px;}
 .threeam-fallback-note{display:block;margin-top:8px;}
 
+/* ---- Bookmark collections manager ---- */
+.collections-new-row{display:flex;gap:8px;margin-bottom:12px;}
+.collections-new-row input{flex:1;}
+.collection-chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+.collection-chip-wrap{display:inline-flex;align-items:center;gap:2px;}
+.collection-chip{border:1px solid var(--line);background:var(--paper);color:var(--ink-soft);border-radius:var(--r-pill);
+  padding:5px 12px;font-family:var(--ff-sans);font-size:12px;font-weight:600;cursor:pointer;}
+.collection-chip.active{background:var(--cta-bg);color:var(--cta-ink);border-color:transparent;}
+.collection-chip-del{background:none;border:none;color:var(--ink-faint);font-size:14px;cursor:pointer;padding:2px 4px;}
+.collection-assign-row{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+.collection-assign-chip{border:1px dashed var(--line);background:none;color:var(--ink-faint);border-radius:var(--r-pill);
+  padding:3px 10px;font-family:var(--ff-sans);font-size:11.5px;font-weight:600;cursor:pointer;}
+.collection-assign-chip.is-member{border-style:solid;border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
+
 /* ---- "Case of the day" mystery vignette — same gentle corner-card
    pattern, top-right so it can coexist with the bottom corner cards. ---- */
 .case-of-day-card{position:fixed;top:20px;right:20px;z-index:1340;width:320px;max-width:calc(100vw - 40px);
@@ -2251,6 +2265,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Collections</strong><span class="settings-sub">Group saved bookmarks, e.g. "Finals review"</span></div>
+      <button type="button" class="settings-btn" id="settings-view-collections">Manage</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Demo mode</strong><span class="settings-sub">Sample bookmarks, for showing colleagues</span></div>
       <button type="button" class="settings-btn" id="settings-demo-toggle">Try demo mode</button>
     </div>
@@ -2389,6 +2408,22 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <h2 class="onb-title serif threeam-name" id="threeam-name"></h2>
     <div class="threeam-body" id="threeam-body"></div>
     <p class="settings-sub threeam-fallback-note" id="threeam-fallback-note" hidden>No single curated critical fact for this entry yet — showing the normal summary instead.</p>
+  </div>
+</div>
+
+<!-- ===== Bookmark collections (Settings > Collections) ===== -->
+<div class="rename-overlay" id="collections-modal" role="dialog" aria-modal="true" aria-labelledby="collections-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="collections-close" aria-label="Close collections">&times;</button>
+    <p class="onb-eyebrow">BOOKMARK COLLECTIONS</p>
+    <h2 class="onb-title serif" id="collections-title">Collections</h2>
+    <p class="settings-sub" style="display:block;margin:-4px 0 12px;">Group saved articles and Conditions into a few named collections, e.g. "Finals review". A bookmark can belong to more than one.</p>
+    <div class="collections-new-row">
+      <input type="text" id="collections-new-input" class="bookmark-note-input" style="min-height:auto;" placeholder="New collection name…" maxlength="40">
+      <button type="button" class="settings-btn" id="collections-add-btn">Add</button>
+    </div>
+    <div class="collection-chips" id="collections-chips"></div>
+    <div class="crashlog-list" id="collections-item-list"></div>
   </div>
 </div>
 
@@ -7694,6 +7729,75 @@ function setConditionBookmarks(obj){
   try{ localStorage.setItem(COND_BOOKMARK_KEY, JSON.stringify(obj)); }catch(e){}
 }
 function isConditionBookmarked(name){ return !!getConditionBookmarks()[name]; }
+
+/* ============================================================
+   Bookmark folders/collections — light manual grouping on top of
+   existing bookmark data (article + condition bookmarks), stored as
+   metadata rather than a parallel bookmark system: a list of named
+   collections, plus a membership map from a stable bookmark key to the
+   collection ids it belongs to. A bookmark can belong to more than one.
+   ============================================================ */
+const BOOKMARK_COLLECTIONS_KEY = 'rounds_bookmark_collections_v1';
+function bookmarkKeyFor(kind, id){ return kind + ':' + id; }
+function getCollectionsData(){
+  try{
+    const v = JSON.parse(localStorage.getItem(BOOKMARK_COLLECTIONS_KEY) || '{}');
+    return {
+      collections: Array.isArray(v.collections) ? v.collections : [],
+      membership: (v.membership && typeof v.membership === 'object') ? v.membership : {}
+    };
+  }catch(e){ return { collections: [], membership: {} }; }
+}
+function setCollectionsData(data){
+  try{ localStorage.setItem(BOOKMARK_COLLECTIONS_KEY, JSON.stringify(data)); }catch(e){}
+}
+function createCollection(name){
+  const trimmed = (name || '').trim().slice(0, 40);
+  if(!trimmed) return null;
+  const data = getCollectionsData();
+  const id = 'c' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+  data.collections.push({ id, name: trimmed });
+  setCollectionsData(data);
+  return id;
+}
+function renameCollection(id, name){
+  const trimmed = (name || '').trim().slice(0, 40);
+  if(!trimmed) return;
+  const data = getCollectionsData();
+  const c = data.collections.find(x => x.id === id);
+  if(c){ c.name = trimmed; setCollectionsData(data); }
+}
+function deleteCollection(id){
+  const data = getCollectionsData();
+  data.collections = data.collections.filter(x => x.id !== id);
+  Object.keys(data.membership).forEach(key => {
+    data.membership[key] = (data.membership[key] || []).filter(cid => cid !== id);
+    if(!data.membership[key].length) delete data.membership[key];
+  });
+  setCollectionsData(data);
+}
+function getCollectionsForBookmark(key){
+  const data = getCollectionsData();
+  return data.membership[key] || [];
+}
+function toggleBookmarkInCollection(key, collectionId){
+  const data = getCollectionsData();
+  const cur = data.membership[key] || [];
+  const idx = cur.indexOf(collectionId);
+  if(idx === -1) cur.push(collectionId); else cur.splice(idx, 1);
+  if(cur.length) data.membership[key] = cur; else delete data.membership[key];
+  setCollectionsData(data);
+}
+function allSavedBookmarkEntries(){
+  const out = [];
+  Object.values(getBookmarks()).forEach(a => {
+    if(a && a.pmid) out.push({ key: bookmarkKeyFor('lit', a.pmid), label: a.title || 'Untitled article', type: 'Literature' });
+  });
+  Object.keys(getConditionBookmarks()).forEach(name => {
+    out.push({ key: bookmarkKeyFor('cond', name), label: name, type: 'Condition' });
+  });
+  return out;
+}
 /* Tiny non-cryptographic string hash (djb2) — enough to detect drift
    in curated content between when a bookmark was saved and now.
    Shared mechanism powering both content-provenance-on-bookmarks and
@@ -13082,6 +13186,9 @@ function openSettings(){
   const passportBtn = document.getElementById('settings-view-passport');
   if(passportBtn) passportBtn.onclick = () => { haptic('Light'); openSpecialtyPassport(); };
 
+  const collectionsBtn = document.getElementById('settings-view-collections');
+  if(collectionsBtn) collectionsBtn.onclick = () => { haptic('Light'); openCollectionsManager(); };
+
   const demoBtn = document.getElementById('settings-demo-toggle');
   function syncDemoBtn(){
     if(!demoBtn) return;
@@ -13331,6 +13438,98 @@ function jumpToRecentlyViewed(item){
     window.open(item.url, '_blank', 'noopener');
   }
 }
+/* ============================================================
+   Bookmark collections manager (Settings > Collections)
+   ============================================================ */
+let collectionsFilterState = 'all';
+function renderCollectionsManager(){
+  const data = getCollectionsData();
+  const chipsWrap = document.getElementById('collections-chips');
+  const listEl = document.getElementById('collections-item-list');
+  if(!chipsWrap || !listEl) return;
+  if(collectionsFilterState !== 'all' && !data.collections.some(c => c.id === collectionsFilterState)) collectionsFilterState = 'all';
+  chipsWrap.innerHTML = `<button type="button" class="collection-chip${collectionsFilterState === 'all' ? ' active' : ''}" data-filter="all">All</button>`
+    + data.collections.map(c => `<span class="collection-chip-wrap"><button type="button" class="collection-chip${collectionsFilterState === c.id ? ' active' : ''}" data-filter="${escapeHtml(c.id)}">${escapeHtml(c.name)}</button><button type="button" class="collection-chip-del" data-del="${escapeHtml(c.id)}" title="Delete collection" aria-label="Delete ${escapeHtml(c.name)}">&times;</button></span>`).join('');
+
+  const entries = allSavedBookmarkEntries();
+  const visible = collectionsFilterState === 'all' ? entries : entries.filter(e => (data.membership[e.key] || []).includes(collectionsFilterState));
+  if(!entries.length){
+    listEl.innerHTML = '<div class="crashlog-empty">No saved bookmarks yet — save an article or Condition first, then organize them here.</div>';
+  } else if(!visible.length){
+    listEl.innerHTML = '<div class="crashlog-empty">Nothing in this collection yet.</div>';
+  } else if(!data.collections.length){
+    listEl.innerHTML = '<div class="crashlog-empty">Create a collection above, then tap it on each saved item to add it.</div>';
+  } else {
+    listEl.innerHTML = visible.map(e => {
+      const memberIds = data.membership[e.key] || [];
+      const chips = data.collections.map(c => `<button type="button" class="collection-assign-chip${memberIds.includes(c.id) ? ' is-member' : ''}" data-key="${escapeHtml(e.key)}" data-cid="${escapeHtml(c.id)}">${memberIds.includes(c.id) ? '✓ ' : ''}${escapeHtml(c.name)}</button>`).join('');
+      return `<div class="crashlog-entry collection-item">
+        <span class="crashlog-time">${escapeHtml(e.type)}</span>
+        <p class="crashlog-msg">${escapeHtml(e.label)}</p>
+        <div class="collection-assign-row">${chips}</div>
+      </div>`;
+    }).join('');
+  }
+}
+function openCollectionsManager(){
+  const modal = document.getElementById('collections-modal');
+  if(!modal) return;
+  renderCollectionsManager();
+  const addBtn = document.getElementById('collections-add-btn');
+  const input = document.getElementById('collections-new-input');
+  if(addBtn){
+    addBtn.onclick = () => {
+      if(!input || !input.value.trim()) return;
+      createCollection(input.value);
+      input.value = '';
+      haptic('Light');
+      renderCollectionsManager();
+    };
+  }
+  if(input){
+    input.onkeydown = (e) => { if(e.key === 'Enter'){ e.preventDefault(); addBtn.click(); } };
+  }
+  const chipsWrap = document.getElementById('collections-chips');
+  if(chipsWrap){
+    chipsWrap.onclick = (e) => {
+      const del = e.target.closest('.collection-chip-del');
+      if(del){
+        if(confirm('Delete this collection? Saved bookmarks stay saved, they just lose this grouping.')){
+          deleteCollection(del.dataset.del);
+          haptic('Medium');
+          renderCollectionsManager();
+        }
+        return;
+      }
+      const chip = e.target.closest('.collection-chip[data-filter]');
+      if(chip){
+        collectionsFilterState = chip.dataset.filter;
+        haptic('Light');
+        renderCollectionsManager();
+      }
+    };
+  }
+  const listEl = document.getElementById('collections-item-list');
+  if(listEl){
+    listEl.onclick = (e) => {
+      const chip = e.target.closest('.collection-assign-chip');
+      if(!chip) return;
+      toggleBookmarkInCollection(chip.dataset.key, chip.dataset.cid);
+      haptic('Light');
+      renderCollectionsManager();
+    };
+  }
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('collections-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+
 function openRecentlyViewed(){
   const modal = document.getElementById('recent-modal');
   if(!modal) return;
@@ -13376,7 +13575,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','drill-modal','cases-modal','ask-modal','graph-modal','passport-modal','threeam-modal']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','drill-modal','cases-modal','ask-modal','graph-modal','passport-modal','threeam-modal','collections-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
