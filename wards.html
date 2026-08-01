@@ -177,6 +177,27 @@
   --shadow-lift: 0 8px 40px rgba(95,166,255,0.10), 0 30px 60px rgba(0,0,0,0.55);
 }
 
+/* ---- night-shift auto-dim — deeper/warmer palette layered on top of
+   the existing dark theme during configurable night hours; a class
+   toggle only, never active unless dark theme is also on. ---- */
+html.wards-night-dim[data-theme="dark"] {
+  --paper:          #05060A;
+  --paper-deep:     #08090C;
+  --surface:        #0E0D10;
+  --surface-raised: #131114;
+  --ink:            #EFE7DC;
+  --ink-soft:       #A79E90;
+  --line:           #221E1A;
+  --line-soft:      #191613;
+  --evidence:        #D98A4E;
+  --evidence-dark:   #E6A56E;
+  --evidence-bg:     #2A1B0E;
+  --shell:          #030303;
+  --shell-raised:   #0C0A08;
+  --header-bg:      rgba(14,13,16,0.9);
+  --header-line:    #221E1A;
+}
+
 /* ---- reset ---- */
 *,*::before,*::after{box-sizing:border-box;}
 html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:var(--ff-sans);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility;}
@@ -2617,6 +2638,12 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <p class="qh-note">Shifts status colours (NEWS2 bands, trend badges, isolation flags) off a red/green-only scheme and adds icon/label redundancy.</p>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-battery-saver-toggle"> Battery saver</label>
         <p class="qh-note" id="wards-battery-saver-note">Reduces animation and transition effects. Auto-enables on low battery where the device reports it.</p>
+        <label class="qh-row ws-row"><input type="checkbox" id="wards-night-dim-toggle"> Night-shift auto-dim</label>
+        <div class="qh-times" id="wards-night-dim-times">
+          <label>Start <input type="time" id="wards-night-dim-start" value="23:00"></label>
+          <label>End <input type="time" id="wards-night-dim-end" value="07:00"></label>
+        </div>
+        <p class="qh-note">When on and it's dark theme during this window, shifts to a deeper, warmer palette. Default 23:00&ndash;07:00.</p>
         <div class="ws-row">
           <span class="ws-label">Demo mode<span class="ws-sub">Fake sample patients, for showing colleagues</span></span>
           <button type="button" class="settings-btn" id="wards-demo-toggle-btn">Try demo mode</button>
@@ -3496,6 +3523,61 @@ function toggleA11yMode(){
   const next = !document.documentElement.classList.contains('wards-hc');
   applyA11yMode(next);
   try{ localStorage.setItem(A11Y_KEY, next ? 'hc' : 'off'); }catch(e){}
+}
+
+/* ============================================================
+   Night-shift auto-dim — opt-in, applies html.wards-night-dim during a
+   configurable local-time window; only visually changes anything when
+   the dark theme is also active (see the CSS override block above).
+   ============================================================ */
+const NIGHT_DIM_KEY = 'wards_night_dim_v1';
+function getNightDimPrefs(){
+  try{
+    const raw = localStorage.getItem(NIGHT_DIM_KEY);
+    if(!raw) return { enabled: false, start: '23:00', end: '07:00' };
+    const parsed = JSON.parse(raw);
+    return { enabled: !!parsed.enabled, start: parsed.start || '23:00', end: parsed.end || '07:00' };
+  }catch(e){ return { enabled: false, start: '23:00', end: '07:00' }; }
+}
+function saveNightDimPrefs(prefs){
+  try{ localStorage.setItem(NIGHT_DIM_KEY, JSON.stringify(prefs)); }catch(e){}
+}
+function isWithinNightWindow(start, end, now){
+  const [sh, sm] = start.split(':').map(Number);
+  const [eh, em] = end.split(':').map(Number);
+  const startMins = sh * 60 + sm, endMins = eh * 60 + em;
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  if(startMins === endMins) return false;
+  if(startMins < endMins) return nowMins >= startMins && nowMins < endMins;
+  return nowMins >= startMins || nowMins < endMins;
+}
+function updateNightDimState(){
+  const prefs = getNightDimPrefs();
+  const active = prefs.enabled && isWithinNightWindow(prefs.start, prefs.end, new Date());
+  document.documentElement.classList.toggle('wards-night-dim', active);
+}
+function setupNightDim(){
+  const toggle = document.getElementById('wards-night-dim-toggle');
+  const startInput = document.getElementById('wards-night-dim-start');
+  const endInput = document.getElementById('wards-night-dim-end');
+  const prefs = getNightDimPrefs();
+  if(toggle) toggle.checked = prefs.enabled;
+  if(startInput) startInput.value = prefs.start;
+  if(endInput) endInput.value = prefs.end;
+  updateNightDimState();
+  [toggle, startInput, endInput].forEach(el => {
+    if(!el || el.dataset.wired) return;
+    el.dataset.wired = '1';
+    el.addEventListener('change', () => {
+      saveNightDimPrefs({
+        enabled: toggle ? toggle.checked : false,
+        start: startInput ? startInput.value || '23:00' : '23:00',
+        end: endInput ? endInput.value || '07:00' : '07:00'
+      });
+      updateNightDimState();
+    });
+  });
+  setInterval(updateNightDimState, 60000);
 }
 
 /* ============================================================
@@ -8809,6 +8891,7 @@ function boot(){
   setupQuietHoursUI();
   setupWardsSettingsUI();
   setupBatterySaver();
+  setupNightDim();
   const exportBtn = document.getElementById('wards-export-all');
   if(exportBtn) exportBtn.onclick = () => { haptic('Light'); exportAllWardsData(); };
   setupWardsTabs();
