@@ -1283,6 +1283,9 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .cond-bookmark-btn.saved{background:var(--fresh-bg);border-color:var(--fresh);color:var(--fresh);}
 .cond-bookmark-btn .star{width:12px;height:12px;flex-shrink:0;}
 
+/* ---- search-everywhere concept-match tag ---- */
+.gs-semantic-tag{display:inline-block;font-family:var(--ff-mono);font-size:9.5px;font-weight:700;letter-spacing:0.03em;text-transform:uppercase;color:var(--shell-ink-soft);border:1px solid var(--shell-line);border-radius:20px;padding:1px 6px;margin-left:6px;}
+
 /* ---- print-only study sheet ---- */
 #study-sheet{display:none;}
 .ss-title{font-family:var(--ff-sans);font-size:22px;font-weight:700;margin:0 0 4px;}
@@ -11881,18 +11884,79 @@ function maybeShowWhatsNew(){
 }
 
 /* ============================================================
+   Concept map — a hand-curated symptom/phrase → condition/drug synonym
+   expansion table. This is NOT real semantic search/embeddings: there is
+   no network or CDN access at runtime, so a local embedding model isn't
+   feasible here. This is an honest, much cheaper approximation — fixed
+   curated mappings plus simple word-overlap scoring — that lets a
+   descriptive phrase surface a named entry it doesn't literally contain.
+   Extend CONCEPT_MAP with more entries over time; it is not exhaustive.
+   ============================================================ */
+const CONCEPT_MAP = [
+  { triggers:['chest pain worse lying down','chest pain worse when lying flat','pain relieved sitting forward','sharp chest pain worse breathing'], expands:['pericarditis'] },
+  { triggers:['crushing chest pain radiating to jaw','chest pain radiating to left arm','pressure in the chest with sweating'], expands:['myocardial infarction','acute coronary syndrome'] },
+  { triggers:['worst headache of my life sudden onset','thunderclap headache','sudden severe headache with neck stiffness'], expands:['subarachnoid hemorrhage'] },
+  { triggers:['fever neck stiffness confusion','headache fever photophobia','stiff neck and rash'], expands:['meningitis','bacterial meningitis'] },
+  { triggers:['deep breathing vomiting known diabetic','fruity breath high glucose vomiting','abdominal pain vomiting very high glucose'], expands:['diabetic ketoacidosis'] },
+  { triggers:['leg swelling one side pain warm calf','calf pain and swelling after surgery','painful swollen leg after long flight'], expands:['deep vein thrombosis','pulmonary embolism'] },
+  { triggers:['sudden shortness of breath pleuritic chest pain','breathless and pleuritic chest pain after immobility'], expands:['pulmonary embolism'] },
+  { triggers:['yellow skin and eyes with dark urine','jaundice with itching','yellowing of the skin abdominal pain'], expands:['acute liver failure','hepatorenal syndrome'] },
+  { triggers:['facial swelling wheeze after medication','rash and floppy after a drug dose','swelling lips tongue after a bite or sting'], expands:['anaphylaxis'] },
+  { triggers:['bleeding gums after a snake bite','swollen painful limb after snakebite','blood not clotting after a bite'], expands:['snakebite envenomation'] },
+  { triggers:['vomiting blood known liver disease','black tarry stools with cirrhosis','large volume blood in vomit'], expands:['upper gi bleeding'] },
+  { triggers:['reduced urine output rising creatinine','falling urine output after vomiting diarrhea','rising creatinine on antibiotics'], expands:['acute kidney injury'] },
+  { triggers:['muscle rigidity high fever confusion on antipsychotic','fever and rigidity after antipsychotic dose'], expands:['neuroleptic malignant syndrome'] },
+  { triggers:['agitation clonus fever on antidepressants','confusion tremor fever on ssri and tramadol'], expands:['serotonin syndrome'] },
+  { triggers:['swelling of the face and throat on ace inhibitor','lip and tongue swelling on blood pressure medicine'], expands:['angioedema'] },
+  { triggers:['low sodium with seizure and confusion','headache confusion seizure after iv fluids'], expands:['hyponatremia','siadh'] },
+  { triggers:['irregular pulse palpitations breathless','fast irregular heartbeat'], expands:['atrial fibrillation'] },
+  { triggers:['muscle pain weakness dark urine on statin','muscle breakdown on a statin'], expands:['rhabdomyolysis'] },
+  { triggers:['high potassium ecg changes on ace inhibitor','peaked t waves weakness on kidney medicine'], expands:['hyperkalemia'] },
+  { triggers:['confusion low blood sugar on sulfonylurea','shaky sweaty confused on diabetes tablet'], expands:['hypoglycemia'] },
+  { triggers:['fever cough breathless low blood pressure elderly','confusion fever low blood pressure from nursing home'], expands:['community-acquired pneumonia','septic shock'] },
+  { triggers:['painful blistering rash after starting a new drug','skin peeling off after starting an anticonvulsant'], expands:['stevens-johnson syndrome','toxic epidermal necrolysis'] }
+];
+function normConceptText(s){ return (s || '').toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim(); }
+function conceptWordSet(s){ return new Set(normConceptText(s).split(' ').filter(w => w.length > 2)); }
+function expandConceptQuery(qRaw){
+  const qWords = conceptWordSet(qRaw);
+  const terms = new Set();
+  const concepts = [];
+  if(qWords.size === 0) return { terms, concepts };
+  CONCEPT_MAP.forEach(entry => {
+    let best = 0;
+    entry.triggers.forEach(trig => {
+      const tWords = conceptWordSet(trig);
+      if(tWords.size === 0) return;
+      let shared = 0;
+      tWords.forEach(w => { if(qWords.has(w)) shared++; });
+      const ratio = shared / tWords.size;
+      if(ratio > best) best = ratio;
+    });
+    if(best >= 0.45){
+      entry.expands.forEach(t => { terms.add(t.toLowerCase()); concepts.push(t); });
+    }
+  });
+  return { terms, concepts };
+}
+
+/* ============================================================
    Search everywhere — a lightweight combined search over whatever's
    already loaded/cached in Literature, Drugs, Conditions, Advances,
    and Trials. Deliberately NOT a live re-fetch or a shared index: each
    tab keeps its own independent search untouched, this just filters
    in-memory/cached state client-side, capped per group.
+   The "concept match" layer on top is a curated synonym/word-overlap
+   table (see CONCEPT_MAP above), not real semantic embeddings.
    ============================================================ */
 const GLOBAL_SEARCH_CAP = 8;
 function collectGlobalSearchResults(qRaw){
   const q = qRaw.trim().toLowerCase();
-  const groups = { literature: [], drug: [], condition: [], advance: [], trial: [] };
+  const groups = { literature: [], drug: [], condition: [], advance: [], trial: [], semanticDrug: new Set(), semanticCondition: new Set() };
   if(!q) return groups;
   const contains = (s) => !!s && String(s).toLowerCase().includes(q);
+  const { terms: conceptTerms } = expandConceptQuery(q);
+  const containsAny = (s) => { if(!s) return false; const sl = String(s).toLowerCase(); for(const t of conceptTerms){ if(sl.includes(t)) return true; } return false; };
 
   // Literature — the currently loaded specialty/search results plus every
   // specialty feed cached from a prior visit, deduped by PMID.
@@ -11908,18 +11972,35 @@ function collectGlobalSearchResults(qRaw){
     }
   }
 
-  // Drugs — lookups already performed this session.
+  // Drugs — lookups already performed this session. A literal substring
+  // match wins; if there's room left, the curated concept map (see
+  // CONCEPT_MAP) can also surface a drug the query doesn't literally name.
   for(const d of lastDrugResults){
     if(groups.drug.length >= GLOBAL_SEARCH_CAP) break;
     if(contains(d.brand) || contains(d.generic)) groups.drug.push(d);
   }
+  if(conceptTerms.size){
+    for(const d of lastDrugResults){
+      if(groups.drug.length >= GLOBAL_SEARCH_CAP) break;
+      if(groups.drug.indexOf(d) !== -1) continue;
+      if(containsAny(d.brand) || containsAny(d.generic)){ groups.drug.push(d); groups.semanticDrug.add(d.id); }
+    }
+  }
 
   // Conditions — the full local syndrome/genetic/congenital lists are always
-  // in memory regardless of whether that tab's been visited yet.
+  // in memory regardless of whether that tab's been visited yet. Same
+  // literal-first, then concept-map fallback pattern as Drugs above.
   const condSource = [].concat(SYNDROMES, GENETIC_CONDITIONS, CONGENITAL_DISORDERS);
   for(const c of condSource){
     if(groups.condition.length >= GLOBAL_SEARCH_CAP) break;
     if(contains(c.name) || contains(c.desc)) groups.condition.push(c);
+  }
+  if(conceptTerms.size){
+    for(const c of condSource){
+      if(groups.condition.length >= GLOBAL_SEARCH_CAP) break;
+      if(groups.condition.indexOf(c) !== -1) continue;
+      if(containsAny(c.name) || containsAny(c.desc)){ groups.condition.push(c); groups.semanticCondition.add(c.name); }
+    }
   }
 
   // Advances — only what's been fetched after a visit to that tab.
@@ -11964,7 +12045,8 @@ function renderGlobalSearchResults(qRaw){
       <h3>${escapeHtml(g.name)} (${groups[g.key].length})</h3>
       ${groups[g.key].map((item, i) => {
         const { label, sub } = g.render(item);
-        return `<button type="button" class="global-search-item" data-group="${g.key}" data-idx="${i}">${escapeHtml(label || '(untitled)')}${sub ? `<span class="gs-sub">${escapeHtml(sub)}</span>` : ''}</button>`;
+        const isSemantic = (g.key === 'drug' && groups.semanticDrug.has(item.id)) || (g.key === 'condition' && groups.semanticCondition.has(item.name));
+        return `<button type="button" class="global-search-item" data-group="${g.key}" data-idx="${i}">${escapeHtml(label || '(untitled)')}${isSemantic ? '<span class="gs-semantic-tag">related match</span>' : ''}${sub ? `<span class="gs-sub">${escapeHtml(sub)}</span>` : ''}</button>`;
       }).join('')}
     </div>`).join('');
   wrap.querySelectorAll('.global-search-item').forEach(btn => {
