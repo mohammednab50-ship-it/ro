@@ -439,6 +439,8 @@ nav.chapters .chapters-eyebrow{font-family:var(--ff-mono);font-size:10.5px;font-
 .chapter-mine-toggle.is-mine{color:var(--fresh);}
 .chapter-mine-toggle.is-mine svg path{fill-opacity:1 !important;}
 .vitals-mine-filter{display:flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);margin:0 0 14px 4px;cursor:pointer;}
+#vitals-roster-sort-wrap{display:flex;flex-direction:column;align-items:stretch;gap:4px;margin:0 0 14px 4px;font-size:11.5px;}
+#vitals-roster-sort-wrap select{width:100%;}
 .vitals-sbar-all-btn{width:100%;margin:0 0 14px;white-space:normal;}
 .vitals-mine-filter input{cursor:pointer;}
 .chapter-btn .chapter-num{font-family:var(--ff-display);font-size:20px;font-weight:400;color:var(--ink-faint);width:32px;flex-shrink:0;line-height:1;transition:color var(--dur-base) var(--ease-out);}
@@ -2814,6 +2816,16 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     </label>
     <button type="button" class="vitals-btn-outline vitals-sbar-all-btn" id="vitals-sbar-all-btn" title="Generate one combined SBAR handover for every patient marked as yours this shift">SBAR &mdash; my patients this shift</button>
     <button type="button" class="vitals-btn-outline vitals-sbar-all-btn" id="vitals-endshift-btn" title="Your shift recap plus an aggregate of what's due across your active patients">End-of-shift summary</button>
+    <label class="vitals-isolation-select-wrap" id="vitals-roster-sort-wrap" title="How the patient list below is ordered">
+      <span>Sort by</span>
+      <select id="vitals-roster-sort">
+        <option value="default">Default (add order)</option>
+        <option value="acuity">Acuity — highest NEWS2 first</option>
+        <option value="bed">Bed number</option>
+        <option value="overdue">Time since last reading — longest first</option>
+        <option value="name">Alphabetical — name</option>
+      </select>
+    </label>
     <ol class="chapter-list" id="patient-list"></ol>
     <button type="button" class="vitals-add-patient-btn" id="vitals-add-patient-btn">+ Add patient</button>
     <button type="button" class="vitals-add-patient-btn vitals-btn-outline" id="vitals-scan-patient-btn" hidden>&#128247; Scan patient ID</button>
@@ -5189,6 +5201,7 @@ function initVitals(){
   setupVitalsLogSearch();
   setupVitalsMineFilterToggle();
   setupVitalsOverdueFilterToggle();
+  setupRosterSortControl();
   setupVitalsNews2Preview();
   setupAllergiesForm();
   setupNicknameForm();
@@ -5331,6 +5344,54 @@ function setDefaultVitalsView(v){
 let vitalsMineFilterActive = false;
 let vitalsOverdueFilterActive = false;
 
+/* ---- configurable roster sort order — a per-device preference, applied
+   consistently every time the list renders. "Acuity" reuses computeNews2()
+   against each patient's latest reading rather than any separate scoring;
+   patients with no reading yet always sort last within that mode. ---- */
+const WARDS_ROSTER_SORT_KEY = 'wards_roster_sort_v1';
+function getRosterSort(){
+  try{
+    const v = localStorage.getItem(WARDS_ROSTER_SORT_KEY);
+    if(['default','acuity','bed','overdue','name'].includes(v)) return v;
+  }catch(e){}
+  return 'default';
+}
+function setRosterSort(v){
+  try{ localStorage.setItem(WARDS_ROSTER_SORT_KEY, v); }catch(e){}
+}
+function sortRosterPatients(patients){
+  const mode = getRosterSort();
+  if(mode === 'default') return patients;
+  const withIdx = patients.map((p, i) => ({ p, i }));
+  const cmp = {
+    acuity: (a, b) => {
+      const la = latestVitalsEntryFor(a.p), lb = latestVitalsEntryFor(b.p);
+      const na = la ? computeNews2(la, a.p) : null, nb = lb ? computeNews2(lb, b.p) : null;
+      const sa = (na && na.dataPresent) ? na.score : -1, sb = (nb && nb.dataPresent) ? nb.score : -1;
+      return sb - sa;
+    },
+    bed: (a, b) => String(a.p.bed || '').localeCompare(String(b.p.bed || ''), undefined, { numeric: true }),
+    overdue: (a, b) => {
+      const ta = lastVitalsReadingTime(a.p), tb = lastVitalsReadingTime(b.p);
+      return (ta === null ? -Infinity : ta) - (tb === null ? -Infinity : tb);
+    },
+    name: (a, b) => String(a.p.name || '').localeCompare(String(b.p.name || ''))
+  }[mode];
+  if(!cmp) return patients;
+  withIdx.sort((a, b) => cmp(a, b) || (a.i - b.i));
+  return withIdx.map(x => x.p);
+}
+function setupRosterSortControl(){
+  const select = document.getElementById('vitals-roster-sort');
+  if(!select || select.dataset.wired) return;
+  select.dataset.wired = '1';
+  select.value = getRosterSort();
+  select.addEventListener('change', () => {
+    setRosterSort(select.value);
+    renderPatientList();
+  });
+}
+
 // "Who haven't I seen" sweep — how many hours without a logged reading
 // before a patient counts as overdue, per department. ICU patients are
 // meant to be checked far more often than a stable general-ward patient;
@@ -5388,6 +5449,7 @@ function renderPatientList(){
   if(vitalsMineFilterActive) patients = patients.filter(p => p.mine);
   const overdueCount = vitalsState.patients.filter(p => isPatientActive(p) && isVitalsPatientOverdue(p, now)).length;
   if(vitalsOverdueFilterActive) patients = patients.filter(p => isVitalsPatientOverdue(p, now));
+  patients = sortRosterPatients(patients);
 
   const overdueBanner = document.getElementById('vitals-overdue-banner');
   if(overdueBanner){
