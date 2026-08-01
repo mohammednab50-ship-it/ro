@@ -7249,6 +7249,19 @@ function setPlainMechanism(on){
   if(typeof window.reRenderFor_syndromes === 'function') window.reRenderFor_syndromes();
 }
 
+// Bug found during cleanup pass: getVisualAnalogyMode/setVisualAnalogyMode
+// were called (settings toggle, syndromeRowHtml) but never defined anywhere
+// in this file — every openSettings() call and every Conditions-tab render
+// threw a ReferenceError. Backing them properly, same pattern as above.
+const VISUAL_ANALOGY_KEY = 'rounds_visual_analogy_v1';
+function getVisualAnalogyMode(){
+  try{ return localStorage.getItem(VISUAL_ANALOGY_KEY) === '1'; }catch(e){ return false; }
+}
+function setVisualAnalogyMode(on){
+  try{ localStorage.setItem(VISUAL_ANALOGY_KEY, on ? '1' : '0'); }catch(e){}
+  if(typeof window.reRenderFor_syndromes === 'function') window.reRenderFor_syndromes();
+}
+
 /* ---- Battery saver — manual Settings toggle, or auto-enabled via
    navigator.getBattery() where the browser implements it (feature-
    detected; no-ops silently where it isn't, e.g. iOS Safari/Firefox).
