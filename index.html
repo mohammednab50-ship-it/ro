@@ -348,6 +348,14 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .passport-stamp-name{font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--ink-soft);line-height:1.3;}
 .passport-stamp.is-collected .passport-stamp-name{color:var(--ink);}
 
+/* ---- "Explain like it's 3am" mode — deliberately large, sparse text ---- */
+.syndrome-3am-btn{font-family:var(--ff-mono);font-size:11px;font-weight:600;color:var(--evidence-dark);background:none;border:none;padding:0;cursor:pointer;}
+.syndrome-3am-btn:hover{text-decoration:underline;}
+.threeam-card{max-width:480px;}
+.threeam-name{font-size:22px;line-height:1.25;}
+.threeam-body{font-family:var(--ff-sans);font-size:22px;line-height:1.5;font-weight:600;color:var(--ink);margin:14px 0 10px;}
+.threeam-fallback-note{display:block;margin-top:8px;}
+
 /* ---- "Case of the day" mystery vignette — same gentle corner-card
    pattern, top-right so it can coexist with the bottom corner cards. ---- */
 .case-of-day-card{position:fixed;top:20px;right:20px;z-index:1340;width:320px;max-width:calc(100vw - 40px);
@@ -2370,6 +2378,17 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <p class="settings-sub" id="passport-summary" style="display:block;margin:-4px 0 14px;"></p>
     <div class="passport-grid" id="passport-grid"></div>
     <p class="settings-sub" style="display:block;margin-top:14px;">Based on specialties you've browsed, pinned, or saved a Condition from — no ranks, just what you've touched.</p>
+  </div>
+</div>
+
+<!-- ===== "Explain like it's 3am" mode — stripped-down single-fact view ===== -->
+<div class="rename-overlay" id="threeam-modal" role="dialog" aria-modal="true" aria-labelledby="threeam-name" hidden>
+  <div class="rename-card settings-card threeam-card" role="document">
+    <button type="button" class="onb-close" id="threeam-close" aria-label="Close">&times;</button>
+    <p class="onb-eyebrow">🌙 3AM MODE</p>
+    <h2 class="onb-title serif threeam-name" id="threeam-name"></h2>
+    <div class="threeam-body" id="threeam-body"></div>
+    <p class="settings-sub threeam-fallback-note" id="threeam-fallback-note" hidden>No single curated critical fact for this entry yet — showing the normal summary instead.</p>
   </div>
 </div>
 
@@ -9305,6 +9324,66 @@ const VISUAL_ANALOGY = {
   'Metabolic syndrome':'Several dashboard warning lights — belly fat, blood sugar, blood pressure, cholesterol — switching on together rather than one at a time, and each one lit makes the others more likely to stay lit too.'
 };
 
+/* Curated single "most decision-relevant fact" per entry for "Explain
+   like it's 3am" mode — deliberately small. Only entries with a genuinely
+   clear, singular, actionable takeaway are included; everything else
+   gracefully falls back to the normal (glossified) description instead
+   of forcing a fact that doesn't exist. */
+const THREE_AM_FACT = {
+  'Serotonin syndrome':'Stop every serotonergic drug now. Core triad: autonomic instability, neuromuscular hyperactivity (clonus/hyperreflexia, worse in the legs), altered mental status.',
+  'Neuroleptic malignant syndrome':'Stop the causative antipsychotic now. Hallmark is lead-pipe rigidity plus fever — drug discontinuation and supportive care come before bromocriptine/dantrolene.',
+  'Tumor lysis syndrome':'Aggressive IV hydration before/during cytotoxic therapy is the critical action. Hyperkalemia is the most immediately dangerous derangement to catch.',
+  'Compartment syndrome':'Pain out of proportion to exam, worse with passive stretch, is the earliest reliable sign — pulses can still be present. Don\'t wait for a pulse to disappear.',
+  'SIADH':'Fluid restrict first-line, and correct sodium slowly — over-fast correction risks osmotic demyelination.',
+  'Cauda equina syndrome':'Urinary retention/incontinence or saddle anesthesia mandates emergent MRI and surgical decompression — don\'t wait for abnormal reflexes.',
+  'Wolff-Parkinson-White syndrome':'Avoid AV-nodal blockers (adenosine, verapamil, digoxin) in a wide-complex irregular tachycardia — they can accelerate the accessory pathway and precipitate VF.',
+  'Long QT syndrome':'Check and correct QT-prolonging drugs and electrolytes (K, Mg) first — torsades is the feared arrhythmia.',
+  'Guillain-Barré syndrome':'Monitor respiratory function closely (serial FVC/NIF) — respiratory failure, not the weakness itself, is what kills.',
+  'Wernicke-Korsakoff syndrome':'Give thiamine before glucose in any at-risk patient — glucose first can precipitate or worsen Wernicke encephalopathy.',
+  'Hemolytic uremic syndrome':'Avoid antibiotics for suspected STEC-associated HUS in children — antibiotics can increase toxin release and worsen HUS risk.',
+  'Refeeding syndrome':'Check and replace phosphate, potassium, and magnesium before/during refeeding; start calories low and go slow in high-risk patients.',
+  'Toxic epidermal necrolysis':'Stop the causative drug immediately — the single most important intervention. Manage like a major burn thereafter.',
+  'Waterhouse-Friderichsen syndrome':'Treat as fulminant meningococcemia — give antibiotics immediately, don\'t delay for confirmatory testing.',
+  'Reye syndrome':'Avoid aspirin in children/teens with a viral illness — that\'s the preventable trigger.',
+  'Acute retroviral syndrome':'A flu-like illness after a recent HIV exposure needs a 4th-gen antigen/antibody or RNA test — antibody-only testing can miss this early window.',
+  'Disseminated intravascular coagulation':'Treat the underlying trigger — DIC is a downstream consequence, not a disease itself. Blood product support follows, it doesn\'t replace, treating the cause.',
+  'Takotsubo syndrome':'Mimics STEMI clinically — troponin and ECG changes can look identical. Diagnosis needs angiography (no obstructive disease) plus the characteristic wall-motion pattern.',
+  'Brugada syndrome':'Avoid drugs that provoke the Brugada ECG pattern and treat fever promptly — fever alone can unmask the pattern and trigger arrhythmia.',
+  'Acute respiratory distress syndrome':'Lung-protective ventilation (low tidal volume, ~6 mL/kg predicted body weight) is the single intervention proven to reduce mortality.'
+};
+
+/* ============================================================
+   "Explain like it's 3am" mode — a stripped-down, fatigue-friendly view
+   surfacing only the single most decision-relevant fact for an entry.
+   Falls back gracefully to the normal (glossified) description when no
+   curated fact exists, rather than fabricating one.
+   ============================================================ */
+function openThreeAmMode(name){
+  const modal = document.getElementById('threeam-modal');
+  if(!modal || !name) return;
+  const s = SYNDROMES.find(x => x.name === name);
+  const fact = THREE_AM_FACT[name];
+  document.getElementById('threeam-name').textContent = name;
+  const bodyEl = document.getElementById('threeam-body');
+  const noteEl = document.getElementById('threeam-fallback-note');
+  if(fact){
+    bodyEl.innerHTML = glossify(fact);
+    noteEl.hidden = true;
+  } else {
+    bodyEl.innerHTML = s ? glossify(s.desc) : 'No curated summary available for this entry.';
+    noteEl.hidden = false;
+  }
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('threeam-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+
 function syndromeRowHtml(s){
   const src = `https://medlineplus.gov/search/?query=${encodeURIComponent(s.name)}`;
   const links = conditionLinksFor(s.name);
@@ -9330,6 +9409,7 @@ function syndromeRowHtml(s){
       <a class="syndrome-src" href="${src}" target="_blank" rel="noopener">Look up →</a>
       ${conditionBookmarkBtnHtml(s.name)}
       ${contradictFlagBtnHtml('syndrome:' + s.name, s.name, 'Condition')}
+      <button type="button" class="syndrome-3am-btn" data-threeam="${escapeHtml(s.name)}" title="Explain like it's 3am — stripped-down, fatigue-friendly view">🌙 3am</button>
     </span>
   </li>`;
 }
@@ -9391,6 +9471,8 @@ function setupConditionEvidence(){
   view.addEventListener('click', e => {
     const drugChip = e.target.closest('.rx-link-chip[data-drug]');
     if(drugChip){ jumpToRxDrugCalc(drugChip.dataset.drug); return; }
+    const threeAmBtn = e.target.closest('.syndrome-3am-btn');
+    if(threeAmBtn){ haptic('Light'); openThreeAmMode(threeAmBtn.dataset.threeam); return; }
     const btn = e.target.closest('.syndrome-evidence-btn');
     if(!btn) return;
     const row = btn.closest('.syndrome-row');
@@ -13294,7 +13376,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','drill-modal','cases-modal','ask-modal','graph-modal','passport-modal']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','drill-modal','cases-modal','ask-modal','graph-modal','passport-modal','threeam-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
