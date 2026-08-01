@@ -2469,7 +2469,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 /* ---- display settings popover (text size / colour-blind-safe / battery saver) ---- */
 .wards-settings-wrap{position:relative;}
 #wards-settings-toggle[aria-pressed="true"]{color:var(--evidence-dark);border-color:var(--evidence);background:var(--evidence-bg);}
-.wards-settings-panel{width:270px;}
+.wards-settings-panel{width:270px;max-height:min(70vh,560px);overflow-y:auto;}
 .wards-settings-panel .ws-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
 .wards-settings-panel .ws-label{display:flex; flex-direction:column; gap:2px; font-size:12.5px; font-weight:600; color:var(--ink);}
 .wards-settings-panel .ws-sub{font-size:10.5px; font-weight:500; color:var(--ink-faint);}
