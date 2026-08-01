@@ -2630,6 +2630,35 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== Muscle memory — ultra-fast single-fact flashcard drill, distinct
+     from the full spaced-repetition Quiz above (pure rote recall, no
+     confidence rating or SRS scheduling) ===== -->
+<div class="rename-overlay" id="drill-modal" role="dialog" aria-modal="true" aria-labelledby="drill-title" hidden>
+  <div class="rename-card settings-card global-search-card quiz-card" role="document">
+    <button type="button" class="onb-close" id="drill-close" aria-label="Close drill">&times;</button>
+    <p class="onb-eyebrow">MUSCLE MEMORY</p>
+    <h2 class="onb-title serif" id="drill-title">Quick-answer drill</h2>
+    <p class="settings-sub" style="display:block;margin:6px 0 14px;">Ultra-fast rote recall, one fact per card. The timer is a soft target only — it never marks you wrong.</p>
+    <div class="seg" id="drill-mode-seg" role="group" aria-label="Drill content">
+      <button type="button" class="seg-btn seg-btn-text active" data-drillmode="abbrev" aria-pressed="true">Abbreviations</button>
+      <button type="button" class="seg-btn seg-btn-text" data-drillmode="drug" aria-pressed="false">Drugs</button>
+    </div>
+    <div id="drill-body">
+      <div class="quiz-progress" id="drill-progress"></div>
+      <span id="drill-timer" class="boss-timer"></span>
+      <div class="quiz-flashcard">
+        <p class="quiz-question" id="drill-prompt"></p>
+        <div class="quiz-answer" id="drill-answer" hidden></div>
+      </div>
+      <button type="button" class="results-export-btn" id="drill-reveal-btn">Reveal</button>
+      <div class="quiz-rate-row" id="drill-next-row" hidden>
+        <button type="button" class="results-export-btn" id="drill-next-btn">Next →</button>
+      </div>
+    </div>
+    <div id="drill-summary" class="quiz-summary" hidden></div>
+  </div>
+</div>
+
 <!-- ===== Teaching cases — curated vignettes plus a "quiz yourself" stem
      generator built from Conditions/Drugs already in the app ===== -->
 <div class="rename-overlay" id="cases-modal" role="dialog" aria-modal="true" aria-labelledby="cases-title" hidden>
@@ -2699,6 +2728,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <button id="ask-btn" class="btn-search-everywhere" type="button" title="Ask a plain-language question — ranked answers from this app's own Drugs/Conditions/Trials content">Ask</button>
       <button id="graph-btn" class="btn-search-everywhere" type="button" title="Visual graph of drug/condition/interaction connections">Graph</button>
       <button id="quiz-btn" class="btn-search-everywhere" type="button" title="Spaced-repetition quiz from your bookmarks">Quiz</button>
+      <button id="drill-btn" class="btn-search-everywhere" type="button" title="Muscle memory — ultra-fast single-fact flashcard drill">Drill</button>
       <button id="cases-btn" class="btn-search-everywhere" type="button" title="Case vignettes for self-study">Cases</button>
     </form>
     <div class="header-actions">
@@ -12243,6 +12273,7 @@ function init(){
   setupGraphView();
   setupConditionBookmarks();
   setupQuiz();
+  setupDrill();
   setupCases();
   setupStudyExport();
   maybeShowOnThisDay();
@@ -13240,7 +13271,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal','ask-modal','graph-modal','passport-modal']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','drill-modal','cases-modal','ask-modal','graph-modal','passport-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
@@ -14344,6 +14375,133 @@ function setupQuiz(){
   });
   const calBtn = document.getElementById('quiz-calibration-btn');
   if(calBtn) calBtn.onclick = () => { haptic('Light'); toggleCalibrationPanel(); };
+}
+
+/* ============================================================
+   "Muscle memory" quick-answer drill — an ultra-fast flashcard mode
+   distinct from the full spaced-repetition Quiz above: single fact per
+   card, a subtle informational (never punitive) target-time readout,
+   pure rote recall. Two content sources, both reused from data the app
+   already has: abbreviation → expansion (ABBREV_DICT) and drug → a key
+   dosing fact (first regimen note from RX_DRUGS).
+   ============================================================ */
+let drillSession = null;
+const DRILL_TARGET_MS = 5000;
+let drillTimerInterval = null;
+let drillCardStart = 0;
+function buildDrillQueue(mode){
+  if(mode === 'drug'){
+    return RX_DRUGS.filter(d => d.regimens && d.regimens[0]).map(d => ({
+      prompt: `${d.generic} (${d.brand})`,
+      answer: d.regimens[0].note || d.regimens[0].label || ''
+    }));
+  }
+  return Object.keys(ABBREV_DICT).map(k => ({ prompt: k, answer: ABBREV_DICT[k] }));
+}
+function startDrillSession(mode){
+  clearDrillTimer();
+  const queue = shuffleArr(buildDrillQueue(mode));
+  drillSession = { queue, idx: 0, total: queue.length, mode };
+  renderDrillCard();
+}
+function renderDrillCard(){
+  const bodyEl = document.getElementById('drill-body');
+  const summaryEl = document.getElementById('drill-summary');
+  if(!drillSession || drillSession.idx >= drillSession.queue.length){
+    bodyEl.hidden = true;
+    summaryEl.hidden = false;
+    const total = drillSession ? drillSession.total : 0;
+    summaryEl.innerHTML = `<strong>Drill complete</strong>Ran through ${total} card${total === 1 ? '' : 's'}.`;
+    if(total > 0) bumpUsageStat('drillSessions');
+    clearDrillTimer();
+    drillSession = null;
+    return;
+  }
+  bodyEl.hidden = false;
+  summaryEl.hidden = true;
+  const item = drillSession.queue[drillSession.idx];
+  const progEl = document.getElementById('drill-progress');
+  if(progEl) progEl.textContent = `Card ${drillSession.idx + 1} of ${drillSession.total}`;
+  const promptEl = document.getElementById('drill-prompt');
+  if(promptEl) promptEl.textContent = item.prompt;
+  const answerEl = document.getElementById('drill-answer');
+  if(answerEl){ answerEl.textContent = item.answer; answerEl.hidden = true; }
+  const revealBtn = document.getElementById('drill-reveal-btn');
+  if(revealBtn) revealBtn.hidden = false;
+  const nextRow = document.getElementById('drill-next-row');
+  if(nextRow) nextRow.hidden = true;
+  startDrillTimer();
+}
+function startDrillTimer(){
+  clearDrillTimer();
+  drillCardStart = Date.now();
+  const timerEl = document.getElementById('drill-timer');
+  if(!timerEl) return;
+  const tick = () => {
+    const elapsed = Date.now() - drillCardStart;
+    const sec = (elapsed / 1000).toFixed(1);
+    const overTarget = elapsed > DRILL_TARGET_MS;
+    timerEl.textContent = `${sec}s${overTarget ? ' · past target' : ' / ' + (DRILL_TARGET_MS / 1000) + 's target'}`;
+    timerEl.classList.toggle('low', overTarget);
+  };
+  tick();
+  drillTimerInterval = setInterval(tick, 100);
+}
+function clearDrillTimer(){
+  if(drillTimerInterval){ clearInterval(drillTimerInterval); drillTimerInterval = null; }
+}
+function revealDrillAnswer(){
+  const answerEl = document.getElementById('drill-answer');
+  if(answerEl) answerEl.hidden = false;
+  const revealBtn = document.getElementById('drill-reveal-btn');
+  if(revealBtn) revealBtn.hidden = true;
+  const nextRow = document.getElementById('drill-next-row');
+  if(nextRow) nextRow.hidden = false;
+  clearDrillTimer();
+  haptic('Light');
+}
+function nextDrillCard(){
+  if(!drillSession) return;
+  drillSession.idx++;
+  renderDrillCard();
+}
+function onDrillKey(e){ if(e.key === 'Escape') closeDrill(); }
+function closeDrill(){
+  const modal = document.getElementById('drill-modal');
+  if(modal) modal.hidden = true;
+  document.removeEventListener('keydown', onDrillKey);
+  clearDrillTimer();
+  drillSession = null;
+}
+function openDrill(){
+  const modal = document.getElementById('drill-modal');
+  if(!modal) return;
+  const activeBtn = document.querySelector('#drill-mode-seg .seg-btn.active');
+  startDrillSession(activeBtn ? activeBtn.dataset.drillmode : 'abbrev');
+  modal.hidden = false;
+  document.addEventListener('keydown', onDrillKey);
+}
+function setupDrill(){
+  const btn = document.getElementById('drill-btn');
+  if(btn) btn.onclick = () => { haptic('Light'); openDrill(); };
+  const closeBtn = document.getElementById('drill-close');
+  if(closeBtn) closeBtn.onclick = closeDrill;
+  const modal = document.getElementById('drill-modal');
+  if(modal) modal.onclick = (e) => { if(e.target === modal) closeDrill(); };
+  const revealBtn = document.getElementById('drill-reveal-btn');
+  if(revealBtn) revealBtn.onclick = revealDrillAnswer;
+  const nextBtn = document.getElementById('drill-next-btn');
+  if(nextBtn) nextBtn.onclick = nextDrillCard;
+  document.querySelectorAll('#drill-mode-seg .seg-btn').forEach(b => {
+    b.onclick = () => {
+      haptic('Light');
+      document.querySelectorAll('#drill-mode-seg .seg-btn').forEach(x => {
+        x.classList.toggle('active', x === b);
+        x.setAttribute('aria-pressed', x === b ? 'true' : 'false');
+      });
+      startDrillSession(b.dataset.drillmode);
+    };
+  });
 }
 
 /* ============================================================
