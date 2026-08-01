@@ -1366,6 +1366,23 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
   body.printing-study-sheet #study-sheet{display:block !important;padding:24px;}
 }
 
+/* ---- print-only pocket card — a single condensed index-card summary ---- */
+#pocket-card{display:none;}
+.pc-card{width:3.5in;min-height:5in;border:1px solid #999;border-radius:10px;padding:16px 18px;margin:0 auto;}
+.pc-tag{display:inline-block;font-family:var(--ff-mono);font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#555;border:1px solid #999;border-radius:20px;padding:2px 8px;margin-bottom:8px;}
+.pc-title{font-family:var(--ff-sans);font-size:17px;font-weight:800;margin:0 0 2px;}
+.pc-sub{font-family:var(--ff-sans);font-size:11px;color:#555;margin:0 0 10px;}
+.pc-row{margin-bottom:9px;}
+.pc-row-label{font-family:var(--ff-mono);font-size:9px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:#777;margin:0 0 2px;}
+.pc-row-body{font-size:12px;line-height:1.45;}
+.pc-flags{border:1px solid #c33;border-radius:6px;padding:6px 9px;margin-top:8px;}
+.pc-flags .pc-row-label{color:#c33;}
+.pc-foot{font-family:var(--ff-sans);font-size:9px;color:#888;margin-top:12px;border-top:1px solid #ddd;padding-top:6px;}
+@media print{
+  body.printing-pocket-card > *:not(#pocket-card){display:none !important;}
+  body.printing-pocket-card #pocket-card{display:block !important;padding:24px;}
+}
+
 /* =====================================================================
    Responsive — tablet & phone tuning (additive overrides)
    ===================================================================== */
@@ -2147,6 +2164,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Pocket cards</strong><span class="settings-sub">Printable index-card summaries of saved entries</span></div>
+      <button type="button" class="settings-btn" id="settings-view-pocketcards">View</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Backup</strong><span class="settings-sub">Saved articles in one file</span></div>
       <button type="button" class="settings-btn" id="settings-export-all">Export all Rounds data</button>
     </div>
@@ -2245,6 +2267,17 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <h2 class="onb-title serif" id="caution-title">Your caution list</h2>
     <p class="settings-sub" style="display:block;margin:-4px 0 14px;">Drugs you've marked "always double-check for me" — separate from the institutional Formulary. Shown wherever the drug appears in Rounds.</p>
     <div class="crashlog-list" id="caution-list"></div>
+  </div>
+</div>
+
+<!-- ===== Pocket cards (Settings > Pocket cards) ===== -->
+<div class="rename-overlay" id="pocketcards-modal" role="dialog" aria-modal="true" aria-labelledby="pocketcards-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="pocketcards-close" aria-label="Close pocket cards">&times;</button>
+    <p class="onb-eyebrow">PRINTABLE</p>
+    <h2 class="onb-title serif" id="pocketcards-title">Pocket cards</h2>
+    <p class="settings-sub" style="display:block;margin:-4px 0 14px;">Condense a saved Condition or stocked Drug into an index-card-sized printable summary — key facts only. Pulled from your saved Conditions and My formulary.</p>
+    <div class="crashlog-list" id="pocketcards-list"></div>
   </div>
 </div>
 
@@ -2518,6 +2551,10 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 <!-- ===== Print-only study sheet — populated by exportStudySheet(), shown
      only while body.printing-study-sheet is set (see @media print rule) ===== -->
 <div id="study-sheet"></div>
+
+<!-- ===== Print-only pocket card — populated by printPocketCard(), shown
+     only while body.printing-pocket-card is set (see @media print rule) ===== -->
+<div id="pocket-card"></div>
 
 <header>
   <div class="header-inner">
@@ -12320,6 +12357,9 @@ function openSettings(){
   const cautionBtn = document.getElementById('settings-view-caution');
   if(cautionBtn) cautionBtn.onclick = () => openCautionList();
 
+  const pocketCardsBtn = document.getElementById('settings-view-pocketcards');
+  if(pocketCardsBtn) pocketCardsBtn.onclick = () => openPocketCards();
+
   const srsHistoryBtn = document.getElementById('settings-view-srs-history');
   if(srsHistoryBtn) srsHistoryBtn.onclick = () => openSrsHistory();
 
@@ -14000,6 +14040,100 @@ function exportStudySheet(){
 function setupStudyExport(){
   const btn = document.getElementById('export-study-btn');
   if(btn) btn.onclick = exportStudySheet;
+}
+
+/* ============================================================
+   Printable pocket card — one condensed, index-card-sized summary
+   of a saved Condition or a stocked Drug (key facts only). Reuses
+   the same window.print()-plus-hidden-container pattern as the
+   study-sheet export above, just with a single card instead of a
+   full list and a smaller print target (#pocket-card).
+   ============================================================ */
+function pocketCardDataForCondition(name){
+  const s = SYNDROMES.find(x => x.name === name);
+  if(!s) return null;
+  const rows = [
+    { label: 'Category', body: escapeHtml(SYNDROME_SYSTEMS[s.system] || s.system || '') },
+    { label: 'One-line summary', body: escapeHtml(s.desc || '') }
+  ];
+  const cross = CONDITION_CROSS_SPECIALTY[s.name];
+  if(cross && cross.length) rows.push({ label: 'Also relevant in', body: cross.map(id => escapeHtml(SYNDROME_SYSTEMS[id] || id)).join(', ') });
+  const flags = [];
+  if(isContradictFlagged('syndrome:' + s.name)) flags.push('Flagged by you as "contradicts what I learned" — double-check against your source before relying on this at the bedside.');
+  return { tag: 'Condition', title: s.name, sub: SYNDROME_SYSTEMS[s.system] || s.system || '', rows, flags };
+}
+function pocketCardDataForDrug(id){
+  const d = RX_DRUGS.find(x => x.id === id);
+  if(!d) return null;
+  const rows = [];
+  if(d.ref) rows.push({ label: 'Reference', body: escapeHtml(d.ref) });
+  (d.regimens || []).slice(0, 3).forEach(r => {
+    rows.push({ label: 'Key dosing — ' + escapeHtml(r.label), body: escapeHtml(r.note || '') });
+  });
+  const flags = [];
+  const lasa = lasaPairsFor(d.id);
+  lasa.forEach(p => {
+    const other = lasaPartner(d.id, p);
+    if(other) flags.push(`Look-alike/sound-alike with ${other.generic} (${other.brand}) — not an interaction, a naming mix-up risk.`);
+  });
+  if(isCautionDrug(d.id)) flags.push('On your personal caution list — always double-check.');
+  return { tag: 'Drug', title: `${d.generic} (${d.brand})`, sub: d.ref || '', rows, flags };
+}
+function buildPocketCardHtml(data){
+  const rows = data.rows.filter(r => r.body).map(r => `<div class="pc-row"><p class="pc-row-label">${r.label}</p><p class="pc-row-body">${r.body}</p></div>`).join('');
+  const flags = data.flags.length ? `<div class="pc-flags"><p class="pc-row-label">Watch for</p>${data.flags.map(f => `<p class="pc-row-body">${escapeHtml(f)}</p>`).join('')}</div>` : '';
+  return `<article class="pc-card">
+    <span class="pc-tag">${escapeHtml(data.tag)}</span>
+    <h1 class="pc-title">${escapeHtml(data.title)}</h1>
+    ${data.sub ? `<p class="pc-sub">${escapeHtml(data.sub)}</p>` : ''}
+    ${rows}
+    ${flags}
+    <p class="pc-foot">Rounds pocket card &middot; ${escapeHtml(new Date().toLocaleDateString(roundsLocaleArg()))} &middot; educational aid, not a clinical protocol</p>
+  </article>`;
+}
+function printPocketCard(kind, key){
+  const data = kind === 'condition' ? pocketCardDataForCondition(key) : pocketCardDataForDrug(key);
+  if(!data){ showToast('Could not build that pocket card', 'err'); return; }
+  const holder = document.getElementById('pocket-card');
+  holder.innerHTML = buildPocketCardHtml(data);
+  document.body.classList.add('printing-pocket-card');
+  haptic('Light');
+  let cleaned = false;
+  function cleanup(){
+    if(cleaned) return;
+    cleaned = true;
+    document.body.classList.remove('printing-pocket-card');
+    holder.innerHTML = '';
+    window.removeEventListener('afterprint', cleanup);
+  }
+  window.addEventListener('afterprint', cleanup);
+  setTimeout(() => { window.print(); setTimeout(cleanup, 1200); }, 50);
+}
+function openPocketCards(){
+  const modal = document.getElementById('pocketcards-modal');
+  const body = document.getElementById('pocketcards-list');
+  if(!modal || !body) return;
+  haptic('Light');
+  const condItems = Object.values(getConditionBookmarks()).filter(cb => cb && SYNDROMES.some(s => s.name === cb.name));
+  const formulary = getFormulary();
+  const drugItems = RX_DRUGS.filter(d => formulary[d.id]);
+  if(!condItems.length && !drugItems.length){
+    body.innerHTML = `<p class="drug-generic" style="font-style:normal;">Nothing to make a pocket card from yet — save a Condition or mark a Drug as stocked in My formulary first.</p>`;
+  } else {
+    body.innerHTML = `<ul class="crashlog-list-inner">
+      ${condItems.map(cb => `<li class="flagged-row"><span class="flagged-label">${escapeHtml(cb.name)} <span class="settings-sub">(Condition)</span></span><button type="button" class="settings-btn" data-pc-kind="condition" data-pc-key="${escapeHtml(cb.name)}">Print card</button></li>`).join('')}
+      ${drugItems.map(d => `<li class="flagged-row"><span class="flagged-label">${escapeHtml(d.generic)} <span class="settings-sub">(Drug &middot; ${escapeHtml(d.brand)})</span></span><button type="button" class="settings-btn" data-pc-kind="drug" data-pc-key="${escapeHtml(d.id)}">Print card</button></li>`).join('')}
+    </ul>`;
+    body.querySelectorAll('[data-pc-kind]').forEach(btn => {
+      btn.onclick = () => printPocketCard(btn.dataset.pcKind, btn.dataset.pcKey);
+    });
+  }
+  modal.hidden = false;
+  function close(){ modal.hidden = true; document.removeEventListener('keydown', onKey); }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('pocketcards-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  document.addEventListener('keydown', onKey);
 }
 
 function setupKeyboardShortcuts(){
