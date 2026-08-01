@@ -1751,6 +1751,19 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-board-archived-date{font-size:11px;font-weight:700;color:var(--ink-faint);}
 .vitals-board{margin-bottom:var(--space-6);}
 .vitals-board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--space-4);}
+.vitals-mapview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:var(--space-3);}
+.vitals-bed-tile{text-align:left;border:2px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:10px;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:92px;}
+.vitals-bed-tile:hover{border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
+.vitals-bed-tile.n2-low{border-color:var(--line);}
+.vitals-bed-tile.n2-medium{border-color:var(--fresh);}
+.vitals-bed-tile.n2-high{border-color:var(--caution-line);background:var(--caution-bg);}
+.vitals-bed-tile.is-overdue{outline:2px dashed var(--caution-line);outline-offset:2px;}
+.vitals-bed-tile-bed{font-family:var(--ff-mono);font-size:11px;font-weight:800;color:var(--ink-faint);}
+.vitals-bed-tile-name{font-family:var(--ff-display);font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.vitals-bed-tile-n2{font-family:var(--ff-mono);font-size:11px;font-weight:800;align-self:flex-start;padding:1px 7px;border-radius:var(--r-pill);margin-top:auto;}
+.vitals-bed-tile-n2.n2-low{background:var(--surface-raised);color:var(--ink-soft);}
+.vitals-bed-tile-n2.n2-medium{background:var(--fresh-bg);color:var(--fresh);}
+.vitals-bed-tile-n2.n2-high{background:var(--caution-bg);color:var(--caution);}
 .vitals-board-card{text-align:left;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
   padding:14px 16px;cursor:pointer;font-family:var(--ff-sans);color:var(--ink);transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);}
 .vitals-board-card:hover{border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
@@ -2662,6 +2675,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       </div>
       <div class="vitals-main-toprow-actions">
         <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-board-toggle-btn" aria-pressed="false">Board view — all patients</button>
+        <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-mapview-toggle-btn" aria-pressed="false">Bed map</button>
         <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-archive-toggle-btn" aria-pressed="false">Archive</button>
       </div>
     </div>
@@ -2669,6 +2683,12 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <div id="vitals-board" class="vitals-board" hidden>
       <div class="vitals-board-grid" id="vitals-board-grid"></div>
       <p class="vitals-board-empty" id="vitals-board-empty" hidden>No patients on the roster yet — add one on the left.</p>
+    </div>
+
+    <div id="vitals-mapview" class="vitals-board" hidden>
+      <p class="vitals-disclaimer" style="margin-bottom:var(--space-4);">Bed map is a visual layout of the same active-roster data as the board view — not a real-time facility floor plan.</p>
+      <div class="vitals-mapview-grid" id="vitals-mapview-grid"></div>
+      <p class="vitals-board-empty" id="vitals-mapview-empty" hidden>No patients on the roster yet — add one on the left.</p>
     </div>
 
     <div id="vitals-archive" class="vitals-board" hidden>
@@ -4754,6 +4774,7 @@ function initVitals(){
   setupSurgerySection();
   setupPediatricsSection();
   setupVitalsBoardToggle();
+  setupVitalsMapViewToggle();
   setupVitalsArchiveToggle();
   setupVitalsCopyLastButton();
   setupEscalationTrail();
@@ -5130,6 +5151,11 @@ function setVitalsBoardActive(active){
     vitalsArchiveActive = false;
     const archiveBtn = document.getElementById('vitals-archive-toggle-btn');
     if(archiveBtn){ archiveBtn.setAttribute('aria-pressed', 'false'); archiveBtn.textContent = 'Archive'; }
+    const mapPanel = document.getElementById('vitals-mapview');
+    if(mapPanel) mapPanel.hidden = true;
+    vitalsMapViewActive = false;
+    const mapBtn = document.getElementById('vitals-mapview-toggle-btn');
+    if(mapBtn){ mapBtn.setAttribute('aria-pressed', 'false'); mapBtn.textContent = 'Bed map'; }
     renderVitalsBoard();
   }else{
     renderVitalsMain();
@@ -5140,7 +5166,7 @@ function setupVitalsBoardToggle(){
   const btn = document.getElementById('vitals-board-toggle-btn');
   if(!btn || btn.dataset.wired) return;
   btn.dataset.wired = '1';
-  btn.addEventListener('click', () => { setVitalsArchiveActive(false); setVitalsBoardActive(!vitalsBoardActive); });
+  btn.addEventListener('click', () => { setVitalsArchiveActive(false); setVitalsMapViewActive(false); setVitalsBoardActive(!vitalsBoardActive); });
 }
 
 /* ---- Archive — discharged/transferred patients, kept fully intact but
@@ -5228,6 +5254,11 @@ function setVitalsArchiveActive(active){
     vitalsBoardActive = false;
     const boardBtn = document.getElementById('vitals-board-toggle-btn');
     if(boardBtn) boardBtn.setAttribute('aria-pressed', 'false');
+    const mapPanel = document.getElementById('vitals-mapview');
+    if(mapPanel) mapPanel.hidden = true;
+    vitalsMapViewActive = false;
+    const mapBtn = document.getElementById('vitals-mapview-toggle-btn');
+    if(mapBtn){ mapBtn.setAttribute('aria-pressed', 'false'); mapBtn.textContent = 'Bed map'; }
     renderVitalsArchive();
   }else{
     renderVitalsMain();
@@ -5245,6 +5276,90 @@ function setupVitalsArchiveToggle(){
     search.dataset.wired = '1';
     search.addEventListener('input', renderVitalsArchive);
   }
+}
+
+/* ---- bed map view — same active-roster data as the board, laid out as
+   a grid of compact bed tiles for a floor-plan-style at-a-glance scan. ---- */
+let vitalsMapViewActive = false;
+
+function renderVitalsMapView(){
+  const grid = document.getElementById('vitals-mapview-grid');
+  const empty = document.getElementById('vitals-mapview-empty');
+  if(!grid) return;
+  const now = Date.now();
+  grid.innerHTML = '';
+  const activePatients = vitalsState.patients.filter(isPatientActive)
+    .slice().sort((a, b) => (a.bed || '').localeCompare(b.bed || '', undefined, { numeric: true }));
+  if(!activePatients.length){
+    if(empty) empty.hidden = false;
+    return;
+  }
+  if(empty) empty.hidden = true;
+
+  activePatients.forEach(p => {
+    const overdue = isVitalsPatientOverdue(p, now);
+    const latest = latestVitalsEntryFor(p);
+    const n2 = latest ? computeNews2(latest, p) : null;
+    const level = n2 && n2.dataPresent ? n2.level : 'low';
+    const tile = document.createElement('button');
+    tile.type = 'button';
+    tile.className = `vitals-bed-tile n2-${level}` + (overdue ? ' is-overdue' : '');
+    tile.dataset.patientId = p.id;
+    tile.innerHTML =
+      `<span class="vitals-bed-tile-bed">${escapeHtml(p.bed || '—')}</span>` +
+      `<span class="vitals-bed-tile-name">${escapeHtml(p.name || 'Unnamed')}</span>` +
+      (n2 && n2.dataPresent ? `<span class="vitals-bed-tile-n2 n2-${level}">NEWS2 ${n2.score}</span>` : '<span class="vitals-bed-tile-n2 n2-low">No readings</span>');
+    grid.appendChild(tile);
+  });
+
+  if(!grid.dataset.wired){
+    grid.dataset.wired = '1';
+    grid.addEventListener('click', e => {
+      const tile = e.target.closest('.vitals-bed-tile');
+      if(!tile) return;
+      vitalsState.activePatientId = tile.dataset.patientId;
+      setVitalsMapViewActive(false);
+      renderPatientList();
+      renderVitalsMain();
+    });
+  }
+}
+
+function setVitalsMapViewActive(active){
+  vitalsMapViewActive = active;
+  const panel = document.getElementById('vitals-mapview');
+  const toggleBtn = document.getElementById('vitals-mapview-toggle-btn');
+  const empty = document.getElementById('vitals-empty');
+  const view = document.getElementById('vitals-patient-view');
+  if(panel) panel.hidden = !active;
+  if(toggleBtn){
+    toggleBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    toggleBtn.textContent = active ? 'Back to patient detail' : 'Bed map';
+  }
+  if(active){
+    if(empty) empty.hidden = true;
+    if(view) view.hidden = true;
+    const board = document.getElementById('vitals-board');
+    if(board) board.hidden = true;
+    vitalsBoardActive = false;
+    const boardBtn = document.getElementById('vitals-board-toggle-btn');
+    if(boardBtn) boardBtn.setAttribute('aria-pressed', 'false');
+    const archivePanel = document.getElementById('vitals-archive');
+    if(archivePanel) archivePanel.hidden = true;
+    vitalsArchiveActive = false;
+    const archiveBtn = document.getElementById('vitals-archive-toggle-btn');
+    if(archiveBtn){ archiveBtn.setAttribute('aria-pressed', 'false'); archiveBtn.textContent = 'Archive'; }
+    renderVitalsMapView();
+  }else{
+    renderVitalsMain();
+  }
+}
+
+function setupVitalsMapViewToggle(){
+  const btn = document.getElementById('vitals-mapview-toggle-btn');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => setVitalsMapViewActive(!vitalsMapViewActive));
 }
 
 /* ---- add / remove patient ---- */
