@@ -1301,6 +1301,28 @@ kbd{display:inline-block;min-width:22px;text-align:center;font-family:var(--ff-m
 .calibration-note{font-family:var(--ff-sans);font-size:11.5px;color:var(--shell-ink-soft);margin:8px 0 0;}
 
 
+/* ---- ask-a-question retrieval ---- */
+.ask-card{max-width:560px;}
+.ask-result-item{position:relative;}
+.ask-result-source{display:block;font-family:var(--ff-mono);font-size:10.5px;font-weight:700;letter-spacing:0.04em;text-transform:uppercase;color:var(--evidence-bright);margin-bottom:3px;}
+
+
+/* ---- relationship graph ---- */
+.graph-card{max-width:600px;}
+.graph-picker{display:flex;gap:8px;margin-bottom:12px;}
+.graph-picker input{flex:1;border:1px solid var(--shell-line);background:rgba(255,255,255,0.05);color:var(--shell-ink);border-radius:var(--r-pill);padding:10px 14px;font-family:var(--ff-sans);font-size:13.5px;}
+.graph-picker input:focus{outline:none;border-color:var(--evidence);}
+.graph-svg-wrap{overflow:auto;border:1px solid var(--shell-line);border-radius:var(--r-md);background:rgba(255,255,255,0.02);}
+.graph-svg-wrap svg{display:block;width:100%;height:auto;}
+.graph-node-circle{cursor:pointer;transition:opacity var(--dur-fast) var(--ease-out);}
+.graph-node-circle:hover{opacity:0.8;}
+.graph-node-label{font-family:var(--ff-sans);font-size:10.5px;font-weight:600;fill:var(--shell-ink);pointer-events:none;}
+.graph-edge-line{stroke:var(--shell-line);stroke-width:1.4;}
+.graph-legend{display:flex;gap:16px;margin-top:10px;font-family:var(--ff-sans);font-size:11.5px;color:var(--shell-ink-soft);flex-wrap:wrap;}
+.graph-legend span{display:inline-flex;align-items:center;gap:5px;}
+.graph-legend i{display:inline-block;width:9px;height:9px;border-radius:50%;}
+
+
 /* ---- print-only study sheet ---- */
 #study-sheet{display:none;}
 .ss-title{font-family:var(--ff-sans);font-size:22px;font-weight:700;margin:0 0 4px;}
@@ -2276,6 +2298,46 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   </div>
 </div>
 
+<!-- ===== Ask a question — plain-language retrieval over this app's own
+     Drugs/Conditions/Trials content. Reuses the concept-map matcher from
+     search-everywhere; never generates text, only ranks/cites existing
+     entries. ===== -->
+<div class="rename-overlay" id="ask-modal" role="dialog" aria-modal="true" aria-labelledby="ask-title" hidden>
+  <div class="rename-card settings-card global-search-card ask-card" role="document">
+    <button type="button" class="onb-close" id="ask-close" aria-label="Close ask a question">&times;</button>
+    <p class="onb-eyebrow">ASK A QUESTION</p>
+    <h2 class="onb-title serif" id="ask-title">Ask this app</h2>
+    <div class="global-search-box">
+      <input id="ask-input" type="search" placeholder="e.g. chest pain worse lying down…" autocomplete="off" spellcheck="false">
+    </div>
+    <p class="settings-sub" style="display:block;margin:8px 0 14px;">Retrieval only — ranks passages already in this app's Drugs/Conditions/Trials data and links to the source entry. It never invents an answer that isn't already here.</p>
+    <div id="ask-results"></div>
+  </div>
+</div>
+
+
+<!-- ===== Relationship graph — inline SVG node-link view of a drug or
+     condition and its direct connections (interactions, condition links). ===== -->
+<div class="rename-overlay" id="graph-modal" role="dialog" aria-modal="true" aria-labelledby="graph-title" hidden>
+  <div class="rename-card settings-card global-search-card graph-card" role="document">
+    <button type="button" class="onb-close" id="graph-close" aria-label="Close relationship graph">&times;</button>
+    <p class="onb-eyebrow">RELATIONSHIP GRAPH</p>
+    <h2 class="onb-title serif" id="graph-title">Drug &amp; condition connections</h2>
+    <div class="graph-picker">
+      <input id="graph-input" type="search" list="graph-datalist" placeholder="Search a drug or condition…" autocomplete="off" spellcheck="false">
+      <datalist id="graph-datalist"></datalist>
+    </div>
+    <p class="settings-sub" style="display:block;margin:0 0 10px;">Shows the selected entry plus its direct connections only, so it stays readable. Click any node to jump to that entry.</p>
+    <div id="graph-svg-wrap" class="graph-svg-wrap"></div>
+    <div class="graph-legend">
+      <span><i style="background:var(--evidence-bright);"></i>Drug</span>
+      <span><i style="background:var(--fresh);"></i>Condition</span>
+    </div>
+  </div>
+</div>
+
+
+
 <!-- ===== Spaced-repetition quiz — built from bookmarked articles, drugs
      marked "stocked" in your formulary, and bookmarked conditions ===== -->
 <div class="rename-overlay" id="quiz-modal" role="dialog" aria-modal="true" aria-labelledby="quiz-title" hidden>
@@ -2377,6 +2439,8 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <button id="search-btn" class="btn-search" type="button">Search</button>
       <button id="search-everywhere-btn" class="btn-search-everywhere" type="button" title="Search everywhere — Literature, Drugs, Conditions, Advances, Trials at once">Everywhere</button>
       <button id="unit-converter-btn" class="btn-search-everywhere" type="button" title="Quick unit converter — kg/lb, °C/°F, mL/fl oz, mg/mmol">Convert</button>
+      <button id="ask-btn" class="btn-search-everywhere" type="button" title="Ask a plain-language question — ranked answers from this app's own Drugs/Conditions/Trials content">Ask</button>
+      <button id="graph-btn" class="btn-search-everywhere" type="button" title="Visual graph of drug/condition/interaction connections">Graph</button>
       <button id="quiz-btn" class="btn-search-everywhere" type="button" title="Spaced-repetition quiz from your bookmarks">Quiz</button>
       <button id="cases-btn" class="btn-search-everywhere" type="button" title="Case vignettes for self-study">Cases</button>
     </form>
@@ -10970,6 +11034,8 @@ function init(){
   setupKeyboardShortcuts();
   setupGlobalSearch();
   setupUnitConverter();
+  setupAskQuestion();
+  setupGraphView();
   setupConditionBookmarks();
   setupQuiz();
   setupCases();
@@ -11848,7 +11914,7 @@ function isTypingTarget(el){
   return tag === 'input' || tag === 'textarea' || tag === 'select' || el.isContentEditable;
 }
 function anyOverlayOpen(){
-  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal']
+  return ['settings-modal','crashlog-modal','feedback-modal','recent-modal','usage-stats-modal','shortcuts-modal','whatsnew-modal','rename-modal','onboarding','login-overlay','quiz-modal','cases-modal','ask-modal','graph-modal']
     .some(id => { const el = document.getElementById(id); return el && !el.hidden; });
 }
 function openShortcuts(){
@@ -12209,6 +12275,270 @@ function setupUnitConverter(){
   if(closeBtn) closeBtn.onclick = close;
   modal.onclick = (e) => { if(e.target === modal) close(); };
 }
+
+/* ============================================================
+   Ask a question — plain-language retrieval over this app's own Drugs/
+   Conditions/Trials content. Reuses expandConceptQuery() from the
+   concept map above. Retrieval only: it ranks and cites passages that
+   already exist in RX_DRUGS/SYNDROMES/etc, never generates new text.
+   ============================================================ */
+function buildAskCorpus(){
+  const corpus = [];
+  RX_DRUGS.forEach(d => {
+    const notes = (d.regimens || []).map(r => `${r.label}: ${r.note || ''}`).join(' ');
+    const label = d.brand && d.brand !== d.generic ? `${d.generic} (${d.brand})` : d.generic;
+    corpus.push({ source: 'Drugs', title: label, text: `${d.generic} ${d.brand || ''} ${notes}`, passage: notes || `${label} — see the Drugs tab for dosing.`, ref: { kind: 'drug', id: d.id } });
+  });
+  [].concat(SYNDROMES, GENETIC_CONDITIONS, CONGENITAL_DISORDERS).forEach(c => {
+    corpus.push({ source: 'Conditions', title: c.name, text: `${c.name} ${c.desc || ''}`, passage: c.desc || '', ref: { kind: 'condition', name: c.name } });
+  });
+  (trialsState.results || []).forEach(t => {
+    corpus.push({ source: 'Trials', title: t.title || 'Untitled trial', text: `${t.title || ''} ${t.conditions || ''}`, passage: t.conditions || t.title || '', ref: { kind: 'trial' } });
+  });
+  return corpus;
+}
+function scoreAskPassage(qWords, expandedTerms, item){
+  const words = conceptWordSet(item.text);
+  let score = 0;
+  qWords.forEach(w => { if(words.has(w)) score += 2; });
+  expandedTerms.forEach(t => {
+    const tWords = conceptWordSet(t);
+    let allIn = tWords.size > 0;
+    tWords.forEach(w => { if(!words.has(w)) allIn = false; });
+    if(allIn) score += 3;
+    else if(item.text.toLowerCase().includes(t)) score += 1.5;
+  });
+  return score;
+}
+let askResultsCache = [];
+function runAskQuery(qRaw){
+  const resultsEl = document.getElementById('ask-results');
+  if(!resultsEl) return;
+  const q = (qRaw || '').trim();
+  if(!q){ resultsEl.innerHTML = ''; askResultsCache = []; return; }
+  const qWords = conceptWordSet(q);
+  const { terms: expandedTerms, concepts } = expandConceptQuery(q);
+  const corpus = buildAskCorpus();
+  const scored = corpus
+    .map(item => ({ item, score: scoreAskPassage(qWords, expandedTerms, item) }))
+    .filter(x => x.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 8);
+  askResultsCache = scored;
+  if(!scored.length){
+    resultsEl.innerHTML = '<div class="global-search-empty">No matching passages in this app\'s own Drugs/Conditions/Trials content. Try different wording, or visit the Trials tab first to widen what\'s searchable.</div>';
+    return;
+  }
+  const uniqueConcepts = [...new Set(concepts)];
+  resultsEl.innerHTML =
+    (uniqueConcepts.length ? `<p class="settings-sub" style="display:block;margin:0 0 10px;">Also matched via curated concept mapping: ${escapeHtml(uniqueConcepts.join(', '))}</p>` : '') +
+    scored.map((s, i) => {
+      const snippet = (s.item.passage || s.item.text || '').trim();
+      const shown = snippet.length > 220 ? snippet.slice(0, 220) + '…' : snippet;
+      return `<button type="button" class="global-search-item ask-result-item" data-idx="${i}">
+        <span class="ask-result-source">${escapeHtml(s.item.source)} — ${escapeHtml(s.item.title)}</span>
+        <span class="gs-sub">${escapeHtml(shown || 'See entry for details.')}</span>
+      </button>`;
+    }).join('');
+  resultsEl.querySelectorAll('.ask-result-item').forEach(btn => {
+    btn.onclick = () => {
+      const s = askResultsCache[Number(btn.dataset.idx)];
+      if(s) jumpToAskResult(s.item);
+    };
+  });
+}
+function jumpToAskResult(item){
+  const modal = document.getElementById('ask-modal');
+  if(modal) modal.hidden = true;
+  if(item.ref.kind === 'drug') jumpToRxDrugCalc(item.ref.id);
+  else if(item.ref.kind === 'condition') jumpToCondition(item.ref.name);
+  else if(item.ref.kind === 'trial') switchView('trials');
+}
+function openAskQuestion(prefill){
+  const modal = document.getElementById('ask-modal');
+  if(!modal) return;
+  const input = document.getElementById('ask-input');
+  if(input){
+    input.value = prefill || '';
+    runAskQuery(input.value);
+    input.oninput = () => runAskQuery(input.value);
+  }
+  function close(){ modal.hidden = true; document.removeEventListener('keydown', onKey); }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('ask-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+  if(input) setTimeout(() => input.focus(), 30);
+}
+function setupAskQuestion(){
+  const btn = document.getElementById('ask-btn');
+  if(!btn) return;
+  btn.onclick = () => { haptic('Light'); openAskQuestion(''); };
+}
+
+/* ============================================================
+   Relationship graph — inline SVG node-link view built from RX_DRUGS,
+   CONDITION_DRUG_LINKS and IX_RULES. Shows only the selected entry plus
+   its direct connections (capped) so it stays readable — not the whole
+   database graph at once. No external graph library (no CDN access).
+   ============================================================ */
+const GRAPH_NODE_CAP = 10;
+function graphDrugLabel(d){ return d.brand && d.brand !== d.generic ? `${d.generic} (${d.brand})` : d.generic; }
+function graphPartnersForDrug(drugId){
+  const partners = new Map(); // id -> {label, kind}
+  const self = RX_DRUGS.find(d => d.id === drugId);
+  if(!self) return partners;
+  IX_RULES.forEach(rule => {
+    const aMatch = (rule.a.id && rule.a.id === drugId) || (rule.a.cls && ixInClass(drugId, rule.a.cls));
+    const bMatch = (rule.b.id && rule.b.id === drugId) || (rule.b.cls && ixInClass(drugId, rule.b.cls));
+    if(!aMatch && !bMatch) return;
+    const otherSide = aMatch ? rule.b : rule.a;
+    let otherIds = [];
+    if(otherSide.id) otherIds = [otherSide.id];
+    else if(otherSide.cls) otherIds = (IX_CLASSES[otherSide.cls] || []).filter(id => id !== drugId).slice(0, 2);
+    otherIds.forEach(id => {
+      if(id === drugId || partners.has(id)) return;
+      const dr = RX_DRUGS.find(d => d.id === id);
+      if(dr) partners.set(id, { label: graphDrugLabel(dr), kind: 'drug', ref: { kind: 'drug', id } });
+    });
+  });
+  return partners;
+}
+function buildGraphFor(nodeRef){
+  const nodes = [];
+  const seen = new Set();
+  let centerLabel = '';
+  if(nodeRef.kind === 'drug'){
+    const d = RX_DRUGS.find(x => x.id === nodeRef.id);
+    if(!d) return null;
+    centerLabel = graphDrugLabel(d);
+    seen.add('drug:' + d.id);
+    drugLinksFor(d.id).forEach(l => {
+      if(nodes.length >= GRAPH_NODE_CAP) return;
+      const key = 'cond:' + l.condition;
+      if(seen.has(key)) return;
+      seen.add(key);
+      nodes.push({ id: key, label: l.condition, kind: 'condition', ref: { kind: 'condition', name: l.condition } });
+    });
+    graphPartnersForDrug(d.id).forEach((v, id) => {
+      if(nodes.length >= GRAPH_NODE_CAP) return;
+      const key = 'drug:' + id;
+      if(seen.has(key)) return;
+      seen.add(key);
+      nodes.push({ id: key, label: v.label, kind: 'drug', ref: v.ref });
+    });
+  } else if(nodeRef.kind === 'condition'){
+    centerLabel = nodeRef.name;
+    seen.add('cond:' + nodeRef.name);
+    conditionLinksFor(nodeRef.name).forEach(l => {
+      l.drugs.forEach(id => {
+        if(nodes.length >= GRAPH_NODE_CAP) return;
+        const key = 'drug:' + id;
+        if(seen.has(key)) return;
+        const dr = RX_DRUGS.find(d => d.id === id);
+        if(!dr) return;
+        seen.add(key);
+        nodes.push({ id: key, label: graphDrugLabel(dr), kind: 'drug', ref: { kind: 'drug', id } });
+      });
+    });
+  } else {
+    return null;
+  }
+  return { center: { label: centerLabel, kind: nodeRef.kind, ref: nodeRef }, nodes };
+}
+function renderGraphSvg(graph){
+  const wrap = document.getElementById('graph-svg-wrap');
+  if(!wrap) return;
+  if(!graph || !graph.nodes.length){
+    wrap.innerHTML = '<div class="global-search-empty">No direct connections found in this app\'s data for that entry yet.</div>';
+    return;
+  }
+  const size = 420, cx = size / 2, cy = size / 2, r = Math.min(160, 60 + graph.nodes.length * 10);
+  const nodeColor = kind => kind === 'drug' ? 'var(--evidence-bright)' : 'var(--fresh)';
+  let svg = `<svg viewBox="0 0 ${size} ${size}" xmlns="http://www.w3.org/2000/svg">`;
+  const positions = graph.nodes.map((n, i) => {
+    const angle = (i / graph.nodes.length) * Math.PI * 2 - Math.PI / 2;
+    return { ...n, x: cx + r * Math.cos(angle), y: cy + r * Math.sin(angle) };
+  });
+  positions.forEach(n => {
+    svg += `<line class="graph-edge-line" x1="${cx}" y1="${cy}" x2="${n.x}" y2="${n.y}"/>`;
+  });
+  svg += `<g class="graph-node-circle" data-idx="center"><circle cx="${cx}" cy="${cy}" r="26" fill="${nodeColor(graph.center.kind)}"/></g>`;
+  svg += `<text class="graph-node-label" x="${cx}" y="${cy + 42}" text-anchor="middle">${escapeHtml((graph.center.label || '').slice(0, 26))}</text>`;
+  positions.forEach((n, i) => {
+    svg += `<g class="graph-node-circle" data-idx="${i}"><circle cx="${n.x}" cy="${n.y}" r="16" fill="${nodeColor(n.kind)}"/></g>`;
+    const labelY = n.y + (n.y > cy ? 26 : -20);
+    svg += `<text class="graph-node-label" x="${n.x}" y="${labelY}" text-anchor="middle">${escapeHtml((n.label || '').slice(0, 22))}</text>`;
+  });
+  svg += '</svg>';
+  wrap.innerHTML = svg;
+  wrap.querySelectorAll('.graph-node-circle').forEach(el => {
+    el.onclick = () => {
+      const idx = el.dataset.idx;
+      const ref = idx === 'center' ? graph.center.ref : positions[Number(idx)].ref;
+      jumpToGraphNode(ref);
+    };
+  });
+}
+function jumpToGraphNode(ref){
+  const modal = document.getElementById('graph-modal');
+  if(modal) modal.hidden = true;
+  if(ref.kind === 'drug') jumpToRxDrugCalc(ref.id);
+  else if(ref.kind === 'condition') jumpToCondition(ref.name);
+}
+function graphResolveRef(query){
+  const q = (query || '').trim().toLowerCase();
+  if(!q) return null;
+  const drugHit = RX_DRUGS.find(d => d.generic.toLowerCase() === q || (d.brand || '').toLowerCase() === q) ||
+    RX_DRUGS.find(d => d.generic.toLowerCase().includes(q) || (d.brand || '').toLowerCase().includes(q));
+  if(drugHit) return { kind: 'drug', id: drugHit.id };
+  const condSource = [].concat(SYNDROMES, GENETIC_CONDITIONS, CONGENITAL_DISORDERS);
+  const condHit = condSource.find(c => c.name.toLowerCase() === q) || condSource.find(c => c.name.toLowerCase().includes(q));
+  if(condHit) return { kind: 'condition', name: condHit.name };
+  return null;
+}
+function renderGraphFromQuery(query){
+  const ref = graphResolveRef(query);
+  if(!ref){
+    const wrap = document.getElementById('graph-svg-wrap');
+    if(wrap) wrap.innerHTML = query ? '<div class="global-search-empty">No matching drug or condition found.</div>' : '';
+    return;
+  }
+  renderGraphSvg(buildGraphFor(ref));
+}
+function populateGraphDatalist(){
+  const dl = document.getElementById('graph-datalist');
+  if(!dl || dl.childElementCount) return;
+  const opts = [].concat(
+    RX_DRUGS.map(d => graphDrugLabel(d)),
+    [].concat(SYNDROMES, GENETIC_CONDITIONS, CONGENITAL_DISORDERS).map(c => c.name)
+  );
+  dl.innerHTML = opts.map(o => `<option value="${escapeHtml(o)}"></option>`).join('');
+}
+function openGraphView(prefill){
+  const modal = document.getElementById('graph-modal');
+  if(!modal) return;
+  populateGraphDatalist();
+  const input = document.getElementById('graph-input');
+  if(input){
+    input.value = prefill || input.value || '';
+    renderGraphFromQuery(input.value);
+    input.oninput = () => renderGraphFromQuery(input.value);
+  }
+  function close(){ modal.hidden = true; document.removeEventListener('keydown', onKey); }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  document.getElementById('graph-close').onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+function setupGraphView(){
+  const btn = document.getElementById('graph-btn');
+  if(!btn) return;
+  btn.onclick = () => { haptic('Light'); openGraphView(); };
+}
+
 
 /* ============================================================
    Spaced-repetition quiz — built from bookmarked literature, bookmarked
