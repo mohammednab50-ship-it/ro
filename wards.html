@@ -1676,6 +1676,10 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-escalation-contact-wrap{display:flex;align-items:center;gap:8px;flex:1;min-width:220px;}
 .vitals-escalation-contact-wrap input{flex:1;padding:6px 10px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--ink);font-size:13px;}
 .vitals-drift-toggle-wrap{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--ink-soft);}
+.vitals-import-row-invalid{opacity:.55;}
+.vitals-import-row-dup td{background:var(--caution-bg);}
+.vitals-import-dup-tag{color:var(--caution);font-weight:700;font-size:11px;}
+.vitals-import-invalid-tag{color:var(--ink-faint);font-weight:700;font-size:11px;}
 
 /* ---- problem list ---- */
 .vitals-problem-list-panel{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
@@ -2696,6 +2700,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <ol class="chapter-list" id="patient-list"></ol>
     <button type="button" class="vitals-add-patient-btn" id="vitals-add-patient-btn">+ Add patient</button>
     <button type="button" class="vitals-add-patient-btn vitals-btn-outline" id="vitals-scan-patient-btn" hidden>&#128247; Scan patient ID</button>
+    <button type="button" class="vitals-add-patient-btn vitals-btn-outline" id="vitals-import-btn">&#8593; Import patients (CSV/JSON)</button>
+    <input type="file" id="vitals-import-file" accept=".csv,.json,application/json,text/csv" hidden>
     <div class="vitals-add-form" id="vitals-add-form" hidden>
       <div class="vitals-field">
         <label for="vitals-new-name">Name / initials</label>
@@ -2754,6 +2760,16 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       <p class="vitals-disclaimer" style="margin-bottom:var(--space-4);">Bed map is a visual layout of the same active-roster data as the board view — not a real-time facility floor plan.</p>
       <div class="vitals-mapview-grid" id="vitals-mapview-grid"></div>
       <p class="vitals-board-empty" id="vitals-mapview-empty" hidden>No patients on the roster yet — add one on the left.</p>
+    </div>
+
+    <div id="vitals-import-panel" class="vitals-board" hidden>
+      <p class="vitals-disclaimer" style="margin-bottom:var(--space-4);">Bulk-import active patients from a CSV or JSON roster file. Preview and confirm before anything is added — nothing is created until you commit. Expected columns/keys: name, bed, mrn (optional), department (general/icu/surgery/pediatrics/maternity).</p>
+      <div id="vitals-import-summary"></div>
+      <div class="vitals-table-wrap" id="vitals-import-preview-wrap"></div>
+      <div class="vitals-baselines-actions" style="margin-top:var(--space-4);">
+        <button type="button" class="vitals-btn-primary" id="vitals-import-commit-btn">Import selected patients</button>
+        <button type="button" class="vitals-btn-ghost" id="vitals-import-cancel-btn">Cancel</button>
+      </div>
     </div>
 
     <div id="vitals-endshift" class="vitals-board" hidden>
@@ -4953,6 +4969,7 @@ function initVitals(){
   setupFlowsheetColumnSettings();
   applyFlowsheetColumnVisibility();
   setupVitalsEndShiftToggle();
+  setupVitalsImport();
   setupReadingIntervalSelect();
   setupIoBalanceForm();
   setupMarSection();
@@ -5335,6 +5352,8 @@ function setVitalsBoardActive(active){
     vitalsEndShiftActive = false;
     const esBtn = document.getElementById('vitals-endshift-btn');
     if(esBtn) esBtn.textContent = 'End-of-shift summary';
+    const importPanel = document.getElementById('vitals-import-panel');
+    if(importPanel) importPanel.hidden = true;
     renderVitalsBoard();
   }else{
     renderVitalsMain();
@@ -5443,6 +5462,8 @@ function setVitalsArchiveActive(active){
     vitalsEndShiftActive = false;
     const esBtn = document.getElementById('vitals-endshift-btn');
     if(esBtn) esBtn.textContent = 'End-of-shift summary';
+    const importPanel = document.getElementById('vitals-import-panel');
+    if(importPanel) importPanel.hidden = true;
     renderVitalsArchive();
   }else{
     renderVitalsMain();
@@ -5538,6 +5559,8 @@ function setVitalsMapViewActive(active){
     vitalsEndShiftActive = false;
     const esBtn = document.getElementById('vitals-endshift-btn');
     if(esBtn) esBtn.textContent = 'End-of-shift summary';
+    const importPanel = document.getElementById('vitals-import-panel');
+    if(importPanel) importPanel.hidden = true;
     renderVitalsMapView();
   }else{
     renderVitalsMain();
@@ -5549,6 +5572,172 @@ function setupVitalsMapViewToggle(){
   if(!btn || btn.dataset.wired) return;
   btn.dataset.wired = '1';
   btn.addEventListener('click', () => setVitalsMapViewActive(!vitalsMapViewActive));
+}
+
+/* ---- CSV/JSON bulk import — parses, validates and previews rows before
+   anything is committed; reuses findPossibleDuplicatePatient() (defined
+   below, after this module loads — see setup wiring) for the duplicate
+   warning column. Always creates active patients. ---- */
+const IMPORT_VALID_DEPTS = ['general', 'icu', 'surgery', 'pediatrics', 'maternity'];
+let vitalsImportRows = [];
+
+function parseImportCsv(text){
+  const lines = text.split(/\r\n|\n|\r/).filter(l => l.trim() !== '');
+  if(!lines.length) return [];
+  const splitLine = line => {
+    const cells = []; let cur = ''; let inQuotes = false;
+    for(let i = 0; i < line.length; i++){
+      const ch = line[i];
+      if(inQuotes){
+        if(ch === '"' && line[i + 1] === '"'){ cur += '"'; i++; }
+        else if(ch === '"') inQuotes = false;
+        else cur += ch;
+      }else{
+        if(ch === '"') inQuotes = true;
+        else if(ch === ','){ cells.push(cur); cur = ''; }
+        else cur += ch;
+      }
+    }
+    cells.push(cur);
+    return cells.map(c => c.trim());
+  };
+  const header = splitLine(lines[0]).map(h => h.toLowerCase());
+  return lines.slice(1).map(line => {
+    const cells = splitLine(line);
+    const row = {};
+    header.forEach((h, i) => { row[h] = cells[i] !== undefined ? cells[i] : ''; });
+    return row;
+  });
+}
+
+function normalizeImportRow(raw){
+  const name = (raw.name || raw.patient || '').toString().trim();
+  const bed = (raw.bed || raw.room || '').toString().trim();
+  const mrn = (raw.mrn || '').toString().trim();
+  let department = (raw.department || raw.dept || 'general').toString().trim().toLowerCase();
+  if(!IMPORT_VALID_DEPTS.includes(department)) department = 'general';
+  const errors = [];
+  if(!name) errors.push('Missing name');
+  return { name, bed, mrn, department, errors, include: !errors.length };
+}
+
+function renderImportPreview(){
+  const wrap = document.getElementById('vitals-import-preview-wrap');
+  const summary = document.getElementById('vitals-import-summary');
+  const commitBtn = document.getElementById('vitals-import-commit-btn');
+  if(!wrap) return;
+  if(!vitalsImportRows.length){
+    wrap.innerHTML = '<p class="vitals-dept-empty">No rows parsed yet — choose a file above.</p>';
+    if(summary) summary.innerHTML = '';
+    if(commitBtn) commitBtn.disabled = true;
+    return;
+  }
+  const validCount = vitalsImportRows.filter(r => r.include).length;
+  if(summary) summary.innerHTML = `<p class="vitals-dept-subtitle">${vitalsImportRows.length} rows parsed — ${validCount} selected to import</p>`;
+  if(commitBtn) commitBtn.disabled = validCount === 0;
+  wrap.innerHTML = `<table class="vitals-table"><thead><tr><th></th><th>Name</th><th>Bed</th><th>MRN</th><th>Department</th><th>Flags</th></tr></thead><tbody>` +
+    vitalsImportRows.map((row, i) => {
+      const dup = row.errors.length ? null : findPossibleDuplicatePatient(row.name, row.bed, row.mrn);
+      const rowClass = row.errors.length ? 'vitals-import-row-invalid' : (dup ? 'vitals-import-row-dup' : '');
+      const flags = row.errors.length
+        ? `<span class="vitals-import-invalid-tag">${escapeHtml(row.errors.join('; '))}</span>`
+        : (dup ? `<span class="vitals-import-dup-tag">Possible duplicate — ${escapeHtml(dup.name || dup.bed || 'existing patient')}</span>` : '');
+      return `<tr class="${rowClass}">` +
+        `<td><input type="checkbox" data-import-row="${i}" ${row.include ? 'checked' : ''} ${row.errors.length ? 'disabled' : ''}></td>` +
+        `<td>${escapeHtml(row.name || '—')}</td><td>${escapeHtml(row.bed || '—')}</td><td>${escapeHtml(row.mrn || '—')}</td>` +
+        `<td>${escapeHtml(DEPT_LABELS[row.department] || row.department)}</td><td>${flags}</td></tr>`;
+    }).join('') + `</tbody></table>`;
+}
+
+function setVitalsImportActive(active){
+  const panel = document.getElementById('vitals-import-panel');
+  if(panel) panel.hidden = !active;
+  const empty = document.getElementById('vitals-empty');
+  const view = document.getElementById('vitals-patient-view');
+  if(active){
+    if(empty) empty.hidden = true;
+    if(view) view.hidden = true;
+    ['vitals-board', 'vitals-mapview', 'vitals-archive', 'vitals-endshift'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.hidden = true;
+    });
+    vitalsBoardActive = false; vitalsMapViewActive = false; vitalsArchiveActive = false; vitalsEndShiftActive = false;
+  }else{
+    vitalsImportRows = [];
+    renderPatientList();
+    renderVitalsMain();
+  }
+}
+
+function setupVitalsImport(){
+  const btn = document.getElementById('vitals-import-btn');
+  const fileInput = document.getElementById('vitals-import-file');
+  const cancelBtn = document.getElementById('vitals-import-cancel-btn');
+  const commitBtn = document.getElementById('vitals-import-commit-btn');
+  const wrap = document.getElementById('vitals-import-preview-wrap');
+  if(btn && !btn.dataset.wired){
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => { if(fileInput) fileInput.click(); });
+  }
+  if(fileInput && !fileInput.dataset.wired){
+    fileInput.dataset.wired = '1';
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files && fileInput.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        try{
+          let raws;
+          if(/\.json$/i.test(file.name) || file.type === 'application/json'){
+            const parsed = JSON.parse(reader.result);
+            raws = Array.isArray(parsed) ? parsed : (Array.isArray(parsed.patients) ? parsed.patients : []);
+          }else{
+            raws = parseImportCsv(reader.result);
+          }
+          vitalsImportRows = raws.map(normalizeImportRow);
+          setVitalsImportActive(true);
+          renderImportPreview();
+        }catch(e){
+          showToast('Could not parse that file — check it is valid CSV or JSON.');
+        }
+        fileInput.value = '';
+      };
+      reader.readAsText(file);
+    });
+  }
+  if(cancelBtn && !cancelBtn.dataset.wired){
+    cancelBtn.dataset.wired = '1';
+    cancelBtn.addEventListener('click', () => setVitalsImportActive(false));
+  }
+  if(wrap && !wrap.dataset.wired){
+    wrap.dataset.wired = '1';
+    wrap.addEventListener('change', e => {
+      const cb = e.target.closest('[data-import-row]');
+      if(!cb) return;
+      const row = vitalsImportRows[parseInt(cb.dataset.importRow, 10)];
+      if(row) row.include = cb.checked;
+      renderImportPreview();
+    });
+  }
+  if(commitBtn && !commitBtn.dataset.wired){
+    commitBtn.dataset.wired = '1';
+    commitBtn.addEventListener('click', () => {
+      const toImport = vitalsImportRows.filter(r => r.include && !r.errors.length);
+      if(!toImport.length) return;
+      toImport.forEach(row => {
+        const id = genVitalsId('pt');
+        vitalsState.patients.push({
+          id, name: row.name, bed: row.bed, mrn: row.mrn, department: row.department,
+          status: 'active', createdAt: new Date().toISOString()
+        });
+        vitalsState.logs[id] = [];
+      });
+      saveVitalsData();
+      showToast(`Imported ${toImport.length} patient${toImport.length === 1 ? '' : 's'}.`);
+      haptic('Light');
+      setVitalsImportActive(false);
+    });
+  }
 }
 
 /* ---- add / remove patient ---- */
@@ -7838,6 +8027,8 @@ function setVitalsEndShiftActive(active){
     const archivePanel = document.getElementById('vitals-archive');
     if(archivePanel) archivePanel.hidden = true;
     vitalsArchiveActive = false;
+    const importPanel = document.getElementById('vitals-import-panel');
+    if(importPanel) importPanel.hidden = true;
     renderEndOfShiftSummary();
   }else{
     renderVitalsMain();
