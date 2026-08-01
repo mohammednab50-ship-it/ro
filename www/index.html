@@ -2267,6 +2267,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     </div>
 
     <div class="settings-row">
+      <div class="settings-label"><strong>Guidance differs</strong><span class="settings-sub">Entries where major sources genuinely disagree</span></div>
+      <button type="button" class="settings-btn" id="settings-view-controversies">View</button>
+    </div>
+
+    <div class="settings-row">
       <div class="settings-label"><strong>Collections</strong><span class="settings-sub">Group saved bookmarks, e.g. "Finals review"</span></div>
       <button type="button" class="settings-btn" id="settings-view-collections">Manage</button>
     </div>
@@ -2404,6 +2409,20 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <p class="settings-sub" id="passport-summary" style="display:block;margin:-4px 0 14px;"></p>
     <div class="passport-grid" id="passport-grid"></div>
     <p class="settings-sub" style="display:block;margin-top:14px;">Based on specialties you've browsed, pinned, or saved a Condition from — no ranks, just what you've touched.</p>
+  </div>
+</div>
+
+<!-- ===== "Guidance differs" — surfaces CONDITIONS entries with a real,
+     sourced disagreement between major guideline bodies. Its own reachable
+     view since the Guidelines tab that CONDITIONS was originally written
+     for is currently disabled (see comment near the tabbar). ===== -->
+<div class="rename-overlay" id="controversy-modal" role="dialog" aria-modal="true" aria-labelledby="controversy-title" hidden>
+  <div class="rename-card settings-card" role="document">
+    <button type="button" class="onb-close" id="controversy-close" aria-label="Close guidance differences">&times;</button>
+    <p class="onb-eyebrow">GUIDANCE DIFFERS</p>
+    <h2 class="onb-title serif" id="controversy-title">Where sources disagree</h2>
+    <p class="settings-sub" style="display:block;margin:-4px 0 14px;">Topics where major guideline bodies genuinely differ — not an error in either, a real difference to be aware of.</p>
+    <div id="controversy-list"></div>
   </div>
 </div>
 
@@ -7168,6 +7187,34 @@ function openSpecialtyPassport(){
   }
   function onKey(e){ if(e.key === 'Escape') close(); }
   const closeBtn = document.getElementById('passport-close');
+  if(closeBtn) closeBtn.onclick = close;
+  modal.onclick = (e) => { if(e.target === modal) close(); };
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+}
+
+/* CONDITIONS was originally written for the Guidelines tab, which is
+   currently disabled — this is the live surface for its `controversy`
+   field so the curated content isn't stranded on an unreachable view. */
+function openControversyList(){
+  const modal = document.getElementById('controversy-modal');
+  if(!modal) return;
+  const list = document.getElementById('controversy-list');
+  const entries = CONDITIONS.filter(c => c.controversy);
+  if(list){
+    list.innerHTML = entries.length
+      ? entries.map(c => `<div class="global-search-group">
+          <h3>${escapeHtml(c.name)}</h3>
+          <p class="condition-controversy"><span class="cc-icon" aria-hidden="true">&#9878;</span><span>${glossify(c.controversy)}</span></p>
+        </div>`).join('')
+      : '<div class="global-search-empty">Nothing curated yet.</div>';
+  }
+  function close(){
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){ if(e.key === 'Escape') close(); }
+  const closeBtn = document.getElementById('controversy-close');
   if(closeBtn) closeBtn.onclick = close;
   modal.onclick = (e) => { if(e.target === modal) close(); };
   modal.hidden = false;
@@ -13195,6 +13242,9 @@ function openSettings(){
 
   const passportBtn = document.getElementById('settings-view-passport');
   if(passportBtn) passportBtn.onclick = () => { haptic('Light'); openSpecialtyPassport(); };
+
+  const controversyBtn = document.getElementById('settings-view-controversies');
+  if(controversyBtn) controversyBtn.onclick = () => { haptic('Light'); openControversyList(); };
 
   const collectionsBtn = document.getElementById('settings-view-collections');
   if(collectionsBtn) collectionsBtn.onclick = () => { haptic('Light'); openCollectionsManager(); };
