@@ -1713,6 +1713,9 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-allergy-banner{display:flex;align-items:flex-start;gap:10px;font-family:var(--ff-sans);font-size:13.5px;font-weight:700;color:var(--caution);
   padding:13px 16px;border:1.5px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-md);margin-bottom:var(--space-5);}
 .vitals-allergy-banner .allergy-list{font-weight:500;color:var(--ink);}
+.vitals-archived-banner{display:flex;align-items:flex-start;gap:10px;font-family:var(--ff-sans);font-size:13.5px;font-weight:700;color:var(--ink-soft);
+  padding:13px 16px;border:1.5px solid var(--line);background:var(--surface-raised);border-radius:var(--r-md);margin-bottom:var(--space-5);}
+.vitals-archived-banner[hidden]{display:none;}
 .vitals-allergies-form{margin:0 0 var(--space-5);padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);}
 
 /* ---- trend-based deterioration badges ---- */
@@ -1740,7 +1743,10 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 
 /* ---- roster-wide board view ---- */
 .vitals-main-toprow{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;}
+.vitals-main-toprow-actions{display:flex;gap:8px;flex-wrap:wrap;}
 .vitals-board-toggle-btn[aria-pressed="true"]{background:var(--evidence);color:var(--shell-ink);border-color:var(--evidence);}
+.vitals-board-card.is-archived{border-color:var(--line);opacity:.92;}
+.vitals-board-archived-date{font-size:11px;font-weight:700;color:var(--ink-faint);}
 .vitals-board{margin-bottom:var(--space-6);}
 .vitals-board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--space-4);}
 .vitals-board-card{text-align:left;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
@@ -2651,12 +2657,25 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <p class="drug-kicker" style="margin-bottom:8px;">SECTION 07 <span class="dot">&middot;</span> PATIENT CHARTING</p>
         <h2 class="drug-title" style="font-size:38px;margin-bottom:16px;">Patients</h2>
       </div>
-      <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-board-toggle-btn" aria-pressed="false">Board view — all patients</button>
+      <div class="vitals-main-toprow-actions">
+        <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-board-toggle-btn" aria-pressed="false">Board view — all patients</button>
+        <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-archive-toggle-btn" aria-pressed="false">Archive</button>
+      </div>
     </div>
 
     <div id="vitals-board" class="vitals-board" hidden>
       <div class="vitals-board-grid" id="vitals-board-grid"></div>
       <p class="vitals-board-empty" id="vitals-board-empty" hidden>No patients on the roster yet — add one on the left.</p>
+    </div>
+
+    <div id="vitals-archive" class="vitals-board" hidden>
+      <p class="vitals-disclaimer" style="margin-bottom:var(--space-4);">Discharged/transferred patients, kept for reference only — not part of the active roster, board view, or "not seen recently" sweep.</p>
+      <div class="vitals-log-search">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="vitals-archive-search" type="text" placeholder="Search archive — name, bed, MRN, department" autocomplete="off">
+      </div>
+      <div class="vitals-board-grid" id="vitals-archive-grid"></div>
+      <p class="vitals-board-empty" id="vitals-archive-empty" hidden>No archived patients yet.</p>
     </div>
 
     <div id="vitals-empty" class="vitals-empty">
@@ -2701,10 +2720,13 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <button type="button" class="vitals-btn-outline" id="vitals-print-btn" title="Print a one-page vitals summary">Print summary</button>
           <button type="button" class="vitals-btn-outline" id="vitals-export-btn">Export CSV</button>
           <button type="button" class="vitals-btn-outline" id="vitals-history-btn" title="Audit trail — who changed what, and when (synced patients only)" hidden>History</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-archive-patient-btn" title="Mark this patient discharged/transferred — moves them to the Archive, keeping their full record">Discharge / Archive</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-reactivate-patient-btn" title="Move this patient back onto the active roster" hidden>Reactivate</button>
           <button type="button" class="vitals-btn-outline vitals-btn-danger" id="vitals-remove-patient-btn">Remove patient</button>
         </div>
       </header>
 
+      <div class="vitals-archived-banner" id="vitals-archived-banner" hidden></div>
       <div class="vitals-allergy-banner" id="vitals-allergy-banner" hidden></div>
 
       <div class="vitals-problem-list-panel">
@@ -4707,7 +4729,8 @@ function initVitals(){
   loadVitalsData();
   migrateMaternityV1();
   if(!vitalsState.activePatientId && vitalsState.patients.length){
-    vitalsState.activePatientId = vitalsState.patients[0].id;
+    const firstActive = vitalsState.patients.find(isPatientActive);
+    vitalsState.activePatientId = firstActive ? firstActive.id : vitalsState.patients[0].id;
   }
   setupPatientList();
   setupAddPatientForm();
@@ -4728,6 +4751,7 @@ function initVitals(){
   setupSurgerySection();
   setupPediatricsSection();
   setupVitalsBoardToggle();
+  setupVitalsArchiveToggle();
   setupVitalsCopyLastButton();
   setupEscalationTrail();
   setupProblemList();
@@ -4878,6 +4902,12 @@ function lastVitalsReadingTime(p){
 
 // Overdue since either the last logged reading, or since the patient was
 // added if nothing's been logged for them yet.
+// Patient status: missing/undefined counts as 'active' (pre-archival records
+// and anything written before this field existed) — only an explicit
+// 'archived' takes a patient out of the active roster/board/sweep.
+function isPatientActive(p){ return !p || p.status !== 'archived'; }
+function isPatientArchived(p){ return !!p && p.status === 'archived'; }
+
 function isVitalsPatientOverdue(p, now){
   const thresholdMs = effectiveUnseenThresholdHours(p) * 3600 * 1000;
   const lastSeen = lastVitalsReadingTime(p);
@@ -4891,8 +4921,9 @@ function renderPatientList(){
   if(!list) return;
   list.innerHTML = '';
   const now = Date.now();
-  let patients = vitalsMineFilterActive ? vitalsState.patients.filter(p => p.mine) : vitalsState.patients;
-  const overdueCount = vitalsState.patients.filter(p => isVitalsPatientOverdue(p, now)).length;
+  let patients = vitalsState.patients.filter(isPatientActive);
+  if(vitalsMineFilterActive) patients = patients.filter(p => p.mine);
+  const overdueCount = vitalsState.patients.filter(p => isPatientActive(p) && isVitalsPatientOverdue(p, now)).length;
   if(vitalsOverdueFilterActive) patients = patients.filter(p => isVitalsPatientOverdue(p, now));
 
   const overdueBanner = document.getElementById('vitals-overdue-banner');
@@ -5020,13 +5051,14 @@ function renderVitalsBoard(){
   if(!grid) return;
   const now = Date.now();
   grid.innerHTML = '';
-  if(!vitalsState.patients.length){
+  const activePatients = vitalsState.patients.filter(isPatientActive);
+  if(!activePatients.length){
     if(empty) empty.hidden = false;
     return;
   }
   if(empty) empty.hidden = true;
 
-  vitalsState.patients.forEach(p => {
+  activePatients.forEach(p => {
     const overdue = isVitalsPatientOverdue(p, now);
     const latest = latestVitalsEntryFor(p);
     const n2 = latest ? computeNews2(latest, p) : null;
@@ -5090,6 +5122,11 @@ function setVitalsBoardActive(active){
   if(active){
     if(empty) empty.hidden = true;
     if(view) view.hidden = true;
+    const archivePanel = document.getElementById('vitals-archive');
+    if(archivePanel) archivePanel.hidden = true;
+    vitalsArchiveActive = false;
+    const archiveBtn = document.getElementById('vitals-archive-toggle-btn');
+    if(archiveBtn){ archiveBtn.setAttribute('aria-pressed', 'false'); archiveBtn.textContent = 'Archive'; }
     renderVitalsBoard();
   }else{
     renderVitalsMain();
@@ -5100,7 +5137,111 @@ function setupVitalsBoardToggle(){
   const btn = document.getElementById('vitals-board-toggle-btn');
   if(!btn || btn.dataset.wired) return;
   btn.dataset.wired = '1';
-  btn.addEventListener('click', () => setVitalsBoardActive(!vitalsBoardActive));
+  btn.addEventListener('click', () => { setVitalsArchiveActive(false); setVitalsBoardActive(!vitalsBoardActive); });
+}
+
+/* ---- Archive — discharged/transferred patients, kept fully intact but
+   out of the active roster/board/overdue sweep. Reuses the board's card
+   layout; sorted by archive date (most recently archived first) and
+   filterable by a free-text search over name/bed/MRN/department. ---- */
+let vitalsArchiveActive = false;
+
+function archivedPatientsMatching(query){
+  const q = (query || '').trim().toLowerCase();
+  let list = vitalsState.patients.filter(isPatientArchived);
+  if(q){
+    list = list.filter(p =>
+      (p.name || '').toLowerCase().includes(q) ||
+      (p.bed || '').toLowerCase().includes(q) ||
+      (p.mrn || '').toLowerCase().includes(q) ||
+      (DEPT_LABELS[p.department || 'general'] || '').toLowerCase().includes(q));
+  }
+  return list.slice().sort((a, b) => new Date(b.archivedAt || 0) - new Date(a.archivedAt || 0));
+}
+
+function renderVitalsArchive(){
+  const grid = document.getElementById('vitals-archive-grid');
+  const empty = document.getElementById('vitals-archive-empty');
+  if(!grid) return;
+  const searchInput = document.getElementById('vitals-archive-search');
+  const matches = archivedPatientsMatching(searchInput ? searchInput.value : '');
+  grid.innerHTML = '';
+  if(!matches.length){
+    if(empty){
+      empty.hidden = false;
+      empty.textContent = vitalsState.patients.some(isPatientArchived)
+        ? 'No archived patients match that search.'
+        : 'No archived patients yet.';
+    }
+    return;
+  }
+  if(empty) empty.hidden = true;
+
+  matches.forEach(p => {
+    const isoBadge = isolationBadgeHtml(p.isolation);
+    const card = document.createElement('button');
+    card.type = 'button';
+    card.className = 'vitals-board-card is-archived';
+    card.dataset.patientId = p.id;
+    card.innerHTML =
+      `<div class="vitals-board-card-top">` +
+        `<span class="vitals-board-bed">${escapeHtml(p.bed || '—')}</span>` +
+        `<span class="vitals-board-name">${isoBadge}${escapeHtml(p.name || 'Unnamed')}</span>` +
+      `</div>` +
+      `<div class="vitals-board-dept">${escapeHtml(DEPT_LABELS[p.department || 'general'] || '')}</div>` +
+      `<div class="vitals-board-flags"><span class="vitals-board-archived-date">Archived ${p.archivedAt ? fmtWardsDateTime(new Date(p.archivedAt)) : '—'}</span></div>`;
+    grid.appendChild(card);
+  });
+
+  if(!grid.dataset.archiveWired){
+    grid.dataset.archiveWired = '1';
+    grid.addEventListener('click', e => {
+      const card = e.target.closest('.vitals-board-card');
+      if(!card) return;
+      vitalsState.activePatientId = card.dataset.patientId;
+      setVitalsArchiveActive(false);
+      renderPatientList();
+      renderVitalsMain();
+    });
+  }
+}
+
+function setVitalsArchiveActive(active){
+  vitalsArchiveActive = active;
+  const panel = document.getElementById('vitals-archive');
+  const toggleBtn = document.getElementById('vitals-archive-toggle-btn');
+  const empty = document.getElementById('vitals-empty');
+  const view = document.getElementById('vitals-patient-view');
+  if(panel) panel.hidden = !active;
+  if(toggleBtn){
+    toggleBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    toggleBtn.textContent = active ? 'Back to active roster' : 'Archive';
+  }
+  if(active){
+    if(empty) empty.hidden = true;
+    if(view) view.hidden = true;
+    const board = document.getElementById('vitals-board');
+    if(board) board.hidden = true;
+    vitalsBoardActive = false;
+    const boardBtn = document.getElementById('vitals-board-toggle-btn');
+    if(boardBtn) boardBtn.setAttribute('aria-pressed', 'false');
+    renderVitalsArchive();
+  }else{
+    renderVitalsMain();
+  }
+}
+
+function setupVitalsArchiveToggle(){
+  const btn = document.getElementById('vitals-archive-toggle-btn');
+  const search = document.getElementById('vitals-archive-search');
+  if(btn && !btn.dataset.wired){
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => setVitalsArchiveActive(!vitalsArchiveActive));
+  }
+  if(search && !search.dataset.wired){
+    search.dataset.wired = '1';
+    search.addEventListener('input', renderVitalsArchive);
+  }
 }
 
 /* ---- add / remove patient ---- */
@@ -5270,6 +5411,48 @@ function setupAddPatientForm(){
 
   const exportBtn = document.getElementById('vitals-export-btn');
   if(exportBtn) exportBtn.addEventListener('click', exportActivePatientCsv);
+
+  const archiveBtn = document.getElementById('vitals-archive-patient-btn');
+  if(archiveBtn){
+    archiveBtn.addEventListener('click', () => {
+      const p = activePatient();
+      if(!p) return;
+      p.status = 'archived';
+      p.archivedAt = new Date().toISOString();
+      saveVitalsData();
+      if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('patient_archived', p);
+      renderPatientList();
+      renderVitalsMain();
+      haptic('Light');
+      showToast(`${p.name || 'Patient'} moved to the archive.`, null, {
+        label: 'Undo',
+        onClick: () => {
+          p.status = 'active';
+          delete p.archivedAt;
+          saveVitalsData();
+          if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('patient_reactivated', p);
+          renderPatientList();
+          renderVitalsMain();
+        }
+      });
+    });
+  }
+
+  const reactivateBtn = document.getElementById('vitals-reactivate-patient-btn');
+  if(reactivateBtn){
+    reactivateBtn.addEventListener('click', () => {
+      const p = activePatient();
+      if(!p) return;
+      p.status = 'active';
+      delete p.archivedAt;
+      saveVitalsData();
+      if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('patient_reactivated', p);
+      renderPatientList();
+      renderVitalsMain();
+      haptic('Light');
+      showToast(`${p.name || 'Patient'} moved back to the active roster.`);
+    });
+  }
 }
 
 /* ---- entry form ---- */
@@ -5445,13 +5628,20 @@ function setupPatientScan(){
 }
 function handleScannedValue(value){
   if(!value) return;
+  // Matches archived patients too, deliberately — surfacing "this ID belongs
+  // to someone already discharged" is more useful than silently letting a
+  // reused wristband/MRN spawn a fresh duplicate active patient.
   const match = vitalsState.patients.find(p => (p.mrn && p.mrn.toLowerCase() === value.toLowerCase()) || p.id === value);
   if(match){
     vitalsState.activePatientId = match.id;
+    if(vitalsArchiveActive) setVitalsArchiveActive(false);
+    if(vitalsBoardActive) setVitalsBoardActive(false);
     renderPatientList();
     renderVitalsMain();
     haptic('Medium');
-    showToast('Found ' + (match.name || 'patient') + ' — opened their chart', 'ok');
+    showToast(isPatientArchived(match)
+      ? 'That ID belongs to ' + (match.name || 'a patient') + ' — archived. Reactivate to resume charting.'
+      : 'Found ' + (match.name || 'patient') + ' — opened their chart', 'ok');
     return;
   }
   const openBtn = document.getElementById('vitals-add-patient-btn');
@@ -5762,6 +5952,23 @@ function renderVitalsMain(){
   if(historyBtn){
     const gid = (typeof window.getWardsActiveSyncGroupId === 'function') ? window.getWardsActiveSyncGroupId() : null;
     historyBtn.hidden = !(gid && p.groupId === gid);
+  }
+
+  const archived = isPatientArchived(p);
+  const archiveBtn = document.getElementById('vitals-archive-patient-btn');
+  const reactivateBtn = document.getElementById('vitals-reactivate-patient-btn');
+  const archivedBanner = document.getElementById('vitals-archived-banner');
+  if(archiveBtn) archiveBtn.hidden = archived;
+  if(reactivateBtn) reactivateBtn.hidden = !archived;
+  if(archivedBanner){
+    archivedBanner.hidden = !archived;
+    if(archived){
+      archivedBanner.textContent = 'This patient is archived (discharged/transferred)' +
+        (p.archivedAt ? ' as of ' + fmtWardsDateTime(new Date(p.archivedAt)) : '') +
+        ' — kept for reference only. Reactivate first to log new readings here.';
+    }else{
+      archivedBanner.textContent = ''; // .vitals-archived-banner keeps display:flex even when [hidden] (author CSS beats the UA [hidden] rule) — clear content so a stale banner can't linger visibly
+    }
   }
 
   const isoSelect = document.getElementById('vitals-isolation-select');
@@ -6442,7 +6649,7 @@ function generateSbarForPatient(p){
 }
 
 function generateSbarForMinePatients(){
-  const mine = vitalsState.patients.filter(p => p.mine);
+  const mine = vitalsState.patients.filter(p => p.mine && isPatientActive(p));
   if(!mine.length) return 'No patients are currently marked as "mine" this shift.';
   return mine.map(generateSbarForPatient).join('\n\n' + '='.repeat(48) + '\n\n');
 }
