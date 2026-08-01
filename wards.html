@@ -1812,6 +1812,15 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .es-label{display:block;font-size:12px;color:var(--ink-soft);margin-top:4px;}
 .vitals-endshift-list{list-style:none;margin:0 0 var(--space-4);padding:0;display:grid;gap:6px;}
 .vitals-endshift-list li{font-size:13px;border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 10px;background:var(--surface);}
+.wards-digest-card{border:1px solid var(--caution-line);border-radius:var(--r-md);background:var(--caution-bg);box-shadow:var(--shadow-sm);padding:12px 14px;margin-bottom:var(--space-5);max-width:520px;}
+.wards-digest-card[hidden]{display:none;}
+.wards-digest-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;}
+.wards-digest-title{font-family:var(--ff-sans);font-size:13px;font-weight:700;color:var(--ink);}
+.wards-digest-close{background:none;border:none;color:var(--ink-soft);font-size:18px;line-height:1;cursor:pointer;padding:0 2px;}
+.wards-digest-sub{margin:0 0 6px;font-size:11.5px;color:var(--ink-faint);}
+.wards-digest-list{list-style:none;margin:0;padding:0;display:grid;gap:4px;}
+.wards-digest-list li{font-size:13px;color:var(--ink);}
+.wards-digest-list li::before{content:'\2022';color:var(--caution);font-weight:800;margin-right:6px;}
 .vitals-board-card{text-align:left;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
   padding:14px 16px;cursor:pointer;font-family:var(--ff-sans);color:var(--ink);transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);}
 .vitals-board-card:hover{border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
@@ -2787,6 +2796,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-mapview-toggle-btn" aria-pressed="false">Bed map</button>
         <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-archive-toggle-btn" aria-pressed="false">Archive</button>
       </div>
+    </div>
+
+    <div class="wards-digest-card" id="wards-digest-card" hidden>
+      <div class="wards-digest-head">
+        <span class="wards-digest-title">Since you were last here</span>
+        <button type="button" class="wards-digest-close" id="wards-digest-close" aria-label="Dismiss">&times;</button>
+      </div>
+      <div id="wards-digest-body"></div>
     </div>
 
     <div id="vitals-board" class="vitals-board" hidden>
@@ -5035,6 +5052,7 @@ function initVitals(){
   setupRetentionSettings();
   runRetentionSweep();
   setupCriticalAlertSettings();
+  setupWardsDigest();
   renderPatientList();
   if(getDefaultVitalsView() === 'board' && vitalsState.patients.length){
     setVitalsBoardActive(true);
@@ -8340,6 +8358,63 @@ function setupVitalsEndShiftToggle(){
   if(!btn || btn.dataset.wired) return;
   btn.dataset.wired = '1';
   btn.addEventListener('click', () => setVitalsEndShiftActive(!vitalsEndShiftActive));
+}
+
+/* ---- "What's new since I last opened this" digest — a small, dismissable,
+   non-blocking card shown on boot when the gap since the last visit looks
+   like a shift boundary (>8h). Reuses the same overdue/due-meds/unresolved-
+   problems aggregation the end-of-shift summary above uses, plus pending
+   escalations, rather than recomputing any of that from scratch. Rate-
+   limiting is implicit: the last-open timestamp is stamped on every boot,
+   so it can only fire again once another 8h+ gap has actually elapsed. ---- */
+const WARDS_LAST_OPEN_KEY = 'wards_last_open_v1';
+const WARDS_DIGEST_GAP_MS = 8 * 60 * 60 * 1000;
+function computeWardsDigestCounts(){
+  const now = Date.now();
+  const activePatients = vitalsState.patients.filter(isPatientActive);
+  const overdueVitals = activePatients.filter(p => isVitalsPatientOverdue(p, now)).length;
+  let dueMeds = 0;
+  activePatients.forEach(p => (p.medications || []).forEach(med => {
+    const status = marDoseStatus(med);
+    if(status.cls === 'mar-due' || status.cls === 'mar-overdue') dueMeds++;
+  }));
+  let unresolvedProblems = 0;
+  activePatients.forEach(p => (p.problems || []).forEach(pr => { if(!pr.resolvedAt) unresolvedProblems++; }));
+  let pendingEscalations = 0;
+  activePatients.forEach(p => (p.escalations || []).forEach(e => { if(!e.respondedAt) pendingEscalations++; }));
+  return { overdueVitals, dueMeds, unresolvedProblems, pendingEscalations };
+}
+function renderWardsDigest(){
+  const card = document.getElementById('wards-digest-card');
+  const body = document.getElementById('wards-digest-body');
+  if(!card || !body) return;
+  let lastOpenRaw = null;
+  try{ lastOpenRaw = localStorage.getItem(WARDS_LAST_OPEN_KEY); }catch(e){}
+  const now = Date.now();
+  const gap = lastOpenRaw ? (now - new Date(lastOpenRaw).getTime()) : Infinity;
+  try{ localStorage.setItem(WARDS_LAST_OPEN_KEY, new Date(now).toISOString()); }catch(e){}
+  if(!lastOpenRaw || gap < WARDS_DIGEST_GAP_MS || !vitalsState.patients.length){ card.hidden = true; return; }
+  const c = computeWardsDigestCounts();
+  const items = [];
+  if(c.overdueVitals) items.push(`${c.overdueVitals} patient${c.overdueVitals === 1 ? '' : 's'} overdue for vitals`);
+  if(c.dueMeds) items.push(`${c.dueMeds} med dose${c.dueMeds === 1 ? '' : 's'} due or overdue`);
+  if(c.unresolvedProblems) items.push(`${c.unresolvedProblems} unresolved problem${c.unresolvedProblems === 1 ? '' : 's'}`);
+  if(c.pendingEscalations) items.push(`${c.pendingEscalations} escalation${c.pendingEscalations === 1 ? '' : 's'} awaiting response`);
+  if(!items.length){ card.hidden = true; return; }
+  body.innerHTML = `<p class="wards-digest-sub">Last open ${escapeHtml(fmtVitalsTime(lastOpenRaw))}</p>` +
+    `<ul class="wards-digest-list">${items.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul>`;
+  card.hidden = false;
+}
+function setupWardsDigest(){
+  const closeBtn = document.getElementById('wards-digest-close');
+  if(closeBtn && !closeBtn.dataset.wired){
+    closeBtn.dataset.wired = '1';
+    closeBtn.addEventListener('click', () => {
+      const card = document.getElementById('wards-digest-card');
+      if(card) card.hidden = true;
+    });
+  }
+  renderWardsDigest();
 }
 
 /* ============================================================
