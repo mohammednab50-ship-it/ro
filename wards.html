@@ -6937,6 +6937,46 @@ function setupVitalsPrintButton(){
    trail into a printable/copyable Situation-Background-Assessment-
    Recommendation summary. Reuses the print-summary swap pattern from
    printVitalsSummary() above. ---- */
+function sbarDeptFocusLines(p){
+  const dept = p.department || 'general';
+  const lines = [];
+  if(dept === 'surgery' && p.surgery){
+    const surg = p.surgery;
+    const pod = typeof postOpDayNumber === 'function' ? postOpDayNumber(surg.procedureDate) : null;
+    lines.push(`  Procedure: ${surg.procedureName || 'not recorded'}${pod !== null ? ` — post-op day ${pod}` : ''}`);
+    const drains = surg.drains || [];
+    lines.push(`  Drains: ${drains.length ? drains.map(d => `${d.name || 'drain'} ${d.output ? d.output + 'mL' : ''}`.trim()).join('; ') : 'None charted'}`);
+    lines.push(`  Wound: ${(surg.woundNotes || '').trim() || 'Not recorded — check dressing/wound status on rounds'}`);
+  }else if(dept === 'icu' && p.icu){
+    const vent = p.icu.vent || {};
+    const ventText = (vent.mode || vent.fio2 || vent.peep || vent.tv || vent.rr)
+      ? `Mode ${vent.mode || '—'}, FiO2 ${vent.fio2 || '—'}, PEEP ${vent.peep || '—'}, TV ${vent.tv || '—'}, RR ${vent.rr || '—'}`
+      : 'Not on recorded ventilatory support';
+    lines.push(`  Ventilation: ${ventText}`);
+    lines.push(`  Sedation (RASS): ${p.icu.rass !== undefined && p.icu.rass !== '' ? p.icu.rass : 'not recorded'}`);
+    const lines_ = p.icu.lines || [];
+    if(lines_.length) lines.push(`  Lines: ${lines_.map(l => l.name || 'line').join('; ')}`);
+  }else if(dept === 'pediatrics' && p.pediatrics){
+    const peds = p.pediatrics;
+    lines.push(`  Age: ${peds.ageYears !== undefined ? peds.ageYears + 'y' : 'not recorded'}${peds.weightKg ? `, weight ${peds.weightKg}kg` : ''}`);
+    if(peds.weightKg && latestVitalsEntryFor(p)){
+      const latest = latestVitalsEntryFor(p);
+      lines.push(`  Weight-based context: latest HR ${latest.hr || '—'} / RR ${latest.rr || '—'} should be read against this patient's weight/age-adjusted norms, not adult ranges`);
+    }
+  }else if(dept === 'maternity' && p.maternity){
+    const m = p.maternity;
+    const gaDays = gaDaysToday(m.lmp, m.edd);
+    const ga = m.gaManual && m.gaManual.trim() ? m.gaManual.trim() : (gaText(gaDays) || 'not recorded');
+    lines.push(`  Gestational age: ${ga}`);
+    let bishopSum = 0, bishopRated = 0;
+    BISHOP_FIELDS.forEach(([key]) => { const v = m[key]; if(v !== undefined && v !== null && v !== ''){ bishopSum += parseInt(v, 10); bishopRated++; } });
+    lines.push(`  Bishop score: ${bishopRated ? `${bishopSum}/13 (${bishopRated}/5 components rated)` : 'not rated'}`);
+    const ctg = (m.ctgLog || []).slice().sort((a, b) => new Date(b.at) - new Date(a.at))[0];
+    lines.push(`  CTG: ${ctg ? `${ctg.ctgClass || 'unclassified'} at ${fmtVitalsTime(ctg.at)}${ctg.baseline ? ', baseline ' + ctg.baseline : ''}` : 'None on file'}`);
+  }
+  return lines;
+}
+
 function generateSbarForPatient(p){
   const latest = latestVitalsEntryFor(p);
   const n2 = latest ? computeNews2(latest, p) : null;
@@ -6965,6 +7005,13 @@ function generateSbarForPatient(p){
   lines.push(`  Active problems: ${activeProblems.length ? activeProblems.map(pr => pr.text).join('; ') : 'None recorded'}`);
   if(meds.length) lines.push(`  Medications: ${meds.map(m => `${m.name}${m.dose ? ' ' + m.dose : ''} (${MAR_FREQ_LABELS[m.freq] || m.freq})`).join('; ')}`);
   lines.push('');
+
+  const deptFocus = sbarDeptFocusLines(p);
+  if(deptFocus.length){
+    lines.push(`${DEPT_LABELS[p.department || 'general']} FOCUS`);
+    lines.push(...deptFocus);
+    lines.push('');
+  }
 
   lines.push('ASSESSMENT');
   if(latest){
