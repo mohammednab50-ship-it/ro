@@ -2665,6 +2665,15 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <button type="button" class="settings-btn" id="wards-sync-newhospital-btn">Create hospital…</button>
           </div>
           <div class="ws-row">
+            <span class="ws-label">Department <span>(optional)</span><span class="ws-sub">Groups the ward group under a department within this hospital</span></span>
+          </div>
+          <select id="wards-sync-department-select" class="settings-select" style="width:100%;margin-bottom:8px;">
+            <option value="">No department</option>
+          </select>
+          <div class="ws-row" style="gap:8px;margin-bottom:8px;">
+            <button type="button" class="settings-btn" id="wards-sync-newdepartment-btn" disabled>Create department…</button>
+          </div>
+          <div class="ws-row">
             <span class="ws-label">Ward group<span class="ws-sub">Patients in the selected group sync live</span></span>
           </div>
           <select id="wards-sync-group-select" class="settings-select" style="width:100%;margin-bottom:8px;">
@@ -3644,6 +3653,17 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <p class="login-error" id="wards-newhospital-error" role="alert"></p>
     <button type="button" class="settings-btn" id="wards-newhospital-create-btn" style="width:100%;">Create</button>
     <p class="wards-qr-disclaimer">You'll be this hospital's admin — the only way in this app to manage its departments and ward groups. This replaces any manual setup; there's no console step needed.</p>
+  </div>
+</div>
+
+<div class="wards-qr-modal" id="wards-newdepartment-modal" hidden>
+  <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-newdepartment-title">
+    <button type="button" class="mat-lb-close" id="wards-newdepartment-close" aria-label="Close">&times;</button>
+    <h3 id="wards-newdepartment-title">Create a department</h3>
+    <div class="ws-row"><input type="text" id="wards-newdepartment-name" class="settings-select" placeholder="e.g. Cardiology" style="width:100%;"></div>
+    <p class="login-error" id="wards-newdepartment-error" role="alert"></p>
+    <button type="button" class="settings-btn" id="wards-newdepartment-create-btn" style="width:100%;">Create</button>
+    <p class="wards-qr-disclaimer">Belongs to the hospital currently selected above. You'll be this department's admin — able to manage every ward group tagged with it.</p>
   </div>
 </div>
 
@@ -4714,6 +4734,8 @@ const WARDS_FIREBASE_SDK = [
 const WARDS_SYNC_GROUP_KEY = 'wards_sync_group_id';
 const WARDS_MY_HOSPITALS_KEY = 'wards_my_hospitals_v1';
 const WARDS_SELECTED_HOSPITAL_KEY = 'wards_selected_hospital_id';
+const WARDS_MY_DEPARTMENTS_KEY = 'wards_my_departments_v1';
+const WARDS_SELECTED_DEPARTMENT_KEY = 'wards_selected_department_id';
 
 function wardsLoadScript(src){
   return new Promise((resolve, reject) => {
@@ -4753,6 +4775,8 @@ let activeSyncGroupId = null;
 let wardsGroupsUnsub = null;
 let wardsMyHospitals = [];
 let activeHospitalId = null;
+let wardsMyDepartments = [];
+let activeDepartmentId = null;
 let wardsPatientsUnsub = null;
 let wardsLastPushedIds = new Set();
 let wardsSyncPushTimer = null;
@@ -4879,6 +4903,80 @@ async function wardsCreateHospital(name){
   return ref.id;
 }
 
+/* ---- departments: an optional admin-org tier within a hospital (see
+   firestore.rules) — same self-service creator-becomes-admin pattern and
+   same "remember client-side, re-verify against the live doc" approach as
+   hospitals, since departments have no flat "which do I administer" index
+   collection either. Cached list holds every department across every
+   hospital the user has touched; filtered to the active hospital when
+   rendered (a department's own hospitalId is authoritative, checked
+   server-side by firestore.rules regardless of what's cached here). ---- */
+function wardsMyDepartmentsStorageKey(uid){ return WARDS_MY_DEPARTMENTS_KEY + '_' + uid; }
+
+function wardsLoadMyDepartmentsCache(uid){
+  try{
+    const raw = localStorage.getItem(wardsMyDepartmentsStorageKey(uid));
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(e){ return []; }
+}
+function wardsSaveMyDepartmentsCache(uid, list){
+  try{ localStorage.setItem(wardsMyDepartmentsStorageKey(uid), JSON.stringify(list)); }catch(e){}
+}
+function wardsRememberDepartment(uid, deptId, name, hospitalId){
+  const list = wardsLoadMyDepartmentsCache(uid).filter(d => d.id !== deptId);
+  list.push({ id: deptId, name: name || deptId, hospitalId });
+  wardsSaveMyDepartmentsCache(uid, list);
+  return list;
+}
+
+async function wardsLoadMyDepartments(uid){
+  const cached = wardsLoadMyDepartmentsCache(uid);
+  const verified = [];
+  for(const d of cached){
+    try{
+      const doc = await wfdb.collection('departments').doc(d.id).get();
+      if(doc.exists && doc.data().admins && doc.data().admins[uid]){
+        verified.push({ id: d.id, name: doc.data().name || d.id, hospitalId: doc.data().hospitalId });
+      }
+    }catch(e){ /* no longer accessible (deleted, or admin revoked) — drop it silently */ }
+  }
+  wardsSaveMyDepartmentsCache(uid, verified);
+  wardsMyDepartments = verified;
+  if(activeDepartmentId && !verified.some(d => d.id === activeDepartmentId)) selectWardsDepartment(null);
+  renderWardsGroupSelect();
+}
+
+async function wardsCreateDepartment(name){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  if(!activeHospitalId) throw new Error('Select or create a hospital first.');
+  const uid = currentWardsUser.uid;
+  const email = currentWardsUser.email || '';
+  const ref = wfdb.collection('departments').doc();
+  await ref.set({
+    name: name || 'New department',
+    hospitalId: activeHospitalId,
+    createdBy: uid,
+    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    admins: { [uid]: { role: 'admin', email, joinedAt: new Date().toISOString() } }
+  });
+  wardsMyDepartments = wardsRememberDepartment(uid, ref.id, name || 'New department', activeHospitalId);
+  return ref.id;
+}
+
+function selectWardsDepartment(deptId){
+  activeDepartmentId = deptId || null;
+  try{
+    if(currentWardsUser){
+      const key = WARDS_SELECTED_DEPARTMENT_KEY + '_' + currentWardsUser.uid;
+      if(activeDepartmentId) localStorage.setItem(key, activeDepartmentId);
+      else localStorage.removeItem(key);
+    }
+  }catch(e){}
+  renderWardsGroupSelect();
+}
+
 function selectWardsHospital(hospitalId){
   activeHospitalId = hospitalId || null;
   try{
@@ -4888,6 +4986,12 @@ function selectWardsHospital(hospitalId){
       else localStorage.removeItem(key);
     }
   }catch(e){}
+  // A department belongs to exactly one hospital — clear the selection if
+  // it doesn't belong to whichever hospital is now active.
+  if(activeDepartmentId){
+    const stillValid = wardsMyDepartments.some(d => d.id === activeDepartmentId && d.hospitalId === activeHospitalId);
+    if(!stillValid) selectWardsDepartment(null);
+  }
   renderWardsGroupSelect();
 }
 
@@ -4915,7 +5019,7 @@ async function wardsCreateGroup(name){
     createdBy: uid,
     createdAt: firebase.firestore.FieldValue.serverTimestamp(),
     hospitalId: activeHospitalId,
-    departmentId: null,
+    departmentId: activeDepartmentId || null,
     members: { [uid]: { role: 'admin', email, joinedAt: new Date().toISOString() } }
   });
   batch.set(membershipRef, { uid, groupId: groupRef.id, role: 'admin', groupName: name || 'New ward group', joinedAt: new Date().toISOString() });
@@ -5074,6 +5178,16 @@ function renderWardsGroupSelect(){
       wardsMyHospitals.map(h => `<option value="${h.id}">${escapeHtml(h.name || h.id)}</option>`).join('');
     hospSel.value = activeHospitalId || '';
   }
+  const deptSel = document.getElementById('wards-sync-department-select');
+  if(deptSel){
+    const inHospital = wardsMyDepartments.filter(d => d.hospitalId === activeHospitalId);
+    deptSel.innerHTML = '<option value="">No department</option>' +
+      inHospital.map(d => `<option value="${d.id}">${escapeHtml(d.name || d.id)}</option>`).join('');
+    deptSel.value = activeDepartmentId || '';
+    deptSel.disabled = !activeHospitalId;
+  }
+  const newDeptBtn = document.getElementById('wards-sync-newdepartment-btn');
+  if(newDeptBtn) newDeptBtn.disabled = !activeHospitalId;
   const newGroupBtn = document.getElementById('wards-sync-newgroup-btn');
   if(newGroupBtn) newGroupBtn.disabled = !activeHospitalId;
   const signedOut = document.getElementById('wards-sync-signed-out');
@@ -5091,9 +5205,14 @@ function wardsOnAuthChanged(user){
   if(user){
     wardsSubscribeMyGroups(user.uid);
     wardsLoadMyHospitals(user.uid);
+    wardsLoadMyDepartments(user.uid);
     try{
       const savedHospital = localStorage.getItem(WARDS_SELECTED_HOSPITAL_KEY + '_' + user.uid);
       if(savedHospital) activeHospitalId = savedHospital; // confirmed/cleared once wardsLoadMyHospitals verifies it
+    }catch(e){}
+    try{
+      const savedDept = localStorage.getItem(WARDS_SELECTED_DEPARTMENT_KEY + '_' + user.uid);
+      if(savedDept) activeDepartmentId = savedDept; // confirmed/cleared once wardsLoadMyDepartments verifies it
     }catch(e){}
     try{
       const saved = localStorage.getItem(WARDS_SYNC_GROUP_KEY);
@@ -5105,6 +5224,8 @@ function wardsOnAuthChanged(user){
     wardsMyGroups = [];
     wardsMyHospitals = [];
     activeHospitalId = null;
+    wardsMyDepartments = [];
+    activeDepartmentId = null;
   }
   renderWardsGroupSelect();
   updateWardsSyncIndicator();
@@ -5178,6 +5299,35 @@ function setupWardsSyncUI(){
       selectWardsHospital(hospitalId);
       showToast('Hospital created — you are its admin.', 'ok');
     }catch(e){ if(newHospitalErr) newHospitalErr.textContent = (e && e.message) || 'Could not create the hospital.'; }
+  });
+
+  const deptSelect = document.getElementById('wards-sync-department-select');
+  if(deptSelect) deptSelect.addEventListener('change', () => { selectWardsDepartment(deptSelect.value || null); });
+
+  const newDeptBtn = document.getElementById('wards-sync-newdepartment-btn');
+  const newDeptModal = document.getElementById('wards-newdepartment-modal');
+  const newDeptClose = document.getElementById('wards-newdepartment-close');
+  const newDeptName = document.getElementById('wards-newdepartment-name');
+  const newDeptErr = document.getElementById('wards-newdepartment-error');
+  const newDeptCreateBtn = document.getElementById('wards-newdepartment-create-btn');
+  if(newDeptBtn && newDeptModal){
+    newDeptBtn.addEventListener('click', () => {
+      if(!activeHospitalId) return;
+      newDeptModal.hidden = false; newDeptModal.classList.add('show'); newDeptName.focus();
+    });
+  }
+  if(newDeptClose) newDeptClose.addEventListener('click', () => { newDeptModal.hidden = true; newDeptModal.classList.remove('show'); });
+  if(newDeptCreateBtn) newDeptCreateBtn.addEventListener('click', async () => {
+    if(newDeptErr) newDeptErr.textContent = '';
+    const name = (newDeptName && newDeptName.value || '').trim();
+    if(!name){ if(newDeptErr) newDeptErr.textContent = 'Give the department a name.'; return; }
+    try{
+      const deptId = await wardsCreateDepartment(name);
+      newDeptModal.hidden = true; newDeptModal.classList.remove('show');
+      newDeptName.value = '';
+      selectWardsDepartment(deptId);
+      showToast('Department created — you are its admin.', 'ok');
+    }catch(e){ if(newDeptErr) newDeptErr.textContent = (e && e.message) || 'Could not create the department.'; }
   });
 
   const newGroupBtn = document.getElementById('wards-sync-newgroup-btn');

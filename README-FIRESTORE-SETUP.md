@@ -118,12 +118,14 @@ match its real query instead of a blanket `signedIn()`.
 - Rounds (`index.html`) has Firebase Auth but its own bookmarks are not
   yet synced to Firestore — that's a separate, not-yet-built piece of work
   distinct from the Wards patient-sync work described above.
-- The department tier (department admins, `departments/{deptId}`) has no
-  in-app UI yet — only the hospital tier and the ward-group tier
-  (create/join/select a group) are wired up. A department still has to be
-  created and its admins assigned by hand in the Firestore console for now
-  (a department requires a `hospitalId` pointing at a hospital you already
-  administer).
+- ~~The department tier has no in-app UI~~ — fixed: the cloud-sync panel now
+  has a "Create department…" button (enabled once a hospital is selected)
+  and a department dropdown, same self-service creator-becomes-admin flow
+  as hospitals. Creating a ward group under a selected department stamps
+  its `departmentId`; picking a different hospital clears the department
+  selection if it doesn't belong to the new one. Adding a *second* admin to
+  a department still has to be done by hand in the console (same gap as
+  hospitals, see below).
 - There's no in-app UI yet to add a *second* admin to a hospital you
   created, or to see/manage hospitals across devices beyond the one that
   created/selected them (the app remembers "my hospitals" client-side per
