@@ -1559,7 +1559,23 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-patient-sub{font-family:var(--ff-sans);font-size:13px;color:var(--ink-faint);margin:4px 0 0;}
 .vitals-nickname-tag{display:inline-block;margin:4px 0 0;font-family:var(--ff-sans);font-size:12.5px;font-style:italic;color:var(--ink-soft);background:var(--surface-2,var(--surface));border:1px dashed var(--line);border-radius:var(--r-sm);padding:2px 8px;}
 .vitals-nickname-tag[hidden]{display:none;}
-.vitals-patient-actions{display:flex;gap:8px;flex-wrap:wrap;}
+.vitals-patient-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;}
+.vitals-patient-actions-primary{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+.vitals-more-wrap{position:relative;}
+.vitals-more-btn[aria-expanded="true"]{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
+.vitals-more-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:60;width:230px;display:flex;flex-direction:column;gap:2px;max-height:min(70vh,520px);overflow-y:auto;}
+.vitals-more-menu[hidden]{display:none;}
+.vitals-more-menu-select-row{display:flex;align-items:center;justify-content:space-between;gap:8px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--ink-faint);padding:6px 4px;}
+.vitals-more-menu-select-row select{border:1px solid var(--line);border-radius:var(--r-sm);padding:6px 8px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;background:var(--paper);color:var(--ink-soft);max-width:130px;}
+.vitals-more-menu-sep{border:none;border-top:1px solid var(--line);margin:6px 0;}
+.vitals-more-menu-btn{display:block;width:100%;text-align:left;border:none;background:none;color:var(--ink-soft);
+  border-radius:var(--r-sm);padding:9px 8px;font-family:var(--ff-sans);font-size:13px;font-weight:600;cursor:pointer;
+  transition:background var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);}
+.vitals-more-menu-btn:hover{background:var(--evidence-bg);color:var(--evidence-dark);}
+.vitals-more-menu-btn-danger{color:var(--caution);}
+.vitals-more-menu-btn-danger:hover{background:var(--caution-bg);color:var(--caution);}
+.vitals-more-menu-btn[hidden]{display:none;}
+@media (max-width:640px){ .vitals-more-menu{right:auto;left:0;width:min(280px,calc(100vw - 40px));} }
 
 .vitals-baselines-form{margin:0 0 var(--space-5);padding:14px 16px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);}
 .vitals-baselines-note{font-family:var(--ff-sans);font-size:12px;color:var(--ink-faint);margin:0 0 12px;line-height:1.5;}
@@ -3041,52 +3057,61 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <p class="vitals-patient-sub" id="vitals-patient-sub"></p>
         </div>
         <div class="vitals-patient-actions">
-          <button type="button" class="vitals-btn-outline" id="vitals-nickname-btn" title="A private memory-aid tag for this patient — just for you, never synced or exported">Nickname</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-borrowed-btn" title="Note that you briefly covered this patient for a colleague — a personal log, not a handover or escalation record">Borrowed a moment</button>
-          <label class="vitals-isolation-select-wrap" title="Isolation / precaution status">
-            <span>Isolation</span>
-            <select id="vitals-isolation-select">
-              <option value="none">None</option>
-              <option value="contact">Contact</option>
-              <option value="droplet">Droplet</option>
-              <option value="airborne">Airborne</option>
-            </select>
-          </label>
-          <label class="vitals-isolation-select-wrap" title="Patient gender — feeds the daily ward census">
-            <span>Gender</span>
-            <select id="vitals-gender-select">
-              <option value="">Not specified</option>
-              <option value="male">Male</option>
-              <option value="female">Female</option>
-            </select>
-          </label>
-          <label class="vitals-isolation-select-wrap" title="How often this patient's vitals should be checked — used by the 'not seen recently' sweep instead of the department default when set">
-            <span>Reading interval</span>
-            <select id="vitals-interval-select">
-              <option value="">Department default</option>
-              <option value="15">Every 15 min</option>
-              <option value="30">Every 30 min</option>
-              <option value="60">Every 1 hour</option>
-              <option value="120">Every 2 hours</option>
-              <option value="240">Every 4 hours</option>
-              <option value="480">Every 8 hours</option>
-              <option value="custom">Custom&hellip;</option>
-            </select>
-            <input id="vitals-interval-custom" type="number" min="1" step="1" placeholder="min" hidden style="width:70px;">
-          </label>
-          <button type="button" class="vitals-btn-outline" id="vitals-show-qr-btn" title="Show a QR code encoding this patient's MRN/ID — a personal charting convenience, not a replacement for your hospital's official wristband/ID system">ID QR</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-allergies-btn" title="Set this patient's known allergies">Allergies</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-baselines-btn" title="Set this patient's own normal-range overrides">Baselines</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-sbar-btn" title="Generate a Situation-Background-Assessment-Recommendation handover summary">SBAR handover</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-checklist-btn" title="Department-specific rounding checklist — resets each day">Rounding checklist</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-compare-btn" title="Compare this patient's latest vitals side-by-side with another active patient">Compare patients</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-timeline-btn" title="Chronological timeline merging readings, notes, escalations and problems">Timeline</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-print-btn" title="Print a one-page vitals summary">Print summary</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-export-btn">Export CSV</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-history-btn" title="Audit trail — who changed what, and when (synced patients only)" hidden>History</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-archive-patient-btn" title="Mark this patient discharged/transferred — moves them to the Archive, keeping their full record">Discharge / Archive</button>
-          <button type="button" class="vitals-btn-outline" id="vitals-reactivate-patient-btn" title="Move this patient back onto the active roster" hidden>Reactivate</button>
-          <button type="button" class="vitals-btn-outline vitals-btn-danger" id="vitals-remove-patient-btn">Remove patient</button>
+          <div class="vitals-patient-actions-primary">
+            <label class="vitals-isolation-select-wrap" title="Isolation / precaution status">
+              <span>Isolation</span>
+              <select id="vitals-isolation-select">
+                <option value="none">None</option>
+                <option value="contact">Contact</option>
+                <option value="droplet">Droplet</option>
+                <option value="airborne">Airborne</option>
+              </select>
+            </label>
+            <button type="button" class="vitals-btn-outline" id="vitals-allergies-btn" title="Set this patient's known allergies">Allergies</button>
+            <button type="button" class="vitals-btn-outline" id="vitals-sbar-btn" title="Generate a Situation-Background-Assessment-Recommendation handover summary">SBAR handover</button>
+            <button type="button" class="vitals-btn-outline" id="vitals-archive-patient-btn" title="Mark this patient discharged/transferred — moves them to the Archive, keeping their full record">Discharge / Archive</button>
+            <button type="button" class="vitals-btn-outline" id="vitals-reactivate-patient-btn" title="Move this patient back onto the active roster" hidden>Reactivate</button>
+          </div>
+          <div class="vitals-more-wrap">
+            <button type="button" class="vitals-btn-outline vitals-more-btn" id="vitals-more-btn" aria-haspopup="true" aria-expanded="false" title="More actions for this patient">More&hellip;</button>
+            <div class="quiet-hours-panel vitals-more-menu" id="vitals-more-menu" hidden>
+              <label class="vitals-more-menu-select-row" title="Patient gender — feeds the daily ward census">
+                <span>Gender</span>
+                <select id="vitals-gender-select">
+                  <option value="">Not specified</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                </select>
+              </label>
+              <label class="vitals-more-menu-select-row" title="How often this patient's vitals should be checked — used by the 'not seen recently' sweep instead of the department default when set">
+                <span>Reading interval</span>
+                <select id="vitals-interval-select">
+                  <option value="">Department default</option>
+                  <option value="15">Every 15 min</option>
+                  <option value="30">Every 30 min</option>
+                  <option value="60">Every 1 hour</option>
+                  <option value="120">Every 2 hours</option>
+                  <option value="240">Every 4 hours</option>
+                  <option value="480">Every 8 hours</option>
+                  <option value="custom">Custom&hellip;</option>
+                </select>
+                <input id="vitals-interval-custom" type="number" min="1" step="1" placeholder="min" hidden style="width:70px;">
+              </label>
+              <hr class="vitals-more-menu-sep">
+              <button type="button" class="vitals-more-menu-btn" id="vitals-nickname-btn" title="A private memory-aid tag for this patient — just for you, never synced or exported">Nickname</button>
+              <button type="button" class="vitals-more-menu-btn" id="vitals-borrowed-btn" title="Note that you briefly covered this patient for a colleague — a personal log, not a handover or escalation record">Borrowed a moment</button>
+              <button type="button" class="vitals-more-menu-btn" id="vitals-show-qr-btn" title="Show a QR code encoding this patient's MRN/ID — a personal charting convenience, not a replacement for your hospital's official wristband/ID system">ID QR</button>
+              <button type="button" class="vitals-more-menu-btn" id="vitals-baselines-btn" title="Set this patient's own normal-range overrides">Baselines</button>
+              <button type="button" class="vitals-more-menu-btn" id="vitals-checklist-btn" title="Department-specific rounding checklist — resets each day">Rounding checklist</button>
+              <button type="button" class="vitals-more-menu-btn" id="vitals-compare-btn" title="Compare this patient's latest vitals side-by-side with another active patient">Compare patients</button>
+              <button type="button" class="vitals-more-menu-btn" id="vitals-timeline-btn" title="Chronological timeline merging readings, notes, escalations and problems">Timeline</button>
+              <button type="button" class="vitals-more-menu-btn" id="vitals-print-btn" title="Print a one-page vitals summary">Print summary</button>
+              <button type="button" class="vitals-more-menu-btn" id="vitals-export-btn">Export CSV</button>
+              <button type="button" class="vitals-more-menu-btn" id="vitals-history-btn" title="Audit trail — who changed what, and when (synced patients only)" hidden>History</button>
+              <hr class="vitals-more-menu-sep">
+              <button type="button" class="vitals-more-menu-btn vitals-more-menu-btn-danger" id="vitals-remove-patient-btn">Remove patient</button>
+            </div>
+          </div>
         </div>
       </header>
 
@@ -4261,6 +4286,34 @@ function setupWardsSettingsUI(){
   });
   document.addEventListener('click', (e) => {
     if(!panel.hidden && !panel.contains(e.target) && e.target !== btn) panel.hidden = true;
+  });
+}
+
+/* ============================================================
+   Patient toolbar "More…" overflow menu — the per-patient action
+   row used to be 17 same-weight buttons/selects in a single wrapping
+   row (a wall of buttons with no hierarchy). Now only the handful of
+   actions used on every patient (isolation, allergies, SBAR, archive)
+   stay directly visible; everything else lives behind one "More…"
+   toggle, same open/close pattern as the display-settings popover
+   above (click to open, click outside or re-click to close).
+   ============================================================ */
+function setupVitalsMoreMenu(){
+  const btn = document.getElementById('vitals-more-btn');
+  const menu = document.getElementById('vitals-more-menu');
+  if(!btn || !menu || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isHidden = menu.hidden;
+    menu.hidden = !isHidden;
+    btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+  });
+  document.addEventListener('click', (e) => {
+    if(!menu.hidden && !menu.contains(e.target) && e.target !== btn) menu.hidden = true;
+  });
+  menu.querySelectorAll('.vitals-more-menu-btn').forEach(b => {
+    b.addEventListener('click', () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); });
   });
 }
 
@@ -11851,6 +11904,7 @@ function boot(){
   setupConnectivityIndicator();
   setupQuietHoursUI();
   setupWardsSettingsUI();
+  setupVitalsMoreMenu();
   setupBatterySaver();
   setupNightDim();
   setupCoveringBanner();
