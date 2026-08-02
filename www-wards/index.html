@@ -2489,7 +2489,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
    ===================================================================== */
 .wards-header{
   position:sticky; top:0; z-index:40;
-  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
   padding:14px 28px; background:var(--header-bg,var(--paper)); border-bottom:1px solid var(--header-line,var(--line));
   backdrop-filter:blur(8px);
 }
@@ -2502,7 +2502,12 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 }
 .wards-brand-words h1{font-family:var(--ff-display); font-size:20px; font-weight:800; letter-spacing:-0.02em; margin:0; color:var(--ink);}
 .wards-brand-tagline{font-family:var(--ff-sans); font-size:11.5px; color:var(--ink-faint);}
-.wards-header-actions{display:flex; align-items:center; gap:10px;}
+/* margin-left:auto keeps this row pinned to the right edge even when it
+   wraps onto its own line below the brand on narrow/phone widths --
+   without it, a wrapped flex item falls back to the left edge. */
+.wards-header-actions{display:flex; align-items:center; gap:10px; justify-content:flex-end; margin-left:auto; max-width:100%;}
+@media (max-width:480px){ .wards-header-actions{gap:4px;} }
+@media (max-width:360px){ .wards-header-actions{gap:2px;} .wards-header{padding-left:16px; padding-right:16px;} }
 
 /* ---- connectivity indicator ----
    Always visible; Wards itself is fully offline-capable (localStorage/
