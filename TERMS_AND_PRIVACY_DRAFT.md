@@ -23,9 +23,9 @@ these terms.
 
 ### What the apps are
 
-Rounds is a personal clinical-reference and study tool (drug/condition
-lookup, spaced-repetition study aids, quizzes). Wards is a personal
-ward-based patient-charting aid (serial vitals, notes, and related
+Rounds is a clinical-reference and study tool (drug/condition lookup,
+spaced-repetition study aids, quizzes) for healthcare professionals. Wards
+is a ward-based patient-charting tool (serial vitals, notes, and related
 department-specific fields for General/ICU/Surgery/Pediatrics/Maternity
 patients), with an optional feature to sync data to a shared database for
 your care team.
@@ -36,10 +36,10 @@ flowsheet, or a source of clinical guidance to be followed without your
 own independent clinical judgment.** Content in Rounds (drug information,
 condition summaries, interaction checks, dosing calculators) is a
 reference aid only — always verify against your institution's protocols
-and current primary sources before acting on it. Wards is a personal
-charting convenience — your institution's official record system remains
-the definitive medical record; always chart there as required by your
-employer's policy.
+and current primary sources before acting on it. Wards is a charting
+convenience for your own workflow — your institution's official record
+system remains the definitive medical record; always chart there as
+required by your employer's policy.
 
 ### Accounts
 
@@ -85,9 +85,9 @@ goes, as accurately as the current app code supports.
 
 - **Account data:** your email address (and display name, if you sign in
   with Google), handled by Firebase Authentication. This is the only
-  personal data Rounds' account system stores.
-- **Everything else is local-only.** Bookmarks, personal notes on saved
-  entries, quiz/study history, settings, and all other Rounds data are
+  identifying data Rounds' account system stores.
+- **Everything else is local-only.** Bookmarks, notes on saved entries,
+  quiz/study history, settings, and all other Rounds data are
   stored only in your browser/device's local storage. **None of it is
   currently synced to any server** — if you clear your browser data or
   switch devices, it does not carry over. [NEEDS INPUT: update this
@@ -111,10 +111,10 @@ goes, as accurately as the current app code supports.
   syncs to a shared cloud database (Google Firebase/Firestore) so your
   care team can see the same records in real time. This includes: patient
   identifiers you enter (name, bed, MRN if provided), vitals readings,
-  clinical notes, and department-specific fields. **A private, personal
-  "nickname" field and a personal "something that went well" reflection
-  note are deliberately excluded from sync and from every export/print/
-  SBAR feature** — those stay local-only by design.
+  clinical notes, and department-specific fields. **A private "nickname"
+  field and a private "something that went well" reflection note are
+  deliberately excluded from sync and from every export/print/SBAR
+  feature** — those stay local-only by design.
 - **Data isolation:** each "hospital" in this system is a fully separate,
   isolated tenant — hospital admins can only see and manage their own
   hospital's data, never another hospital's, enforced by server-side
