@@ -51,9 +51,13 @@ rules_version = '2';
 // document and check membership in THAT hospital's admins map only.
 //
 // Schema:
-//   users/{uid}                        { email, displayName }
+//   users/{uid}                        { email, displayName, agreedToTermsVersion, agreedAt }
 //     — no global role flag of any kind lives here anymore; all
 //     authority is scoped per-hospital via hospitals/{id}.admins.
+//     agreedToTermsVersion/agreedAt record acceptance of the Terms of
+//     Use / Privacy Policy gate shown after sign-in (see wards.html's
+//     WARDS_TERMS_VERSION); a mismatch against the app's current
+//     version constant re-prompts the user on next sign-in.
 //   usersByEmail/{emailKey}             { uid }   — invite-by-email lookup
 //   hospitals/{hospitalId}              { name, createdBy, createdAt, admins: { [uid]: {role:'admin', email, joinedAt} } }
 //     — the tenancy root. Creating one is how a user becomes its sole
