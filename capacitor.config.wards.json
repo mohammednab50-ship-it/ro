@@ -1,0 +1,6 @@
+{
+  "appId": "com.wards.app",
+  "appName": "Wards",
+  "webDir": "www-wards",
+  "android": { "path": "android-wards" }
+}

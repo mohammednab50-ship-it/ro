@@ -5,4 +5,10 @@ android/build/
 android/app/build/
 android/captureSchemas
 android/**/build/
+android-wards/local.properties
+android-wards/.gradle/
+android-wards/build/
+android-wards/app/build/
+android-wards/captureSchemas
+android-wards/**/build/
 *.apk
