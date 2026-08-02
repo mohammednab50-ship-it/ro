@@ -1,107 +1,107 @@
 rules_version = '2';
 
 // =====================================================================
-// Rounds/Wards — multi-hospital, hospital > department > ward-group
+// Rounds/Wards -- multi-hospital, hospital > department > ward-group
 // access control for the unified, department-tagged patient system
 // (Wards' single Patients tab covers General/ICU/Surgery/Pediatrics/
-// Maternity via a `department` field on each patient doc — previously
+// Maternity via a `department` field on each patient doc -- previously
 // two independent group systems, vitalsGroups and maternityGroups, now
 // collapsed into one).
 //
 // This is a single shared Firebase project (`wards-a4e41`) serving MANY
 // independent hospitals at once. There is no global "super-admin" who
-// can see across hospitals — each hospital is its own fully isolated
+// can see across hospitals -- each hospital is its own fully isolated
 // tenant, and admin authority never crosses a `hospitalId` boundary.
 //
 // Four-tier hierarchy:
-//   Hospital admin        — listed in a `hospitals/{hospitalId}.admins`
+//   Hospital admin        -- listed in a `hospitals/{hospitalId}.admins`
 //     map. Sees/manages every department and every ward group that
 //     belongs to that specific hospital (via their `hospitalId` field),
 //     and nothing belonging to any other hospital. Self-service: any
 //     signed-in user can create a new hospital and automatically
-//     becomes its sole admin (server-enforced) — this is the entire
+//     becomes its sole admin (server-enforced) -- this is the entire
 //     bootstrap process; there is no manual console step anymore.
-//   Department admin      — listed in a `departments/{deptId}.admins`
+//   Department admin      -- listed in a `departments/{deptId}.admins`
 //     map. Sees/manages every ward group tagged with that department's
 //     id, but nothing outside it. A department always belongs to
 //     exactly one hospital (`hospitalId` field, required, immutable in
 //     practice since rules don't allow changing which hospital a doc
-//     belongs to via a plain field update check — see isValidNewDepartment).
-//   Ward-group admin       — whoever creates a wardGroups doc becomes its
+//     belongs to via a plain field update check -- see isValidNewDepartment).
+//   Ward-group admin       -- whoever creates a wardGroups doc becomes its
 //     admin automatically (server-enforced, not just client convention).
 //     Can invite/remove members, rename, or delete just that one group. A
 //     group may optionally belong to a department (`departmentId` field)
 //     but ALWAYS belongs to exactly one hospital (`hospitalId` field,
-//     required) — even a group with no department still needs to be
+//     required) -- even a group with no department still needs to be
 //     reachable by its hospital's admin, so hospital scoping is never
 //     only reachable *through* a department.
-//   Ward-group member      — anyone added to a `wardGroups/{groupId}.members`
+//   Ward-group member      -- anyone added to a `wardGroups/{groupId}.members`
 //     map by an admin at or above that group.
 //
 // Security model: every level of membership above is enforced server-side
-// here, not just hidden in the UI — someone who isn't a member (and isn't
+// here, not just hidden in the UI -- someone who isn't a member (and isn't
 // a department admin for that group's department, and isn't an admin of
 // the hospital that group/department belongs to) cannot read or write
 // anything under a group, regardless of what the client app does or
 // doesn't show them. Critically: a hospital admin's reach is *computed
 // from the target document's own `hospitalId` field*, not from any
-// client-supplied claim — so Hospital A's admin can never read or write
+// client-supplied claim -- so Hospital A's admin can never read or write
 // Hospital B's departments or ward groups, because isAboveGroupPath/
 // isAboveDeptPath always re-derive the owning hospital from the stored
 // document and check membership in THAT hospital's admins map only.
 //
 // Schema:
 //   users/{uid}                        { email, displayName, agreedToTermsVersion, agreedAt }
-//     — no global role flag of any kind lives here anymore; all
+//     -- no global role flag of any kind lives here anymore; all
 //     authority is scoped per-hospital via hospitals/{id}.admins.
 //     agreedToTermsVersion/agreedAt record acceptance of the Terms of
 //     Use / Privacy Policy gate shown after sign-in (see wards.html's
 //     WARDS_TERMS_VERSION); a mismatch against the app's current
 //     version constant re-prompts the user on next sign-in.
-//   usersByEmail/{emailKey}             { uid }   — invite-by-email lookup
+//   usersByEmail/{emailKey}             { uid }   -- invite-by-email lookup
 //   hospitals/{hospitalId}              { name, createdBy, createdAt, admins: { [uid]: {role:'admin', email, joinedAt} } }
-//     — the tenancy root. Creating one is how a user becomes its sole
+//     -- the tenancy root. Creating one is how a user becomes its sole
 //     admin; there is no other way to gain hospital-admin authority
 //     (mirrors departments/wardGroups: creator-becomes-admin is
 //     server-enforced by isValidNewHospital, not a client claim).
 //   departments/{deptId}                { name, hospitalId, createdBy, createdAt, admins: { [uid]: {role:'admin', email, joinedAt} } }
 //   wardGroups/{groupId}                { name, hospitalId, createdBy, createdAt, departmentId (nullable), members: { [uid]: {role, email, joinedAt} } }
-//   wardGroups/{groupId}/patients/{id}  — the actual patient records; each
+//   wardGroups/{groupId}/patients/{id}  -- the actual patient records; each
 //     carries its own `department` field ('general'|'icu'|'surgery'|
 //     'pediatrics'|'maternity') picking which charting sections the app
-//     shows for it — a per-patient tag, not a separate collection, since
+//     shows for it -- a per-patient tag, not a separate collection, since
 //     one ward group can hold patients from any mix of departments.
-//   wardGroups/{groupId}/invites/{emailKey}  { email, invitedBy, invitedAt } — pending invite,
+//   wardGroups/{groupId}/invites/{emailKey}  { email, invitedBy, invitedAt } -- pending invite,
 //     doc id is the lowercased invitee email (emailKey == email.trim().toLowerCase(),
 //     enforced on create so the doc id can be trusted as a proxy for its own
 //     `email` field elsewhere, e.g. isValidInviteAccept below). Created by a group
 //     admin/above; the invitee has never been a member yet so has no standing
 //     access to this subcollection to browse it directly (see pendingInvites).
 //   wardGroups/{groupId}/auditLog/{entryId}  { action, patientId, patientName, detail, uid, email, ts }
-//     — append-only audit trail. Any member can create an entry (Wards does,
+//     -- append-only audit trail. Any member can create an entry (Wards does,
 //     for patient add/remove, a new vitals reading, and an escalation
 //     logged); nobody can update one once written, and delete is
 //     restricted to that group's owning hospital's admin (no global
 //     super-admin exists to fall back to). Readable by a group admin or
 //     above (via the existing isGroupAdminPath/isAboveGroupPath helpers)
-//     — a rank-and-file member can write history but not browse it,
+//     -- a rank-and-file member can write history but not browse it,
 //     matching "who did what" being an oversight tool rather than a
 //     general-purpose feed.
 //   groupMemberships/{uid}_{groupId}    { uid, groupId, role, groupName, joinedAt }
-//     — a flat join-collection purely so a signed-in user can list "which
+//     -- a flat join-collection purely so a signed-in user can list "which
 //     groups am I in" via a simple `where('uid','==',myUid)` query
 //     (Firestore can't query "does this map have key X" directly, and
 //     rules can only accept a `list` query that's provably constrained
-//     the same way the rule checks it — an equality filter on `uid` is
+//     the same way the rule checks it -- an equality filter on `uid` is
 //     exactly that). The group doc's own `members` map stays the single
 //     source of truth for actual access control; this collection is a
 //     read-side index only, kept in sync by whichever client write
 //     creates/removes a membership (always in the same batched write).
 //     `departmentId` on wardGroups is a plain field (not a map key), so
 //     "all groups in my department" is a normal `where('departmentId','==',
-//     deptId)` equality query — no join collection needed for that one.
+//     deptId)` equality query -- no join collection needed for that one.
 //   pendingInvites/{inviteId}           { email, groupId, groupName, hospitalId, invitedBy, invitedByEmail, invitedAt }
-//     — a flat join-collection for the same reason groupMemberships is
+//     -- a flat join-collection for the same reason groupMemberships is
 //     flat: an invited user isn't a member of the group yet, so has no
 //     way to know which `wardGroups/{groupId}/invites/{emailKey}`
 //     subcollection to even look under, and Firestore doesn't support a
@@ -109,7 +109,7 @@ rules_version = '2';
 //     `${groupId}_${emailKey}` (emailKey == email.trim().toLowerCase()).
 //     Created by the SAME batched write that creates the matching
 //     wardGroups/{groupId}/invites/{emailKey} doc; deleted (by either
-//     side) in the same batch as that doc too — see isValidInviteAccept
+//     side) in the same batch as that doc too -- see isValidInviteAccept
 //     and wardsInviteToGroup/wardsAcceptInvite/wardsDeclineInvite in
 //     wards.html. The invites subcollection doc remains the actual
 //     authorization source; this collection is a read-side index only,
@@ -148,7 +148,7 @@ function isDepartmentAdmin(deptId) {
 }
 
 // A department admin, OR the admin of the hospital this department
-// belongs to (read from the department's own stored `hospitalId` —
+// belongs to (read from the department's own stored `hospitalId` --
 // never from anything the request itself supplies).
 function isAboveDeptPath(deptId) {
   return exists(departmentDoc(deptId))
@@ -168,11 +168,11 @@ function groupDoc(groupId) {
   return /databases/$(database)/documents/wardGroups/$(groupId);
 }
 
-// Whether the CALLER (never a client-supplied uid/email — always the
+// Whether the CALLER (never a client-supplied uid/email -- always the
 // requester's own verified auth token email) has a pending invite to
 // this group. Doc id is the lowercased email, enforced at invite-create
 // time (see wardGroups/{groupId}/invites/{emailKey} rules below), so
-// checking existence at this exact path is sufficient proof — nobody
+// checking existence at this exact path is sufficient proof -- nobody
 // else can plant a doc at a path keyed by someone else's token email.
 function callerHasInviteFor(groupId) {
   return signedIn()
@@ -181,26 +181,26 @@ function callerHasInviteFor(groupId) {
 
 // The ONE server-authorized way a user who is NOT YET a member can
 // modify a wardGroups doc: accepting their own pending invite. Every
-// condition here is load-bearing — see the attack-scenario walkthrough
+// condition here is load-bearing -- see the attack-scenario walkthrough
 // in the commit that introduced this function.
-//   (a) not already a member — an existing member (even one just
+//   (a) not already a member -- an existing member (even one just
 //       demoted) can't re-enter through this narrower door; the normal
 //       admin-only branch of the update rule governs them instead.
 //   (b) callerHasInviteFor(groupId) is the actual authorization: proof
 //       a group admin/above genuinely invited THIS caller's own email
 //       (never a client-supplied claim).
 //   (c) request.resource.data.diff(resource.data).affectedKeys() must
-//       be exactly {'members'} — no OTHER top-level field (name,
+//       be exactly {'members'} -- no OTHER top-level field (name,
 //       hospitalId, departmentId, createdBy, createdAt, ...) may change
 //       in this write. This is what stops an invite-accept from also
 //       renaming the group or re-parenting it to another hospital.
 //   (d) within `members`, the diff's affected keys must be exactly the
-//       caller's own uid — this blocks touching (adding, removing, OR
+//       caller's own uid -- this blocks touching (adding, removing, OR
 //       modifying) any OTHER member's entry in the same write, and
 //       since (a) already established the caller's uid isn't currently
 //       a key, this key can only be an ADDITION, never an overwrite.
-//   (e) the new entry's role must be literally 'member' — never
-//       'admin' or anything else — so an invite can never silently
+//   (e) the new entry's role must be literally 'member' -- never
+//       'admin' or anything else -- so an invite can never silently
 //       grant admin authority.
 function isValidInviteAccept(groupPath, groupId) {
   return signedIn()
@@ -224,7 +224,7 @@ function isGroupAdminPath(groupPath) {
 
 // Anyone above ward-admin level who can also reach in: the group's own
 // department admin, or the admin of the hospital the group itself
-// belongs to (via the group's own required `hospitalId` — this is what
+// belongs to (via the group's own required `hospitalId` -- this is what
 // makes a standalone group with no department still reachable by its
 // hospital's admin, rather than hospital scoping only working through
 // a department). Both branches re-derive the owning hospital from the
@@ -238,11 +238,11 @@ function isAboveGroupPath(groupPath) {
 }
 
 // A brand-new group document must name its creator as its sole initial
-// member, with the admin role — this is what makes "creator becomes
+// member, with the admin role -- this is what makes "creator becomes
 // admin" a server-enforced fact rather than something the client merely
 // claims. A group must always declare which hospital it belongs to, and
 // the creator must actually be an admin of that hospital (or, if it's
-// also being created under a department, that department's admin) —
+// also being created under a department, that department's admin) --
 // otherwise anyone could tag a group as belonging to a hospital they
 // have no authority over. If a departmentId is given, its own stored
 // hospitalId must match the group's declared hospitalId too, so a group
@@ -272,7 +272,7 @@ match /databases/{database}/documents {
 
   // ---- user profiles ----
   // Each signed-in user has exactly one profile doc, keyed by their own
-  // uid. They can read and write only their own profile — there is no
+  // uid. They can read and write only their own profile -- there is no
   // global role flag here (no cross-hospital super-admin exists in this
   // model), so there's nothing for one user to need to see or grant on
   // another user's profile via this collection. Per-hospital authority
@@ -295,32 +295,32 @@ match /databases/{database}/documents {
 
   // ---- hospitals (the tenancy root) ----
   // Any signed-in user may create a hospital and becomes its sole admin
-  // (server-enforced by isValidNewHospital) — this self-service creation
+  // (server-enforced by isValidNewHospital) -- this self-service creation
   // IS the bootstrap step; there is no manual "set superAdmin=true in the
   // console" process in this model. Only that hospital's own admin(s) can
-  // read, update, or delete it afterward — no cross-hospital visibility
+  // read, update, or delete it afterward -- no cross-hospital visibility
   // at all, by design.
   match /hospitals/{hospitalId} {
     allow get: if isHospitalAdmin(hospitalId);
     // `allow list: if signedIn()` would NOT be per-document-filtered the
-    // way the old comment here used to claim — an unconstrained list rule
+    // way the old comment here used to claim -- an unconstrained list rule
     // with no resource.data condition lets ANY signed-in user (any
     // hospital, or none) run an unfiltered `.collection('hospitals').get()`
     // and receive every hospital's name + full admins map (uids/emails)
     // in the whole multi-tenant project, a real cross-tenant leak. The app
-    // never actually lists this collection in bulk — it only ever reads a
+    // never actually lists this collection in bulk -- it only ever reads a
     // specific hospital by an ID it already has (see `initWardsCloudSync`/
-    // hospital-selection code in wards.html) — so list is simply denied.
+    // hospital-selection code in wards.html) -- so list is simply denied.
     allow list: if false;
     allow create: if isValidNewHospital();
     // `admins.size() > 0` blocks any update (including a co-admin removal,
     // see wardsRemoveCoAdmin in wards.html) that would leave the admins
-    // map empty — a hospital must always keep at least one admin. This is
+    // map empty -- a hospital must always keep at least one admin. This is
     // server-side backstop for the same rule the app already enforces
     // client-side; it's a cheap, always-true-for-legitimate-writes check
     // since `admins` is a required field on every hospital doc, not a
     // full diff of what else changed (this rule already leaves every
-    // other field open to an existing admin, by design — see class
+    // other field open to an existing admin, by design -- see class
     // comment above on "existing admin's update is unrestricted").
     allow update: if isHospitalAdmin(hospitalId) && request.resource.data.admins.size() > 0;
     allow delete: if isHospitalAdmin(hospitalId);
@@ -329,7 +329,7 @@ match /databases/{database}/documents {
   // ---- departments ----
   match /departments/{deptId} {
     allow get: if isDepartmentAdmin(deptId) || isAboveDeptPath(deptId);
-    // See the matching comment on hospitals/{hospitalId} above — an
+    // See the matching comment on hospitals/{hospitalId} above -- an
     // unconstrained `signedIn()` list rule would let any signed-in user
     // enumerate every department (name + admins map) across every
     // hospital. There is no in-app department-list UI yet, so list is
@@ -339,13 +339,13 @@ match /databases/{database}/documents {
     // id)` query client-side, not a blanket allow.
     allow list: if false;
     allow create: if isValidNewDepartment();
-    // hospitalId is locked on update (must match the existing value) —
+    // hospitalId is locked on update (must match the existing value) --
     // otherwise a department admin could re-parent their own department
     // to a hospital they don't control (escaping that hospital's
     // oversight) or to one they don't belong to at all (spoofing a
     // relationship with it). Re-parenting isn't a supported operation.
     // See the matching `admins.size() > 0` comment on hospitals/{hospitalId}
-    // above — same backstop, same reasoning, a department must always keep
+    // above -- same backstop, same reasoning, a department must always keep
     // at least one admin too.
     allow update: if (isDepartmentAdmin(deptId) || isAboveDeptPath(deptId))
       && request.resource.data.hospitalId == resource.data.hospitalId
@@ -365,26 +365,26 @@ match /databases/{database}/documents {
       resource.data.uid == request.auth.uid
       || isAboveGroupPath(groupDoc(resource.data.groupId))
     );
-    // `list` and `read` are separate rule types in Firestore — the `read`
+    // `list` and `read` are separate rule types in Firestore -- the `read`
     // condition above does NOT govern list/query requests on its own, so
     // this needed its own condition mirroring it, not a blanket
     // `signedIn()`. This form (a plain resource.data equality check) is
     // what lets Firestore prove the app's actual
     // `.where('uid','==',request.auth.uid)` query (see initWardsCloudSync
     // in wards.html) is safe and allow it, while rejecting any query that
-    // isn't constrained the same way — a bare `.collection(
+    // isn't constrained the same way -- a bare `.collection(
     // 'groupMemberships').get()` with no uid filter would be denied
     // outright, not silently filtered. Hospital/group admins looking up
     // a specific patient's memberships still go through `get`, unaffected.
     allow list: if resource.data.uid == request.auth.uid;
     // Only created/deleted as part of the *same batched write* that adds
-    // or removes the uid from the corresponding group's `members` map —
+    // or removes the uid from the corresponding group's `members` map --
     // so whoever is allowed to make that group change is allowed here too.
     // Third branch: a user accepting their OWN invite creates their OWN
     // membership-index entry (nobody above them does it for them, since
     // they aren't a member yet for isGroupAdminPath/isAboveGroupPath to
     // recognize). Gated on the exact same callerHasInviteFor() proof as
-    // isValidInviteAccept on the wardGroups doc itself — see that
+    // isValidInviteAccept on the wardGroups doc itself -- see that
     // function's comment for the full attack-scenario reasoning. Scoped
     // to `request.resource.data.uid == request.auth.uid` so this branch
     // can never be used to create a membership row for anyone else.
@@ -406,7 +406,7 @@ match /databases/{database}/documents {
       );
   }
 
-  // ---- the read-side "invites addressed to me" index — see the schema
+  // ---- the read-side "invites addressed to me" index -- see the schema
   // comment above and callerHasInviteFor()/isValidInviteAccept() for why
   // this needs to be a flat, equality-queryable collection rather than a
   // collection-group query over wardGroups/*/invites. ----
@@ -419,12 +419,12 @@ match /databases/{database}/documents {
     // Same reasoning as groupMemberships' list rule above: constrained to
     // match the app's actual `.where('email','==', myEmail.toLowerCase())`
     // query (see wardsSubscribeMyPendingInvites in wards.html), not a
-    // blanket `signedIn()` — which would let any signed-in user enumerate
+    // blanket `signedIn()` -- which would let any signed-in user enumerate
     // every pending invite's email address project-wide.
     allow list: if resource.data.email == request.auth.token.email.lower();
     // Only created as part of the SAME batched write that creates the
     // matching wardGroups/{groupId}/invites/{emailKey} doc (see
-    // wardsInviteToGroup in wards.html) — so whoever is allowed to make
+    // wardsInviteToGroup in wards.html) -- so whoever is allowed to make
     // that invite is allowed here too. Not cross-checked against the
     // sibling doc's content (batched writes don't let one write's rule
     // read another uncommitted write in the same batch); the sibling
@@ -437,16 +437,16 @@ match /databases/{database}/documents {
       );
     // Deleted by a group admin/above revoking an invite, or by the
     // invited user themselves declining/accepting their OWN invite
-    // (never anyone else's — pinned to their own verified token email).
+    // (never anyone else's -- pinned to their own verified token email).
     allow delete: if signedIn() && (
       resource.data.email == request.auth.token.email.lower()
       || isGroupAdminPath(groupDoc(resource.data.groupId))
       || isAboveGroupPath(groupDoc(resource.data.groupId))
     );
-    allow update: if false; // no field of a pending invite is ever edited in place — only created and deleted
+    allow update: if false; // no field of a pending invite is ever edited in place -- only created and deleted
   }
 
-  // ---- Ward groups (single system — patients within carry their own
+  // ---- Ward groups (single system -- patients within carry their own
   // `department` field rather than living in a department-specific
   // collection, so one ward group can hold patients from any mix of
   // General/ICU/Surgery/Pediatrics/Maternity) ----
@@ -456,28 +456,28 @@ match /databases/{database}/documents {
     // Same reasoning as hospitals/departments above: an unconstrained
     // `signedIn()` list rule would let any signed-in user enumerate every
     // ward group (name + members map) across every hospital in the
-    // project — a real cross-tenant leak, not just a within-hospital one.
+    // project -- a real cross-tenant leak, not just a within-hospital one.
     // The app never actually lists this collection in bulk; it discovers
     // "which groups am I in" via the separately-indexed, properly
     // uid-constrained groupMemberships collection below, then reads each
     // group by its known id. If a dept/hospital-admin "all groups I
     // administer" browser gets built later, give it a real query
     // constraint (e.g. `.where('hospitalId','==',id)`) matched by a rule
-    // condition on that same field — not a blanket allow.
+    // condition on that same field -- not a blanket allow.
     allow list: if false;
     allow create: if isValidNewGroup();
     // hospitalId AND departmentId are both locked on update (must match
-    // their existing values) — otherwise a group admin could re-parent
+    // their existing values) -- otherwise a group admin could re-parent
     // the group to a department belonging to a DIFFERENT hospital while
     // keeping hospitalId unchanged, handing that foreign department's
     // admin (via isAboveDeptPath, which trusts the department's own
-    // hospitalId) read/write access to this group's patient data — a
+    // hospitalId) read/write access to this group's patient data -- a
     // cross-hospital leak. Re-parenting isn't a supported operation;
     // create a new group under the new department/hospital instead.
     // Second branch (isValidInviteAccept) is the narrow, provably-safe
     // carve-out that lets a NOT-YET-a-member user modify this doc at all:
     // accepting their own pending invite. It does not need its own
-    // hospitalId/departmentId lock repeated here — its internal
+    // hospitalId/departmentId lock repeated here -- its internal
     // diff().affectedKeys().hasOnly(['members']) check already forbids
     // touching those fields (or any field besides `members`) at all, a
     // strictly tighter guarantee than the explicit equality checks the
@@ -502,7 +502,7 @@ match /databases/{database}/documents {
         || isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
         || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId))
       );
-      // Deliberately still not queried in bulk anywhere in the app — an
+      // Deliberately still not queried in bulk anywhere in the app -- an
       // invited user has no standing membership to browse this
       // subcollection directly, which is exactly why pendingInvites
       // (top-level, flat, equality-queryable by email) exists. Left
@@ -511,7 +511,7 @@ match /databases/{database}/documents {
       // email address across every ward group.
       allow list: if false;
       // emailKey must equal the invite's own declared (lowercased) email
-      // — this is what lets isValidInviteAccept and callerHasInviteFor
+      // -- this is what lets isValidInviteAccept and callerHasInviteFor
       // trust "a doc exists at .../invites/$(myEmail.lower())" as
       // sufficient proof of invitation, without separately re-checking
       // the doc's `email` field content.
@@ -519,9 +519,9 @@ match /databases/{database}/documents {
           || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId)))
         && request.resource.data.email == emailKey;
       // Deleted by a group admin/above revoking a not-yet-accepted
-      // invite, OR by the invited user themselves — declining, or as
+      // invite, OR by the invited user themselves -- declining, or as
       // part of the same batch that accepts it (see isValidInviteAccept)
-      // — but only ever their OWN invite: resource.data.email is pinned
+      // -- but only ever their OWN invite: resource.data.email is pinned
       // to their own verified token email, never a client-supplied uid
       // or someone else's address.
       allow delete: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
@@ -529,12 +529,12 @@ match /databases/{database}/documents {
         || resource.data.email == request.auth.token.email.lower();
     }
 
-    // Append-only audit trail — any member can add an entry (Wards writes
+    // Append-only audit trail -- any member can add an entry (Wards writes
     // one for patient add/remove, a new reading, and an escalation logged),
     // but nobody can edit or erase history: only read by a group admin or
     // above, and delete restricted to that group's owning hospital's
     // admin specifically (not a plain group/department admin), matching
-    // this collection's "audit trail" purpose — no global super-admin
+    // this collection's "audit trail" purpose -- no global super-admin
     // exists to fall back to in this model.
     match /auditLog/{entryId} {
       allow read: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
