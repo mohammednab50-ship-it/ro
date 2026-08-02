@@ -260,6 +260,43 @@ in `android-wards/app/build.gradle` are still the untouched defaults
 - ⛔ **Error monitoring** (e.g. Sentry) — carried over from section 2,
   worth prioritizing once real hospitals are paying.
 
+## 9. Admin portal — account, billing, and reports outside the app
+
+**Status: 🔨 built, needs Hosting deploy to go live.**
+
+A separate page (`portal.html`, deployed via `firebase.json`'s new
+`hosting` config, public dir `hosting-portal/`) for hospital-admin-level
+tasks that don't belong inside the charting app itself: creating an
+account (shared with Wards — same Firebase project, same users), Stripe
+billing (upgrade, and "manage billing" which opens Stripe's own portal
+with invoice history built in), account deletion (reuses `deleteMyAccount`
+from section 6), and two new hospital-wide CSV reports:
+
+- **Census** — every active patient across every ward group in the
+  hospital (name, bed, MRN, department).
+- **Audit log** — the "who added/removed a patient, logged a reading, or
+  logged an escalation" trail, rolled up hospital-wide instead of one
+  ward group at a time.
+
+Backed by two new callables in `functions/index.js`:
+`listMyHospitals` (server-side lookup of which hospitals the signed-in
+user administers — the portal has no client-side cache the way
+`wards.html` does) and `generateHospitalReport` (the actual data pull,
+admin-only, same `assertHospitalAdmin` check the billing functions use).
+
+**Per-patient vitals/SBAR export is deliberately not duplicated here** —
+that already exists inside Wards itself, scoped to one ward group at a
+time; this portal is the hospital-wide rollup a ward-level export can't
+give you.
+
+**To go live:** `firebase deploy --only hosting` (after the Firestore
+rules/functions deploy in sections 4/6 — the portal calls those same
+functions). You mentioned a separate React/Vite site with matching
+branding — this portal is a standalone stopgap using the same backend;
+either point a subdomain at this Hosting deploy, or fold its three
+features (billing, reports, account) into that site later using the
+same three callables.
+
 ## Suggested order of operations
 
 1. Talk to a healthcare/data-privacy lawyer; get real Terms/Privacy and a

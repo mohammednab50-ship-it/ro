@@ -110,7 +110,7 @@ async function assertHospitalAdmin(uid, hospitalId) {
   if (!snap.exists) throw new HttpsError('not-found', 'Hospital not found.');
   const hospital = snap.data();
   if (!hospital.admins || !hospital.admins[uid]) {
-    throw new HttpsError('permission-denied', 'Only a hospital admin can manage billing for it.');
+    throw new HttpsError('permission-denied', 'Only a hospital admin can do that.');
   }
   return {ref: snap.ref, hospital};
 }
@@ -373,4 +373,101 @@ exports.deleteMyAccount = onCall({}, async (request) => {
   await admin.auth().deleteUser(uid);
 
   return {ok: true};
+});
+
+/**
+ * Callable from the billing/reports portal: lists the hospitals the
+ * caller administers. wards.html discovers this from a client-side
+ * cache built up as the user creates/joins hospitals within that app;
+ * the portal is a separate page with no such cache, so it needs a
+ * server-side lookup instead. Same collection-scan approach as
+ * deleteMyAccount's sole-admin check above -- fine at this app's
+ * current scale (see the comment there).
+ */
+exports.listMyHospitals = onCall({}, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.');
+  const uid = request.auth.uid;
+  const snap = await admin.firestore().collection('hospitals').get();
+  const hospitals = snap.docs
+    .filter((doc) => (doc.data().admins || {})[uid])
+    .map((doc) => ({
+      id: doc.id,
+      name: doc.data().name || doc.id,
+      subscriptionStatus: doc.data().subscriptionStatus || 'inactive',
+      hasBillingAccount: !!doc.data().stripeCustomerId,
+    }));
+  return {hospitals};
+});
+
+/* ============================================================
+   4. Hospital-wide census & audit report -- for the billing/reports
+   portal, not the app itself. Per-patient vitals/SBAR export already
+   exists inside Wards (CSV export + printable summary, scoped to one
+   ward group at a time); this is the hospital-admin-level rollup across
+   every ward group under a hospital, which needs the Admin SDK to read
+   across ward groups the caller isn't necessarily a member of (only a
+   hospital admin, per isAboveGroupPath in firestore.rules).
+   ============================================================ */
+exports.generateHospitalReport = onCall({}, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.');
+  const hospitalId = request.data && request.data.hospitalId;
+  const {hospital} = await assertHospitalAdmin(request.auth.uid, hospitalId);
+  const db = admin.firestore();
+
+  const groupsSnap = await db.collection('wardGroups').where('hospitalId', '==', hospitalId).get();
+
+  const wardGroups = [];
+  const auditLog = [];
+  for (const groupDoc of groupsSnap.docs) {
+    const groupId = groupDoc.id;
+    const groupName = groupDoc.data().name || groupId;
+
+    const patientsSnap = await db.collection(`wardGroups/${groupId}/patients`).get();
+    const activePatients = patientsSnap.docs
+      .map((d) => d.data())
+      .filter((p) => !p.archivedAt);
+    const countsByDept = {};
+    for (const p of activePatients) {
+      const dept = p.department || 'general';
+      countsByDept[dept] = (countsByDept[dept] || 0) + 1;
+    }
+    wardGroups.push({
+      groupId,
+      groupName,
+      activePatientCount: activePatients.length,
+      countsByDept,
+      patients: activePatients.map((p) => ({
+        name: p.name || '',
+        bed: p.bed || '',
+        mrn: p.mrn || '',
+        department: p.department || 'general',
+      })),
+    });
+
+    // Most recent 200 audit entries per group -- a full, unbounded pull
+    // across every group in a large hospital isn't worth the read cost
+    // for a report meant to be run periodically, not as a live feed.
+    const auditSnap = await db.collection(`wardGroups/${groupId}/auditLog`)
+      .orderBy('ts', 'desc').limit(200).get();
+    for (const doc of auditSnap.docs) {
+      const a = doc.data();
+      auditLog.push({
+        groupName,
+        action: a.action || '',
+        patientName: a.patientName || '',
+        detail: a.detail || '',
+        email: a.email || '',
+        ts: a.ts && a.ts.toDate ? a.ts.toDate().toISOString() : null,
+      });
+    }
+  }
+
+  auditLog.sort((a, b) => (b.ts || '').localeCompare(a.ts || ''));
+
+  return {
+    hospitalName: hospital.name || hospitalId,
+    generatedAt: new Date().toISOString(),
+    wardGroups,
+    auditLog: auditLog.slice(0, 1000),
+  };
 });

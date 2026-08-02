@@ -8,5 +8,9 @@
       "codebase": "default",
       "runtime": "nodejs20"
     }
-  ]
+  ],
+  "hosting": {
+    "public": "hosting-portal",
+    "ignore": ["firebase.json", "**/.*", "**/node_modules/**"]
+  }
 }

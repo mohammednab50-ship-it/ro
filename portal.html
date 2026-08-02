@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Wards — Admin Portal</title>
+<style>
+  :root{
+    --ink:#0A0D12; --ink-soft:#4B525E; --ink-faint:#6B7280;
+    --paper:#E4E9F0; --surface:#FFFFFF; --line:#DEE3EC;
+    --evidence:#2F6FEE; --evidence-dark:#1C4FC2; --evidence-bg:#E9F0FF;
+    --danger:#c62828;
+    --r-md:16px; --r-sm:10px;
+    --ff-display:'Georgia',serif; --ff-sans:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --ink:#F4F5F7; --ink-soft:#C3C8D1; --ink-faint:#9BA1AC;
+      --paper:#0B0D10; --surface:#14171C; --line:#262B33;
+      --evidence:#5FA6FF; --evidence-dark:#7FB3FF; --evidence-bg:#152238;
+    }
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--ff-sans);min-height:100vh;}
+  header{display:flex;align-items:center;gap:12px;padding:18px 24px;border-bottom:1px solid var(--line);background:var(--surface);}
+  header .mark{width:36px;height:36px;border-radius:10px;background:var(--evidence-bg);color:var(--evidence-dark);display:grid;place-items:center;flex:0 0 auto;}
+  header .mark svg{width:20px;height:20px;}
+  header h1{font-family:var(--ff-display);font-size:19px;margin:0;}
+  header p{margin:0;font-size:12px;color:var(--ink-faint);}
+  main{max-width:640px;margin:0 auto;padding:28px 20px 60px;}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-md);padding:20px 22px;margin-bottom:18px;}
+  .card h2{font-size:15px;margin:0 0 4px;}
+  .card .sub{font-size:12.5px;color:var(--ink-faint);margin:0 0 14px;}
+  label{display:block;font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:4px;}
+  input, select{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--ink);font-family:inherit;font-size:14px;margin-bottom:10px;}
+  button{cursor:pointer;font-family:inherit;font-size:14px;font-weight:600;border-radius:999px;padding:10px 16px;border:1px solid var(--evidence);background:var(--surface);color:var(--evidence-dark);width:100%;margin-bottom:8px;}
+  button:hover{background:var(--evidence-bg);}
+  button:disabled{opacity:0.5;cursor:default;}
+  button.primary{background:var(--evidence);color:#fff;}
+  button.danger{border-color:var(--danger);color:var(--danger);}
+  button.danger:hover{background:rgba(198,40,40,0.08);}
+  button.link{border:none;background:none;color:var(--evidence);width:auto;padding:2px;margin:0;font-weight:500;text-decoration:underline;}
+  .row{display:flex;gap:8px;}
+  .row > button{flex:1;}
+  .err{color:var(--danger);font-size:12.5px;min-height:16px;margin:0 0 6px;}
+  .status{font-size:12.5px;color:var(--ink-faint);min-height:16px;margin:0 0 6px;}
+  .divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--ink-faint);font-size:11px;text-transform:uppercase;letter-spacing:.04em;}
+  .divider::before,.divider::after{content:'';flex:1;height:1px;background:var(--line);}
+  [hidden]{display:none !important;}
+  .badge{display:inline-block;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;}
+  .badge.active{background:#1b3a24;color:#7fdc9a;}
+  .badge.inactive{background:var(--paper);color:var(--ink-faint);border:1px solid var(--line);}
+  .plist{max-height:280px;overflow-y:auto;border:1px solid var(--line);border-radius:var(--r-sm);margin-top:10px;}
+  table{width:100%;border-collapse:collapse;font-size:12.5px;}
+  th,td{text-align:left;padding:6px 10px;border-bottom:1px solid var(--line);}
+  th{color:var(--ink-faint);font-weight:600;text-transform:uppercase;font-size:10.5px;}
+</style>
+</head>
+<body>
+
+<header>
+  <span class="mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2 7 4-14 2 7h8"/></svg></span>
+  <div>
+    <h1>Wards Admin Portal</h1>
+    <p>Billing, reports, and account — separate from the charting app itself</p>
+  </div>
+</header>
+
+<main>
+
+<div class="card" id="login-card">
+  <h2>Sign in</h2>
+  <p class="sub">Use the same account you use for Wards.</p>
+  <label for="email">Email</label>
+  <input id="email" type="email" autocomplete="email">
+  <label for="pass">Password</label>
+  <input id="pass" type="password" autocomplete="current-password" minlength="6">
+  <p class="err" id="login-err"></p>
+  <button class="primary" id="signin-btn">Sign in</button>
+  <div class="row">
+    <button id="signup-btn">Create account</button>
+    <button id="google-btn">Continue with Google</button>
+  </div>
+</div>
+
+<div id="app-area" hidden>
+
+  <div class="card">
+    <h2>Hospital</h2>
+    <p class="sub" id="hospital-sub">Loading the hospitals you administer…</p>
+    <select id="hospital-select" hidden></select>
+    <p class="err" id="hospital-err"></p>
+  </div>
+
+  <div class="card" id="billing-card" hidden>
+    <h2>Billing <span class="badge" id="plan-badge">—</span></h2>
+    <p class="sub">Managed through Stripe — invoices and billing history live in the billing portal below.</p>
+    <button class="primary" id="upgrade-btn" hidden>Upgrade this hospital…</button>
+    <button id="portal-btn" hidden>Manage billing &amp; view invoices</button>
+    <p class="err" id="billing-err"></p>
+  </div>
+
+  <div class="card" id="reports-card" hidden>
+    <h2>Reports</h2>
+    <p class="sub">Hospital-wide rollup across every ward group — active patient census and the audit trail (who added/removed a patient, logged a reading, or logged an escalation). Per-patient vitals/SBAR exports live inside the Wards app itself, scoped to one ward group at a time — this is the hospital-level view.</p>
+    <button id="census-csv-btn">Download census (CSV)</button>
+    <button id="audit-csv-btn">Download audit log (CSV)</button>
+    <p class="status" id="report-status"></p>
+    <p class="err" id="report-err"></p>
+  </div>
+
+  <div class="card">
+    <h2>Account</h2>
+    <p class="sub">Signed in as <span id="whoami"></span></p>
+    <button id="signout-btn">Sign out</button>
+    <button class="danger" id="delete-account-btn">Delete account…</button>
+  </div>
+
+  <div class="card" id="delete-confirm-card" hidden>
+    <h2>Delete your account</h2>
+    <p class="sub">This permanently deletes your sign-in account and removes you from every ward group, department, and hospital you belong to. It won't run if you're the sole admin anywhere — add a co-admin or delete that hospital/department/ward group first. Messages, audit entries, and vitals you've already logged stay in the record for your team. This can't be undone.</p>
+    <label for="delete-confirm-input">Type DELETE to confirm</label>
+    <input id="delete-confirm-input" type="text" autocomplete="off">
+    <p class="err" id="delete-err"></p>
+    <div class="row">
+      <button id="delete-cancel-btn">Cancel</button>
+      <button class="danger" id="delete-confirm-btn" disabled>Delete my account</button>
+    </div>
+  </div>
+
+</div>
+
+</main>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js"></script>
+<script>
+const FIREBASE_CONFIG = {
+  apiKey: 'AIzaSyCBojOB_nnixjmQBrQacSyWC2BDMdMgHjg',
+  authDomain: 'wards-a4e41.firebaseapp.com',
+  projectId: 'wards-a4e41',
+  appId: '1:973387061097:web:7e9bd1696e2397986c8ff8'
+};
+let fbAuth = null, fbFunctions = null;
+try{
+  if(typeof firebase === 'undefined') throw new Error('Firebase SDK did not load');
+  firebase.initializeApp(FIREBASE_CONFIG);
+  fbAuth = firebase.auth();
+  fbFunctions = firebase.functions();
+}catch(e){
+  document.getElementById('login-err').textContent = 'Could not reach the sign-in service — check your connection and reload.';
+  document.getElementById('signin-btn').disabled = true;
+  document.getElementById('signup-btn').disabled = true;
+  document.getElementById('google-btn').disabled = true;
+}
+
+let myHospitals = [];
+let activeHospital = null;
+
+function authErrorMessage(err){
+  const code = (err && err.code) || '';
+  const map = {
+    'auth/invalid-email': 'That email address looks invalid.',
+    'auth/user-not-found': 'No account with that email.',
+    'auth/wrong-password': 'Incorrect password.',
+    'auth/invalid-credential': 'Incorrect email or password.',
+    'auth/email-already-in-use': 'An account with that email already exists — sign in instead.',
+    'auth/weak-password': 'Password must be at least 6 characters.',
+    'auth/operation-not-supported-in-this-environment': 'Google sign-in needs a real browser popup — try email/password.'
+  };
+  return map[code] || (err && err.message) || 'Something went wrong — try again.';
+}
+
+// ---- auth ----
+document.getElementById('signin-btn').addEventListener('click', async () => {
+  const errEl = document.getElementById('login-err');
+  errEl.textContent = '';
+  const email = document.getElementById('email').value.trim();
+  const pass = document.getElementById('pass').value;
+  if(!email || !pass){ errEl.textContent = 'Enter your email and password.'; return; }
+  try{ await fbAuth.signInWithEmailAndPassword(email, pass); }
+  catch(e){ errEl.textContent = authErrorMessage(e); }
+});
+document.getElementById('signup-btn').addEventListener('click', async () => {
+  const errEl = document.getElementById('login-err');
+  errEl.textContent = '';
+  const email = document.getElementById('email').value.trim();
+  const pass = document.getElementById('pass').value;
+  if(!email || !pass){ errEl.textContent = 'Enter your email and password.'; return; }
+  try{ await fbAuth.createUserWithEmailAndPassword(email, pass); }
+  catch(e){ errEl.textContent = authErrorMessage(e); }
+});
+document.getElementById('google-btn').addEventListener('click', async () => {
+  const errEl = document.getElementById('login-err');
+  errEl.textContent = '';
+  try{
+    const provider = new firebase.auth.GoogleAuthProvider();
+    await fbAuth.signInWithPopup(provider);
+  }catch(e){ errEl.textContent = authErrorMessage(e); }
+});
+document.getElementById('signout-btn').addEventListener('click', async () => { await fbAuth.signOut(); });
+
+// ---- account deletion ----
+const deleteAccountBtn = document.getElementById('delete-account-btn');
+const deleteConfirmCard = document.getElementById('delete-confirm-card');
+const deleteConfirmInput = document.getElementById('delete-confirm-input');
+const deleteConfirmBtn = document.getElementById('delete-confirm-btn');
+const deleteErrEl = document.getElementById('delete-err');
+deleteAccountBtn.addEventListener('click', () => {
+  deleteErrEl.textContent = '';
+  deleteConfirmInput.value = '';
+  deleteConfirmBtn.disabled = true;
+  deleteConfirmCard.hidden = false;
+  deleteConfirmCard.scrollIntoView({behavior:'smooth', block:'center'});
+});
+document.getElementById('delete-cancel-btn').addEventListener('click', () => { deleteConfirmCard.hidden = true; });
+deleteConfirmInput.addEventListener('input', () => {
+  deleteConfirmBtn.disabled = deleteConfirmInput.value.trim() !== 'DELETE';
+});
+deleteConfirmBtn.addEventListener('click', async () => {
+  deleteErrEl.textContent = '';
+  if(deleteConfirmInput.value.trim() !== 'DELETE') return;
+  deleteConfirmBtn.disabled = true;
+  try{
+    await fbFunctions.httpsCallable('deleteMyAccount')();
+    await fbAuth.signOut();
+  }catch(e){
+    deleteErrEl.textContent = (e && e.message) || 'Could not delete your account — try again.';
+    deleteConfirmBtn.disabled = false;
+  }
+});
+
+// ---- hospital picker ----
+async function loadHospitals(){
+  const sub = document.getElementById('hospital-sub');
+  const select = document.getElementById('hospital-select');
+  const errEl = document.getElementById('hospital-err');
+  errEl.textContent = '';
+  try{
+    const result = await fbFunctions.httpsCallable('listMyHospitals')();
+    myHospitals = (result.data && result.data.hospitals) || [];
+  }catch(e){
+    errEl.textContent = (e && e.message) || 'Could not load your hospitals.';
+    return;
+  }
+  if(!myHospitals.length){
+    sub.textContent = "You're not an admin of any hospital yet — create or join one in the Wards app first, then come back here.";
+    select.hidden = true;
+    document.getElementById('billing-card').hidden = true;
+    document.getElementById('reports-card').hidden = true;
+    return;
+  }
+  sub.textContent = 'Hospitals you administer:';
+  select.hidden = false;
+  select.innerHTML = myHospitals.map(h => `<option value="${h.id}">${h.name}</option>`).join('');
+  select.onchange = () => selectHospital(select.value);
+  selectHospital(select.value);
+}
+function selectHospital(id){
+  activeHospital = myHospitals.find(h => h.id === id) || null;
+  document.getElementById('billing-card').hidden = !activeHospital;
+  document.getElementById('reports-card').hidden = !activeHospital;
+  if(!activeHospital) return;
+  const active = activeHospital.subscriptionStatus === 'active';
+  const badge = document.getElementById('plan-badge');
+  badge.textContent = active ? 'Active' : 'Free';
+  badge.className = 'badge ' + (active ? 'active' : 'inactive');
+  document.getElementById('upgrade-btn').hidden = active;
+  document.getElementById('portal-btn').hidden = !activeHospital.hasBillingAccount;
+}
+
+// ---- billing ----
+document.getElementById('upgrade-btn').addEventListener('click', async () => {
+  const errEl = document.getElementById('billing-err');
+  errEl.textContent = '';
+  if(!activeHospital) return;
+  try{
+    const fn = fbFunctions.httpsCallable('createCheckoutSession');
+    const result = await fn({ hospitalId: activeHospital.id, successUrl: location.href, cancelUrl: location.href });
+    if(result.data && result.data.url) location.href = result.data.url;
+  }catch(e){ errEl.textContent = (e && e.message) || 'Could not start checkout.'; }
+});
+document.getElementById('portal-btn').addEventListener('click', async () => {
+  const errEl = document.getElementById('billing-err');
+  errEl.textContent = '';
+  if(!activeHospital) return;
+  try{
+    const fn = fbFunctions.httpsCallable('createPortalSession');
+    const result = await fn({ hospitalId: activeHospital.id, returnUrl: location.href });
+    if(result.data && result.data.url) location.href = result.data.url;
+  }catch(e){ errEl.textContent = (e && e.message) || 'Could not open billing portal.'; }
+});
+
+// ---- reports ----
+function downloadCsv(filename, rows){
+  const csv = rows.map(r => r.map(cell => {
+    const s = String(cell == null ? '' : cell);
+    return /[",\n]/.test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
+  }).join(',')).join('\r\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+let cachedReport = null;
+async function fetchReport(){
+  if(cachedReport && cachedReport.hospitalId === activeHospital.id) return cachedReport.data;
+  const statusEl = document.getElementById('report-status');
+  const errEl = document.getElementById('report-err');
+  errEl.textContent = '';
+  statusEl.textContent = 'Generating report…';
+  try{
+    const fn = fbFunctions.httpsCallable('generateHospitalReport');
+    const result = await fn({ hospitalId: activeHospital.id });
+    cachedReport = { hospitalId: activeHospital.id, data: result.data };
+    statusEl.textContent = 'Generated ' + new Date(result.data.generatedAt).toLocaleString() + '.';
+    return result.data;
+  }catch(e){
+    errEl.textContent = (e && e.message) || 'Could not generate the report.';
+    statusEl.textContent = '';
+    throw e;
+  }
+}
+document.getElementById('census-csv-btn').addEventListener('click', async () => {
+  if(!activeHospital) return;
+  try{
+    const data = await fetchReport();
+    const rows = [['Ward Group', 'Patient Name', 'Bed', 'MRN', 'Department']];
+    data.wardGroups.forEach(g => {
+      if(!g.patients.length) rows.push([g.groupName, '(no active patients)', '', '', '']);
+      g.patients.forEach(p => rows.push([g.groupName, p.name, p.bed, p.mrn, p.department]));
+    });
+    downloadCsv(`wards-census-${data.hospitalName}-${new Date().toISOString().slice(0,10)}.csv`, rows);
+  }catch(e){ /* error already shown */ }
+});
+document.getElementById('audit-csv-btn').addEventListener('click', async () => {
+  if(!activeHospital) return;
+  try{
+    const data = await fetchReport();
+    const rows = [['Date/Time', 'Ward Group', 'Action', 'Patient', 'Detail', 'By']];
+    data.auditLog.forEach(a => rows.push([a.ts || '', a.groupName, a.action, a.patientName, a.detail, a.email]));
+    downloadCsv(`wards-audit-${data.hospitalName}-${new Date().toISOString().slice(0,10)}.csv`, rows);
+  }catch(e){ /* error already shown */ }
+});
+
+// ---- auth state ----
+if(fbAuth) fbAuth.onAuthStateChanged(user => {
+  document.getElementById('login-card').hidden = !!user;
+  document.getElementById('app-area').hidden = !user;
+  if(user){
+    document.getElementById('whoami').textContent = user.email || user.uid;
+    deleteConfirmCard.hidden = true;
+    loadHospitals();
+  }
+});
+</script>
+</body>
+</html>
