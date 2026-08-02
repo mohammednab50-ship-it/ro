@@ -2802,6 +2802,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <label>End <input type="time" id="wards-night-dim-end" value="07:00"></label>
         </div>
         <p class="qh-note">When on and it's dark theme during this window, shifts to a deeper, warmer palette. Default 23:00&ndash;07:00.</p>
+        <label class="qh-row ws-row"><input type="checkbox" id="wards-postnatal-toggle"> Postnatal / post-op (LSCS) ward</label>
+        <p class="qh-note">Marks the ward you're currently working in &mdash; this device's local roster, or whichever synced ward group is currently selected above &mdash; as a postnatal/post-op (LSCS) maternity ward. When on, maternity patients get a newborn list and the daily ward census below also tracks MCH/FCH (male/female child) counts.</p>
         <div class="ws-row">
           <span class="ws-label">Demo mode<span class="ws-sub">Fake sample patients, for showing colleagues</span></span>
           <button type="button" class="settings-btn" id="wards-demo-toggle-btn">Try demo mode</button>
@@ -2926,6 +2928,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-board-toggle-btn" aria-pressed="false">Board view — all patients</button>
         <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-mapview-toggle-btn" aria-pressed="false">Bed map</button>
         <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-archive-toggle-btn" aria-pressed="false">Archive</button>
+        <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-census-toggle-btn" aria-pressed="false" title="Auto-computed daily census log for the current ward">Ward census</button>
       </div>
     </div>
 
@@ -2972,6 +2975,15 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       </div>
       <div class="vitals-board-grid" id="vitals-archive-grid"></div>
       <p class="vitals-board-empty" id="vitals-archive-empty" hidden>No archived patients yet.</p>
+    </div>
+
+    <div id="vitals-census" class="vitals-board" hidden>
+      <p class="vitals-disclaimer" style="margin-bottom:var(--space-4);">
+        Auto-computed daily census for <b id="vitals-census-context-label">—</b>. Logged once per calendar day, the first time the app is opened on or after that date — this is an honest approximation of a "midnight census," not a real midnight-triggered snapshot (this app has no background process). A convenience tally computed from whatever patient data happens to be in the app right now — not an official hospital record and not a substitute for your facility's statutory census process.
+      </p>
+      <button type="button" class="vitals-btn-primary" id="vitals-census-lognow-btn" style="margin-bottom:var(--space-4);">Log today's census now</button>
+      <div class="vitals-table-wrap" id="vitals-census-table-wrap"></div>
+      <p class="vitals-board-empty" id="vitals-census-empty" hidden>No census entries logged yet for this ward.</p>
     </div>
 
     <div id="vitals-empty" class="vitals-empty">
@@ -3381,6 +3393,31 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
               <input id="mat-f-abortion" type="number" min="0" max="30" placeholder="optional">
             </div>
           </div>
+        </section>
+
+        <section class="mat-card" id="mat-babies-section" hidden>
+          <div class="mat-legend"><span class="dot"></span>Newborn(s) <span class="hint">this ward is flagged postnatal / post-op (LSCS) &mdash; feeds the daily MCH/FCH census</span></div>
+          <div class="mat-grid mat-g-3">
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-baby-sex">Sex</label>
+              <select id="mat-f-baby-sex">
+                <option value="male">Male</option>
+                <option value="female">Female</option>
+              </select>
+            </div>
+            <div class="mat-field">
+              <label class="mat-lbl" for="mat-f-baby-born">Born at</label>
+              <input id="mat-f-baby-born" type="datetime-local">
+            </div>
+            <div class="mat-field" style="justify-content:flex-end;">
+              <button type="button" class="mat-btn-log" id="mat-btn-add-baby">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Add baby
+              </button>
+            </div>
+          </div>
+          <div id="mat-babies-list"></div>
+          <div class="mat-log-empty" id="mat-babies-empty">No newborns recorded for this patient yet.</div>
         </section>
 
         <section class="mat-card">
@@ -5059,6 +5096,7 @@ function selectWardsSyncGroup(groupId){
   wardsSyncSetError(null);
   renderWardsGroupSelect();
   updateWardsSyncIndicator();
+  if(typeof window.wardsRefreshCensusContext === 'function') window.wardsRefreshCensusContext();
   if(!activeSyncGroupId) return;
   const col = wfdb.collection('wardGroups').doc(activeSyncGroupId).collection('patients');
   wardsPatientsUnsub = col.onSnapshot({ includeMetadataChanges: true }, snap => {
@@ -5578,6 +5616,7 @@ function initVitals(){
   vitalsState.init = true;
   loadVitalsData();
   migrateMaternityV1();
+  maybeLogDailyCensus();
   if(!vitalsState.activePatientId && vitalsState.patients.length){
     const firstActive = vitalsState.patients.find(isPatientActive);
     vitalsState.activePatientId = firstActive ? firstActive.id : vitalsState.patients[0].id;
@@ -5601,6 +5640,8 @@ function initVitals(){
   setupBorrowedForm();
   setupIsolationSelect();
   setupGenderSelect();
+  setupPostnatalToggle();
+  setupVitalsCensusToggle();
   setupMaternitySection();
   setupIcuSection();
   setupSurgerySection();
@@ -6116,6 +6157,11 @@ function setVitalsBoardActive(active){
     if(esBtn) esBtn.textContent = 'End-of-shift summary';
     const importPanel = document.getElementById('vitals-import-panel');
     if(importPanel) importPanel.hidden = true;
+    const censusPanel = document.getElementById('vitals-census');
+    if(censusPanel) censusPanel.hidden = true;
+    vitalsCensusActive = false;
+    const censusBtn = document.getElementById('vitals-census-toggle-btn');
+    if(censusBtn){ censusBtn.setAttribute('aria-pressed', 'false'); censusBtn.textContent = 'Ward census'; }
     renderVitalsBoard();
   }else{
     renderVitalsMain();
@@ -6226,6 +6272,11 @@ function setVitalsArchiveActive(active){
     if(esBtn) esBtn.textContent = 'End-of-shift summary';
     const importPanel = document.getElementById('vitals-import-panel');
     if(importPanel) importPanel.hidden = true;
+    const censusPanel = document.getElementById('vitals-census');
+    if(censusPanel) censusPanel.hidden = true;
+    vitalsCensusActive = false;
+    const censusBtn = document.getElementById('vitals-census-toggle-btn');
+    if(censusBtn){ censusBtn.setAttribute('aria-pressed', 'false'); censusBtn.textContent = 'Ward census'; }
     renderVitalsArchive();
   }else{
     renderVitalsMain();
@@ -6323,6 +6374,11 @@ function setVitalsMapViewActive(active){
     if(esBtn) esBtn.textContent = 'End-of-shift summary';
     const importPanel = document.getElementById('vitals-import-panel');
     if(importPanel) importPanel.hidden = true;
+    const censusPanel = document.getElementById('vitals-census');
+    if(censusPanel) censusPanel.hidden = true;
+    vitalsCensusActive = false;
+    const censusBtn = document.getElementById('vitals-census-toggle-btn');
+    if(censusBtn){ censusBtn.setAttribute('aria-pressed', 'false'); censusBtn.textContent = 'Ward census'; }
     renderVitalsMapView();
   }else{
     renderVitalsMain();
@@ -6644,11 +6700,11 @@ function setVitalsImportActive(active){
   if(active){
     if(empty) empty.hidden = true;
     if(view) view.hidden = true;
-    ['vitals-board', 'vitals-mapview', 'vitals-archive', 'vitals-endshift'].forEach(id => {
+    ['vitals-board', 'vitals-mapview', 'vitals-archive', 'vitals-endshift', 'vitals-census'].forEach(id => {
       const el = document.getElementById(id);
       if(el) el.hidden = true;
     });
-    vitalsBoardActive = false; vitalsMapViewActive = false; vitalsArchiveActive = false; vitalsEndShiftActive = false;
+    vitalsBoardActive = false; vitalsMapViewActive = false; vitalsArchiveActive = false; vitalsEndShiftActive = false; vitalsCensusActive = false;
   }else{
     vitalsImportRows = [];
     renderPatientList();
@@ -8977,6 +9033,212 @@ function setupGenderSelect(){
   });
 }
 
+/* ============================================================
+   Daily ward census — auto-computed, not manually entered.
+   Scoped per "ward context": the device's whole local-only roster
+   when no synced ward group is selected, or the currently-selected
+   synced ward group otherwise (activeSyncGroupId, via
+   window.getWardsActiveSyncGroupId() — that global lives outside this
+   IIFE, set by the cloud-sync panel). Settings and the log are both
+   keyed by that context id so switching ward groups shows a different
+   ward's postnatal flag and census history, and local-only always has
+   its own fixed history independent of any synced group.
+   ============================================================ */
+function wardsCensusContextId(){
+  const gid = (typeof window.getWardsActiveSyncGroupId === 'function') ? window.getWardsActiveSyncGroupId() : null;
+  return gid || 'local';
+}
+function wardsCensusContextLabel(){
+  const gid = (typeof window.getWardsActiveSyncGroupId === 'function') ? window.getWardsActiveSyncGroupId() : null;
+  if(!gid) return 'this device (local-only)';
+  const g = (typeof wardsMyGroups !== 'undefined' && Array.isArray(wardsMyGroups)) ? wardsMyGroups.find(x => x.groupId === gid) : null;
+  return g && g.groupName ? g.groupName : 'the selected ward group';
+}
+function getCensusSettings(){
+  try{
+    const raw = localStorage.getItem('wards_census_settings_v1_' + wardsCensusContextId());
+    if(!raw) return { postnatal: false };
+    const parsed = JSON.parse(raw);
+    return { postnatal: !!parsed.postnatal };
+  }catch(e){ return { postnatal: false }; }
+}
+function saveCensusSettings(settings){
+  try{ localStorage.setItem('wards_census_settings_v1_' + wardsCensusContextId(), JSON.stringify(settings)); }catch(e){}
+}
+function isWardPostnatal(){ return getCensusSettings().postnatal; }
+
+function getCensusLog(){
+  try{
+    const raw = localStorage.getItem('wards_census_log_v1_' + wardsCensusContextId());
+    const parsed = raw ? JSON.parse(raw) : [];
+    return Array.isArray(parsed) ? parsed : [];
+  }catch(e){ return []; }
+}
+function saveCensusLog(list){
+  try{ localStorage.setItem('wards_census_log_v1_' + wardsCensusContextId(), JSON.stringify(list)); }catch(e){}
+}
+function wardsTodayDateStr(){
+  return localDateTimeInputValue(new Date()).slice(0, 10);
+}
+
+function computeCensusSnapshot(){
+  const active = vitalsState.patients.filter(isPatientActive);
+  let male = 0, female = 0, unspecified = 0;
+  active.forEach(p => {
+    if(p.gender === 'male') male++;
+    else if(p.gender === 'female') female++;
+    else unspecified++;
+  });
+  const postnatal = isWardPostnatal();
+  let mch = 0, fch = 0;
+  if(postnatal){
+    active.filter(p => p.department === 'maternity' && p.maternity && Array.isArray(p.maternity.babies)).forEach(p => {
+      p.maternity.babies.forEach(b => {
+        if(b.sex === 'male') mch++;
+        else if(b.sex === 'female') fch++;
+      });
+    });
+  }
+  return { male, female, unspecified, total: male + female + unspecified, postnatal, mch, fch };
+}
+
+// "Midnight" snapshot — this app has no background process, so there is no
+// literal midnight trigger. Instead: the first time the app is opened on or
+// after a given date, if that date+ward-context hasn't been logged yet, log
+// it now using whatever patient state exists at that moment. That's an
+// honest approximation, not a real midnight-triggered snapshot — see the
+// disclaimer text in the census view.
+function logCensusForToday(force){
+  const log = getCensusLog();
+  const dateStr = wardsTodayDateStr();
+  if(!force && log.some(e => e.date === dateStr)) return false;
+  const snap = computeCensusSnapshot();
+  const entry = Object.assign({ date: dateStr, loggedAt: new Date().toISOString() }, snap);
+  const next = log.filter(e => e.date !== dateStr);
+  next.push(entry);
+  saveCensusLog(next);
+  return true;
+}
+function maybeLogDailyCensus(){
+  logCensusForToday(false);
+}
+
+function setupPostnatalToggle(){
+  const toggle = document.getElementById('wards-postnatal-toggle');
+  if(!toggle) return;
+  toggle.checked = isWardPostnatal();
+  if(toggle.dataset.wired) return;
+  toggle.dataset.wired = '1';
+  toggle.addEventListener('change', () => {
+    saveCensusSettings({ postnatal: toggle.checked });
+    const p = activePatient();
+    if(p && p.department === 'maternity') renderMaternitySection(p);
+    if(vitalsCensusActive) renderCensusView();
+  });
+}
+
+/* Called (via window export below) whenever the active ward context
+   changes — signing in/out, or switching the selected synced ward group
+   — so the postnatal toggle and census view reflect the newly-selected
+   ward's own settings/log instead of stale ones from the previous
+   context. Safe to call before Patients has ever been opened. */
+function refreshCensusForActiveContext(){
+  setupPostnatalToggle();
+  const p = activePatient();
+  if(p && p.department === 'maternity') renderMaternitySection(p);
+  if(vitalsCensusActive) renderCensusView();
+}
+window.wardsRefreshCensusContext = refreshCensusForActiveContext;
+
+/* ---- census view — a simple read-only log table, newest first ---- */
+let vitalsCensusActive = false;
+
+function renderCensusView(){
+  const wrap = document.getElementById('vitals-census-table-wrap');
+  const empty = document.getElementById('vitals-census-empty');
+  const contextLabel = document.getElementById('vitals-census-context-label');
+  const postnatal = isWardPostnatal();
+  if(contextLabel) contextLabel.textContent = wardsCensusContextLabel() + (postnatal ? ' — flagged postnatal/post-op (LSCS)' : '');
+  const log = getCensusLog().slice().sort((a, b) => b.date.localeCompare(a.date));
+  if(!wrap) return;
+  if(!log.length){
+    wrap.innerHTML = '';
+    if(empty) empty.hidden = false;
+    return;
+  }
+  if(empty) empty.hidden = true;
+  const showBabyCols = log.some(e => e.postnatal);
+  wrap.innerHTML = `<table class="vitals-table"><thead><tr>` +
+    `<th>Date</th><th>Male</th><th>Female</th><th>Unspecified</th><th>Total</th>` +
+    (showBabyCols ? `<th>MCH</th><th>FCH</th>` : '') +
+    `</tr></thead><tbody>` +
+    log.map(e => `<tr>` +
+      `<td>${escapeHtml(e.date)}</td><td>${e.male}</td><td>${e.female}</td><td>${e.unspecified}</td><td>${e.total}</td>` +
+      (showBabyCols ? (e.postnatal ? `<td>${e.mch}</td><td>${e.fch}</td>` : `<td>&mdash;</td><td>&mdash;</td>`) : '') +
+      `</tr>`).join('') +
+    `</tbody></table>`;
+}
+
+function setVitalsCensusActive(active){
+  vitalsCensusActive = active;
+  const panel = document.getElementById('vitals-census');
+  const toggleBtn = document.getElementById('vitals-census-toggle-btn');
+  const empty = document.getElementById('vitals-empty');
+  const view = document.getElementById('vitals-patient-view');
+  if(panel) panel.hidden = !active;
+  if(toggleBtn){
+    toggleBtn.setAttribute('aria-pressed', active ? 'true' : 'false');
+    toggleBtn.textContent = active ? 'Back to patient detail' : 'Ward census';
+  }
+  if(active){
+    if(empty) empty.hidden = true;
+    if(view) view.hidden = true;
+    const board = document.getElementById('vitals-board');
+    if(board) board.hidden = true;
+    vitalsBoardActive = false;
+    const boardBtn = document.getElementById('vitals-board-toggle-btn');
+    if(boardBtn) boardBtn.setAttribute('aria-pressed', 'false');
+    const mapPanel = document.getElementById('vitals-mapview');
+    if(mapPanel) mapPanel.hidden = true;
+    vitalsMapViewActive = false;
+    const mapBtn = document.getElementById('vitals-mapview-toggle-btn');
+    if(mapBtn){ mapBtn.setAttribute('aria-pressed', 'false'); mapBtn.textContent = 'Bed map'; }
+    const archivePanel = document.getElementById('vitals-archive');
+    if(archivePanel) archivePanel.hidden = true;
+    vitalsArchiveActive = false;
+    const archiveBtn = document.getElementById('vitals-archive-toggle-btn');
+    if(archiveBtn){ archiveBtn.setAttribute('aria-pressed', 'false'); archiveBtn.textContent = 'Archive'; }
+    const esPanel = document.getElementById('vitals-endshift');
+    if(esPanel) esPanel.hidden = true;
+    vitalsEndShiftActive = false;
+    const esBtn = document.getElementById('vitals-endshift-btn');
+    if(esBtn) esBtn.textContent = 'End-of-shift summary';
+    const importPanel = document.getElementById('vitals-import-panel');
+    if(importPanel) importPanel.hidden = true;
+    renderCensusView();
+  }else{
+    renderVitalsMain();
+  }
+}
+
+function setupVitalsCensusToggle(){
+  const btn = document.getElementById('vitals-census-toggle-btn');
+  if(btn && !btn.dataset.wired){
+    btn.dataset.wired = '1';
+    btn.addEventListener('click', () => setVitalsCensusActive(!vitalsCensusActive));
+  }
+  const logNowBtn = document.getElementById('vitals-census-lognow-btn');
+  if(logNowBtn && !logNowBtn.dataset.wired){
+    logNowBtn.dataset.wired = '1';
+    logNowBtn.addEventListener('click', () => {
+      logCensusForToday(true);
+      renderCensusView();
+      showToast('Logged today\'s census for ' + wardsCensusContextLabel() + '.', 'ok');
+      haptic('Light');
+    });
+  }
+}
+
 /* ---- escalation banner — driven by the most recently *logged* reading's
    NEWS2 score, not whatever's mid-typed in the entry form (that's the
    separate live preview above the form). ---- */
@@ -9358,6 +9620,11 @@ function setVitalsEndShiftActive(active){
     vitalsArchiveActive = false;
     const importPanel = document.getElementById('vitals-import-panel');
     if(importPanel) importPanel.hidden = true;
+    const censusPanel = document.getElementById('vitals-census');
+    if(censusPanel) censusPanel.hidden = true;
+    vitalsCensusActive = false;
+    const censusBtn = document.getElementById('vitals-census-toggle-btn');
+    if(censusBtn){ censusBtn.setAttribute('aria-pressed', 'false'); censusBtn.textContent = 'Ward census'; }
     renderEndOfShiftSummary();
   }else{
     renderVitalsMain();
@@ -9551,6 +9818,7 @@ function ensureMaternity(p){
   if(!p.maternity) p.maternity = {};
   if(!Array.isArray(p.maternity.ctgLog)) p.maternity.ctgLog = [];
   if(!Array.isArray(p.maternity.notesLog)) p.maternity.notesLog = [];
+  if(!Array.isArray(p.maternity.babies)) p.maternity.babies = [];
   return p.maternity;
 }
 
@@ -9748,6 +10016,26 @@ function renderMaternityNotesLog(m){
   ).join('');
 }
 
+function renderBabiesList(m){
+  const list = document.getElementById('mat-babies-list');
+  const empty = document.getElementById('mat-babies-empty');
+  if(!list) return;
+  const babies = m.babies || [];
+  if(!babies.length){
+    list.innerHTML = '';
+    if(empty) empty.hidden = false;
+    return;
+  }
+  if(empty) empty.hidden = true;
+  list.innerHTML = babies.slice().sort((a, b) => new Date(b.bornAt || 0) - new Date(a.bornAt || 0)).map(b =>
+    `<div class="mat-note-entry">` +
+      `<div class="nh"><span class="t">${b.sex === 'female' ? 'Female' : 'Male'}</span>` +
+        `<span class="who">${b.bornAt ? '· born ' + escapeHtml(fmtVitalsTime(b.bornAt)) : ''}</span>` +
+        `<button type="button" class="del" data-del-baby="${b.id}">Remove</button></div>` +
+    `</div>`
+  ).join('');
+}
+
 function renderMaternitySection(p){
   const m = ensureMaternity(p);
   const set = (id, v) => { const el = document.getElementById(id); if(el) el.value = v || ''; };
@@ -9759,6 +10047,11 @@ function renderMaternitySection(p){
   renderMaternityBpPanel(p);
   renderCtgGallery(m);
   renderMaternityNotesLog(m);
+  const babiesSection = document.getElementById('mat-babies-section');
+  if(babiesSection) babiesSection.hidden = !isWardPostnatal();
+  renderBabiesList(m);
+  const babyBorn = document.getElementById('mat-f-baby-born');
+  if(babyBorn) babyBorn.value = localDateTimeInputValue(new Date());
   const ctgTime = document.getElementById('mat-f-ctg-time');
   if(ctgTime) ctgTime.value = localDateTimeInputValue(new Date());
   const notesTime = document.getElementById('mat-f-notes-time');
@@ -10014,6 +10307,35 @@ function setupMaternitySection(){
   const bpToggleBody = document.getElementById('mat-bp-toggle-body');
   if(bpToggleBtn && bpToggleBody){
     bpToggleBtn.addEventListener('click', () => { bpToggleBody.hidden = !bpToggleBody.hidden; });
+  }
+
+  const addBabyBtn = document.getElementById('mat-btn-add-baby');
+  if(addBabyBtn){
+    addBabyBtn.addEventListener('click', () => {
+      const p = activePatient(); if(!p) return;
+      const m = ensureMaternity(p);
+      const sexEl = document.getElementById('mat-f-baby-sex');
+      const bornEl = document.getElementById('mat-f-baby-born');
+      const sex = sexEl && sexEl.value === 'female' ? 'female' : 'male';
+      const bornAt = bornEl && bornEl.value ? new Date(bornEl.value).toISOString() : new Date().toISOString();
+      m.babies.push({ id: genVitalsId('baby'), sex, bornAt });
+      saveVitalsData();
+      renderBabiesList(m);
+      if(bornEl) bornEl.value = localDateTimeInputValue(new Date());
+      haptic('Light');
+    });
+  }
+  const babiesList = document.getElementById('mat-babies-list');
+  if(babiesList){
+    babiesList.addEventListener('click', e => {
+      const delBtn = e.target.closest('[data-del-baby]');
+      if(!delBtn) return;
+      const p = activePatient(); if(!p) return;
+      const m = ensureMaternity(p);
+      m.babies = m.babies.filter(b => b.id !== delBtn.dataset.delBaby);
+      saveVitalsData();
+      renderBabiesList(m);
+    });
   }
 
   const ctgDrop = document.getElementById('mat-ctg-drop');
