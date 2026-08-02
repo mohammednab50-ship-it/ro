@@ -272,6 +272,7 @@ body > header{background:transparent;position:sticky;top:0;z-index:50;padding:14
 @media (max-width:880px){.header-inner{grid-template-columns:1fr auto;gap:16px;border-radius:var(--r-lg);}.header-search{grid-column:1 / -1;flex-wrap:wrap;padding-bottom:6px;}.header-search input{flex-basis:100%;order:-1;}}
 .brand{display:flex;align-items:center;gap:10px;text-decoration:none;}
 .brand-mark{width:32px;height:32px;border-radius:10px;background:var(--cta-bg);display:grid;place-items:center;color:var(--cta-ink);font-family:var(--ff-display);font-weight:800;font-size:16px;line-height:1;flex-shrink:0;}
+.brand-mark svg,.home-brand-mark svg{width:18px;height:18px;}
 .brand-words{display:flex;flex-direction:column;gap:2px;line-height:1;}
 .brand-name{font-family:var(--ff-display);font-size:21px;font-weight:800;margin:0;letter-spacing:-0.03em;color:var(--header-ink);line-height:1;}
 .brand-tagline{font-family:var(--ff-sans);font-size:10px;font-weight:600;color:var(--header-ink-soft);text-transform:uppercase;letter-spacing:var(--tracking-eyebrow);padding-left:1px;}
@@ -1996,7 +1997,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 <div class="nav-wrap">
   <nav class="nav">
     <a class="home-brand" href="#landing-page">
-      <span class="home-brand-mark">R</span>
+      <span class="home-brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5C4 4.5 7 4 9.5 5v13.5C7 17.5 4 18 2 19V5.5Z"/><path d="M22 5.5C20 4.5 17 4 14.5 5v13.5c2.5-1 5.5-.5 7.5.5V5.5Z"/></svg></span>
       <span class="home-brand-name">Rounds</span>
     </a>
     <div class="nav-links">
@@ -2939,7 +2940,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 <header>
   <div class="header-inner">
     <a class="brand" href="#" aria-label="Rounds — home">
-      <span class="brand-mark" aria-hidden="true">R</span>
+      <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 5.5C4 4.5 7 4 9.5 5v13.5C7 17.5 4 18 2 19V5.5Z"/><path d="M22 5.5C20 4.5 17 4 14.5 5v13.5c2.5-1 5.5-.5 7.5.5V5.5Z"/></svg></span>
       <div class="brand-words">
         <h1 class="brand-name">Rounds</h1>
         <span class="brand-tagline"><span class="live-dot" aria-hidden="true"></span>Evidence, at the speed of the bedside</span>

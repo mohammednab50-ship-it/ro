@@ -2671,6 +2671,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-qr-modal{position:fixed;inset:0;z-index:400;display:none;place-items:center;background:rgba(6,8,12,.72);padding:20px;}
 .wards-qr-modal.show{display:grid;}
 .wards-qr-card{position:relative;max-width:340px;width:100%;background:var(--surface);border-radius:var(--r-md);padding:24px 22px 20px;text-align:center;box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,.3));}
+.wards-qr-card--left{text-align:left;}
+.wards-qr-card--left h3{text-align:center;}
+.wards-qr-card--400{max-width:400px;}
+.wards-qr-card--420{max-width:420px;}
+.wards-qr-card--480{max-width:480px;}
+.w-100{width:100%;}
+.mt-8{margin-top:8px;}
+.mt-16{margin-top:16px;}
 .wards-qr-card h3{margin:0 0 14px;font-family:var(--ff-display);font-size:18px;color:var(--ink);}
 .wards-qr-card canvas{background:#fff;border-radius:8px;display:block;margin:0 auto;}
 .wards-qr-card video{width:100%;max-height:280px;border-radius:8px;background:#000;object-fit:cover;}
@@ -3887,9 +3895,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-newhospital-title">
     <button type="button" class="mat-lb-close" id="wards-newhospital-close" aria-label="Close">&times;</button>
     <h3 id="wards-newhospital-title">Create a hospital</h3>
-    <div class="ws-row"><input type="text" id="wards-newhospital-name" class="settings-select" placeholder="e.g. St. Mary's General Hospital" style="width:100%;"></div>
+    <div class="ws-row"><input type="text" id="wards-newhospital-name" class="settings-select w-100" placeholder="e.g. St. Mary's General Hospital"></div>
     <p class="login-error" id="wards-newhospital-error" role="alert"></p>
-    <button type="button" class="settings-btn" id="wards-newhospital-create-btn" style="width:100%;">Create</button>
+    <button type="button" class="settings-btn w-100" id="wards-newhospital-create-btn">Create</button>
     <p class="wards-qr-disclaimer">You'll be this hospital's admin — the only way in this app to manage its departments and ward groups. This replaces any manual setup; there's no console step needed.</p>
   </div>
 </div>
@@ -3898,9 +3906,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-newdepartment-title">
     <button type="button" class="mat-lb-close" id="wards-newdepartment-close" aria-label="Close">&times;</button>
     <h3 id="wards-newdepartment-title">Create a department</h3>
-    <div class="ws-row"><input type="text" id="wards-newdepartment-name" class="settings-select" placeholder="e.g. Cardiology" style="width:100%;"></div>
+    <div class="ws-row"><input type="text" id="wards-newdepartment-name" class="settings-select w-100" placeholder="e.g. Cardiology"></div>
     <p class="login-error" id="wards-newdepartment-error" role="alert"></p>
-    <button type="button" class="settings-btn" id="wards-newdepartment-create-btn" style="width:100%;">Create</button>
+    <button type="button" class="settings-btn w-100" id="wards-newdepartment-create-btn">Create</button>
     <p class="wards-qr-disclaimer">Belongs to the hospital currently selected above. You'll be this department's admin — able to manage every ward group tagged with it.</p>
   </div>
 </div>
@@ -3909,9 +3917,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-newgroup-title">
     <button type="button" class="mat-lb-close" id="wards-newgroup-close" aria-label="Close">&times;</button>
     <h3 id="wards-newgroup-title">Create a ward group</h3>
-    <div class="ws-row"><input type="text" id="wards-newgroup-name" class="settings-select" placeholder="e.g. ICU Ward A" style="width:100%;"></div>
+    <div class="ws-row"><input type="text" id="wards-newgroup-name" class="settings-select w-100" placeholder="e.g. ICU Ward A"></div>
     <p class="login-error" id="wards-newgroup-error" role="alert"></p>
-    <button type="button" class="settings-btn" id="wards-newgroup-create-btn" style="width:100%;">Create</button>
+    <button type="button" class="settings-btn w-100" id="wards-newgroup-create-btn">Create</button>
     <p class="wards-qr-disclaimer">You'll be the group's admin. Belongs to the hospital currently selected above. Invite teammates afterward from the "Invite…" button next to the ward group picker.</p>
   </div>
 </div>
@@ -3923,7 +3931,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <div class="wards-admins-list" id="wards-admins-list"></div>
     <div class="ws-row"><input type="email" id="wards-admins-add-email" class="settings-select" placeholder="Colleague's email" style="flex:1;"></div>
     <p class="login-error" id="wards-admins-error" role="alert"></p>
-    <button type="button" class="settings-btn" id="wards-admins-add-btn" style="width:100%;">Add as co-admin</button>
+    <button type="button" class="settings-btn w-100" id="wards-admins-add-btn">Add as co-admin</button>
     <p class="wards-qr-disclaimer">They must already have an account — if there's no account for that email yet, ask them to sign up first, then try again.</p>
   </div>
 </div>
@@ -3934,7 +3942,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <h3 id="wards-invite-title">Invite by email</h3>
     <div class="ws-row"><input type="email" id="wards-invite-email" class="settings-select" placeholder="Colleague's email" style="flex:1;"></div>
     <p class="login-error" id="wards-invite-error" role="alert"></p>
-    <button type="button" class="settings-btn" id="wards-invite-send-btn" style="width:100%;">Send invite</button>
+    <button type="button" class="settings-btn w-100" id="wards-invite-send-btn">Send invite</button>
     <p class="wards-qr-disclaimer">They'll see this invite next time they sign in (any account, even if they haven't signed up yet — the invite is stored under their email). They join as a plain member, never an admin.</p>
   </div>
 </div>
@@ -4096,14 +4104,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <button type="button" class="mat-lb-close" id="wards-quicknote-close" aria-label="Close">&times;</button>
     <h3 id="wards-quicknote-title">Snapshot before I forget</h3>
     <textarea id="wards-quicknote-text" maxlength="500" placeholder="Quick thought — which patient it's about, sort out later…"></textarea>
-    <div class="ws-row" style="margin-top:8px;">
-      <button type="button" class="settings-btn" id="wards-quicknote-save-btn" style="width:100%;">Save to inbox</button>
+    <div class="ws-row mt-8">
+      <button type="button" class="settings-btn w-100" id="wards-quicknote-save-btn">Save to inbox</button>
     </div>
     <p class="wards-qr-disclaimer">Not tied to a patient yet — triage each note below into a patient's notes, or discard it. Not a substitute for charting directly once you know who it's about.</p>
     <div class="wards-quicknote-inbox" id="wards-quicknote-inbox">
       <p class="vitals-dept-empty">Inbox is empty.</p>
     </div>
-    <p class="vitals-dept-subtitle" style="margin-top:16px;">Borrowed moments — briefly covered a colleague's patient</p>
+    <p class="vitals-dept-subtitle mt-16">Borrowed moments — briefly covered a colleague's patient</p>
     <div class="wards-quicknote-inbox" id="wards-borrowed-list">
       <p class="vitals-dept-empty">No borrowed moments logged.</p>
     </div>
@@ -4111,35 +4119,35 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 </div>
 
 <div class="wards-qr-modal" id="wards-history-modal" hidden>
-  <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-history-title" style="max-width:420px;text-align:left;">
+  <div class="wards-qr-card wards-qr-card--left wards-qr-card--420" role="dialog" aria-modal="true" aria-labelledby="wards-history-title">
     <button type="button" class="mat-lb-close" id="wards-history-close" aria-label="Close">&times;</button>
-    <h3 id="wards-history-title" style="text-align:center;">Patient history</h3>
-    <div id="wards-history-list" style="max-height:50vh;overflow-y:auto;font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);"></div>
+    <h3 id="wards-history-title">Patient history</h3>
+    <div id="wards-history-list" class="wards-history-list-scroll"></div>
     <p class="wards-qr-disclaimer">Audit entries for this patient within the synced ward group — who changed what, and when.</p>
   </div>
 </div>
 
 <div class="wards-qr-modal" id="wards-brief-modal" hidden>
-  <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-brief-title" style="max-width:400px;text-align:left;">
+  <div class="wards-qr-card wards-qr-card--left wards-qr-card--400" role="dialog" aria-modal="true" aria-labelledby="wards-brief-title">
     <button type="button" class="mat-lb-close" id="wards-brief-close" aria-label="Close">&times;</button>
-    <h3 id="wards-brief-title" style="text-align:center;">First 5 minutes</h3>
+    <h3 id="wards-brief-title">First 5 minutes</h3>
     <div id="wards-brief-content"></div>
     <p class="wards-qr-disclaimer">A condensed glance for walking up to this patient the first time — not a substitute for the full chart.</p>
   </div>
 </div>
 
 <div class="wards-qr-modal" id="wards-chat-modal" hidden>
-  <div class="wards-qr-card wards-chat-card" role="dialog" aria-modal="true" aria-labelledby="wards-chat-title" style="max-width:480px;text-align:left;">
+  <div class="wards-qr-card wards-chat-card wards-qr-card--left wards-qr-card--480" role="dialog" aria-modal="true" aria-labelledby="wards-chat-title">
     <button type="button" class="mat-lb-close" id="wards-chat-close" aria-label="Close">&times;</button>
-    <h3 id="wards-chat-title" style="text-align:center;">Team chat</h3>
+    <h3 id="wards-chat-title">Team chat</h3>
     <div class="wards-chat-tabs" role="tablist" aria-label="Chat scope">
       <button type="button" class="wards-chat-tab" id="wards-chat-tab-ward" role="tab" aria-selected="true">This ward</button>
       <button type="button" class="wards-chat-tab" id="wards-chat-tab-dept" role="tab" aria-selected="false">Department</button>
     </div>
-    <p class="wards-qr-disclaimer" style="margin-top:8px;">Messages are visible to everyone with access to this ward/department, kept as long as the ward group or department exists — don't put anything here you wouldn't want on the record. Use patient bed/initials rather than full identifying details where you can.</p>
+    <p class="wards-qr-disclaimer mt-8">Messages are visible to everyone with access to this ward/department, kept as long as the ward group or department exists — don't put anything here you wouldn't want on the record. Use patient bed/initials rather than full identifying details where you can.</p>
 
     <div id="wards-chat-ward-pane">
-      <div class="wards-chat-announcements" id="wards-chat-ward-context-note" style="display:none;"></div>
+      <div class="wards-chat-announcements" id="wards-chat-ward-context-note" hidden></div>
       <div class="wards-chat-messages" id="wards-chat-ward-messages" aria-live="polite"></div>
       <div class="wards-chat-composer">
         <input type="text" id="wards-chat-ward-input" maxlength="2000" placeholder="Message this ward…" autocomplete="off">
@@ -5773,6 +5781,7 @@ function selectWardsDepartment(deptId){
       else localStorage.removeItem(key);
     }
   }catch(e){}
+  wardsSubscribeAnnouncementBadge(activeDepartmentId);
   renderWardsGroupSelect();
 }
 
@@ -6013,8 +6022,41 @@ async function wardsPostDeptAnnouncement(deptId, text){
     text: trimmed.slice(0, 2000),
     postedBy: currentWardsUser.uid,
     postedByName: wardsChatDisplayName(),
-    postedAt: firebase.firestore.FieldValue.serverTimestamp()
+    postedAt: firebase.firestore.FieldValue.serverTimestamp(),
+    readBy: {}
   });
+}
+
+/* Fire-and-forget: marks an announcement seen by the current user so the
+   poster can see who's caught up on it. Never blocks rendering on this --
+   a failed mark-as-read shouldn't stop the announcement from showing. */
+function wardsMarkAnnouncementRead(deptId, annId){
+  if(!wfdb || !currentWardsUser || !deptId || !annId) return;
+  wfdb.collection('departments').doc(deptId).collection('announcements').doc(annId)
+    .update({ ['readBy.' + currentWardsUser.uid]: true })
+    .catch(() => {});
+}
+
+/* ---- unread-announcement badge on the chat button -- a lightweight
+   in-app stand-in for push notifications: no OS-level infra needed, and
+   it self-clears via the same readBy tracking above once the user
+   actually opens the department tab and wardsRenderAnnouncements marks
+   the latest batch read. ---- */
+let wardsAnnouncementBadgeUnsub = null;
+function wardsSubscribeAnnouncementBadge(deptId){
+  if(wardsAnnouncementBadgeUnsub){ wardsAnnouncementBadgeUnsub(); wardsAnnouncementBadgeUnsub = null; }
+  const badge = document.getElementById('wards-chat-badge');
+  if(!badge) return;
+  if(!deptId || !wfdb){ badge.hidden = true; return; }
+  wardsAnnouncementBadgeUnsub = wfdb.collection('departments').doc(deptId).collection('announcements')
+    .orderBy('postedAt', 'desc').limit(5)
+    .onSnapshot(snap => {
+      const myUid = currentWardsUser ? currentWardsUser.uid : null;
+      badge.hidden = !snap.docs.some(d => {
+        const data = d.data();
+        return !(data.readBy && myUid && data.readBy[myUid]);
+      });
+    }, () => { badge.hidden = true; });
 }
 
 /* ---- patient sync ---- */
@@ -6324,16 +6366,22 @@ function wardsRenderChatMessages(containerId, messages, emptyText){
   el.scrollTop = el.scrollHeight;
 }
 
-function wardsRenderAnnouncements(list){
+function wardsRenderAnnouncements(list, deptId){
   const el = document.getElementById('wards-chat-announcements-list');
   if(!el) return;
   if(!list.length){ el.innerHTML = ''; return; }
+  const myUid = currentWardsUser ? currentWardsUser.uid : null;
   el.innerHTML = list.map(a => {
     const when = a.postedAt && a.postedAt.toDate ? fmtWardsDateTime(a.postedAt.toDate()) : '';
+    const seenCount = a.readBy ? Object.keys(a.readBy).length : 0;
+    const seenLabel = seenCount > 0 ? ` &middot; Seen by ${seenCount}` : '';
     return `<div class="wards-chat-announce-item">` +
-      `<span class="wcm-meta">&#128226; ${escapeHtml(a.postedByName || 'Admin')}${when ? ' &middot; ' + escapeHtml(when) : ''}</span>` +
+      `<span class="wcm-meta">&#128226; ${escapeHtml(a.postedByName || 'Admin')}${when ? ' &middot; ' + escapeHtml(when) : ''}${seenLabel}</span>` +
       `<span class="wcm-text">${escapeHtml(a.text || '')}</span></div>`;
   }).join('');
+  if(deptId && myUid){
+    list.forEach(a => { if(!a.readBy || !a.readBy[myUid]) wardsMarkAnnouncementRead(deptId, a.id); });
+  }
 }
 
 async function wardsCheckIsDeptAdmin(deptId){
@@ -6372,7 +6420,7 @@ function wardsChatSwitchTab(tab){
   }else{
     if(activeDepartmentId){
       wardsSubscribeDeptChat(activeDepartmentId, msgs => wardsRenderChatMessages('wards-chat-dept-messages', msgs, 'No messages yet — say hello.'));
-      wardsSubscribeDeptAnnouncements(activeDepartmentId, wardsRenderAnnouncements);
+      wardsSubscribeDeptAnnouncements(activeDepartmentId, msgs => wardsRenderAnnouncements(msgs, activeDepartmentId));
       wardsCheckIsDeptAdmin(activeDepartmentId).then(isAdmin => {
         const row = document.getElementById('wards-chat-announce-row');
         if(row) row.hidden = !isAdmin;
@@ -6392,6 +6440,49 @@ function wardsCloseChatModal(){
   if(wardsGroupChatUnsub){ wardsGroupChatUnsub(); wardsGroupChatUnsub = null; }
   if(wardsDeptChatUnsub){ wardsDeptChatUnsub(); wardsDeptChatUnsub = null; }
   if(wardsDeptAnnouncementsUnsub){ wardsDeptAnnouncementsUnsub(); wardsDeptAnnouncementsUnsub = null; }
+}
+
+/* ---- generic modal accessibility: applies to every .wards-qr-modal ----
+   Escape closes the open modal (via its own [id$="-close"] button, so
+   modal-specific cleanup like the chat unsubscribes still runs), Tab
+   is trapped inside it, backdrop click closes it, and focus moves into
+   it on open. One shared implementation instead of repeating this per
+   modal across 13+ dialogs. */
+function wardsOpenModalEl(){
+  return document.querySelector('.wards-qr-modal:not([hidden])');
+}
+function wardsInitModalA11y(){
+  document.querySelectorAll('.wards-qr-modal').forEach(modal => {
+    modal.addEventListener('click', e => {
+      if(e.target !== modal) return;
+      const closeBtn = modal.querySelector('[id$="-close"]');
+      if(closeBtn) closeBtn.click();
+    });
+    new MutationObserver(muts => {
+      muts.forEach(m => {
+        if(m.attributeName === 'hidden' && !modal.hidden){
+          const focusable = modal.querySelector('input, textarea, select, button:not([disabled])');
+          if(focusable) focusable.focus();
+        }
+      });
+    }).observe(modal, { attributes: true, attributeFilter: ['hidden'] });
+  });
+  document.addEventListener('keydown', e => {
+    const modal = wardsOpenModalEl();
+    if(!modal) return;
+    if(e.key === 'Escape'){
+      const closeBtn = modal.querySelector('[id$="-close"]');
+      if(closeBtn) closeBtn.click();
+      return;
+    }
+    if(e.key !== 'Tab') return;
+    const focusables = Array.from(modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'))
+      .filter(el => !el.disabled && el.offsetParent !== null);
+    if(!focusables.length) return;
+    const first = focusables[0], last = focusables[focusables.length - 1];
+    if(e.shiftKey && document.activeElement === first){ e.preventDefault(); last.focus(); }
+    else if(!e.shiftKey && document.activeElement === last){ e.preventDefault(); first.focus(); }
+  });
 }
 
 function setupWardsChatUI(){
@@ -6416,7 +6507,6 @@ function setupWardsChatUI(){
     wardsChatSwitchTab(activeSyncGroupId ? 'ward' : 'dept');
   });
   if(closeBtn) closeBtn.addEventListener('click', wardsCloseChatModal);
-  if(modal) modal.addEventListener('click', e => { if(e.target === modal) wardsCloseChatModal(); });
   if(wardTab) wardTab.addEventListener('click', () => wardsChatSwitchTab('ward'));
   if(deptTab) deptTab.addEventListener('click', () => wardsChatSwitchTab('dept'));
 
@@ -6504,6 +6594,7 @@ async function wardsOnAuthChanged(user){
     if(wardsPendingInvitesUnsub){ wardsPendingInvitesUnsub(); wardsPendingInvitesUnsub = null; }
     wardsCloseChatModal();
     wardsDeptIsAdminCache = null;
+    if(wardsAnnouncementBadgeUnsub){ wardsAnnouncementBadgeUnsub(); wardsAnnouncementBadgeUnsub = null; }
     selectWardsSyncGroup(null);
     wardsMyGroups = [];
     wardsMyHospitals = [];
@@ -12663,6 +12754,7 @@ function boot(){
   setupVitalsShiftToolsPanel();
   setupWardsBillingUI();
   setupWardsChatUI();
+  wardsInitModalA11y();
   setupBatterySaver();
   setupNightDim();
   setupCoveringBanner();

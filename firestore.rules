@@ -425,7 +425,12 @@ match /databases/{database}/documents {
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 2000;
       allow delete: if isDepartmentAdmin(deptId) || isAboveDeptPath(deptId); // admins can retract an announcement
-      allow update: if false;
+      // read receipts: any reader can touch ONLY the readBy map (nothing else),
+      // same "simplest safe v1" trust level as the rest of this map -- a
+      // member could in theory mark another uid as having read it, but
+      // there's no confidentiality or ordering stake in that being exact.
+      allow update: if (isDepartmentMember(deptId) || isDepartmentAdmin(deptId) || isAboveDeptPath(deptId))
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['readBy']);
     }
   }
 
