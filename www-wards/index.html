@@ -2597,6 +2597,21 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-settings-wrap{position:relative;}
 #wards-settings-toggle[aria-pressed="true"]{color:var(--evidence-dark);border-color:var(--evidence);background:var(--evidence-bg);}
 .wards-settings-panel{width:300px;max-height:min(70vh,560px);overflow-y:auto;}
+/* ---- cloud sync (hospital/department/ward group) panel: opens
+   full-screen instead of a small anchored dropdown -- it's grown to
+   hold hospital/department pickers, admins, invites and billing, which
+   don't fit comfortably in a 300px popover, especially on a phone. ---- */
+.wards-sync-panel-full{
+  position:fixed; inset:0; top:0; right:0; width:100%; max-width:100%; height:100%; max-height:100%;
+  z-index:960; border-radius:0; box-shadow:none; overflow-y:auto;
+  padding:56px 20px 40px;
+}
+.wards-sync-panel-full[hidden]{display:none;}
+.wards-sync-panel-close{position:fixed; top:14px; right:16px; z-index:961; background:var(--surface); border:1px solid var(--line); border-radius:50%; width:36px; height:36px; color:var(--ink-faint); font-size:20px; line-height:1; cursor:pointer; box-shadow:var(--shadow-lift,0 4px 14px rgba(0,0,0,.2));}
+.wards-sync-panel-close:hover{color:var(--ink);}
+@media (min-width:640px){
+  .wards-sync-panel-full{padding-left:max(20px,calc(50% - 300px)); padding-right:max(20px,calc(50% - 300px));}
+}
 /* Stacked (label, then its control, on their own lines) instead of a
    cramped side-by-side row -- at 270px wide, a label like "Open on
    launch" fighting a dropdown for the same line wrapped to 2-3 lines. */
@@ -2799,7 +2814,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.4-8.98A6 6 0 0 1 18 8.5a4 4 0 0 1-1 7.87" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="wards-sync-dot" id="wards-sync-dot" hidden></span>
       </button>
-      <div class="quiet-hours-panel wards-settings-panel" id="wards-sync-panel" hidden>
+      <div class="quiet-hours-panel wards-settings-panel wards-sync-panel-full" id="wards-sync-panel" hidden>
+        <button type="button" class="wards-sync-panel-close" id="wards-sync-panel-close" aria-label="Close">&times;</button>
         <div id="wards-sync-signed-out">
           <p class="ws-label" style="margin-bottom:8px;">Sync patients across devices<span class="ws-sub">You're already signed in to use Wards — syncing patients to a ward group here is a separate, still-optional step</span></p>
           <div class="ws-row"><input type="email" id="wards-sync-email" class="settings-select" placeholder="Email" autocomplete="email" style="flex:1;"></div>
@@ -6676,14 +6692,17 @@ async function wardsOnAuthChanged(user){
 function setupWardsSyncUI(){
   const toggle = document.getElementById('wards-sync-toggle');
   const panel = document.getElementById('wards-sync-panel');
+  const panelCloseBtn = document.getElementById('wards-sync-panel-close');
   if(toggle && panel){
+    const closePanel = () => { panel.hidden = true; toggle.setAttribute('aria-expanded', 'false'); toggle.focus(); };
     toggle.addEventListener('click', () => {
       const open = panel.hidden;
       panel.hidden = !open;
       toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
     });
-    document.addEventListener('click', e => {
-      if(!panel.hidden && !panel.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) panel.hidden = true;
+    if(panelCloseBtn) panelCloseBtn.addEventListener('click', closePanel);
+    document.addEventListener('keydown', e => {
+      if(e.key === 'Escape' && !panel.hidden) closePanel();
     });
   }
   const errEl = document.getElementById('wards-sync-error');
