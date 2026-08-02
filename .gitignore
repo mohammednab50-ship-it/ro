@@ -12,3 +12,6 @@ android-wards/app/build/
 android-wards/captureSchemas
 android-wards/**/build/
 *.apk
+functions/node_modules/
+functions/.env
+functions/.env.*

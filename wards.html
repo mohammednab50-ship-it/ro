@@ -2583,6 +2583,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
    cramped side-by-side row -- at 270px wide, a label like "Open on
    launch" fighting a dropdown for the same line wrapped to 2-3 lines. */
 .wards-settings-panel .ws-row{display:flex; flex-direction:column; align-items:flex-start; gap:6px; margin-bottom:14px;}
+.wards-settings-panel .ws-row[hidden]{display:none;}
 .wards-settings-panel .ws-label{display:flex; flex-direction:column; gap:2px; font-size:12.5px; font-weight:600; color:var(--ink);}
 .wards-settings-panel .ws-sub{font-size:10.5px; font-weight:500; color:var(--ink-faint);}
 .wards-settings-panel .ws-row > select,
@@ -2764,6 +2765,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <button type="button" class="settings-btn" id="wards-sync-newhospital-btn">Create hospital…</button>
             <button type="button" class="settings-btn" id="wards-sync-hospitaladmins-btn" disabled>Admins…</button>
           </div>
+          <div class="ws-row" id="wards-billing-row" hidden>
+            <span class="ws-label">Plan<span class="ws-sub" id="wards-billing-status">Free — one ward group, no departments</span></span>
+          </div>
+          <div class="ws-row" id="wards-billing-actions" style="gap:8px;margin-bottom:8px;" hidden>
+            <button type="button" class="settings-btn" id="wards-billing-upgrade-btn" hidden>Upgrade hospital…</button>
+            <button type="button" class="settings-btn" id="wards-billing-portal-btn" hidden>Manage billing</button>
+          </div>
+          <p class="login-error" id="wards-billing-error" role="alert" style="margin:2px 0 6px;"></p>
           <div class="ws-row">
             <span class="ws-label">Department <span>(optional)</span><span class="ws-sub">Groups the ward group under a department within this hospital</span></span>
           </div>
@@ -5202,7 +5211,8 @@ const WARDS_FIREBASE_CONFIG = {
 const WARDS_FIREBASE_SDK = [
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js',
   'https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js',
-  'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js'
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js',
+  'https://www.gstatic.com/firebasejs/10.12.2/firebase-functions-compat.js'
 ];
 const WARDS_SYNC_GROUP_KEY = 'wards_sync_group_id';
 const WARDS_MY_HOSPITALS_KEY = 'wards_my_hospitals_v1';
@@ -5219,7 +5229,7 @@ function wardsLoadScript(src){
   });
 }
 
-let wfbAuth = null, wfdb = null, wardsFirebaseReady = false, wardsFirebaseLoading = null;
+let wfbAuth = null, wfdb = null, wfFunctions = null, wardsFirebaseReady = false, wardsFirebaseLoading = null;
 async function initWardsFirebase(){
   if(wardsFirebaseReady) return true;
   if(wardsFirebaseLoading) return wardsFirebaseLoading;
@@ -5230,6 +5240,7 @@ async function initWardsFirebase(){
       if(!firebase.apps || !firebase.apps.length) firebase.initializeApp(WARDS_FIREBASE_CONFIG);
       wfbAuth = firebase.auth();
       wfdb = firebase.firestore();
+      wfFunctions = firebase.functions();
       try{ await wfdb.enablePersistence({ synchronizeTabs: true }); }
       catch(e){ /* multi-tab or unsupported browser — sync still works, just without offline cache */ }
       wardsFirebaseReady = true;
@@ -5618,13 +5629,25 @@ async function wardsCreateDepartment(name){
   const uid = currentWardsUser.uid;
   const email = currentWardsUser.email || '';
   const ref = wfdb.collection('departments').doc();
-  await ref.set({
-    name: name || 'New department',
-    hospitalId: activeHospitalId,
-    createdBy: uid,
-    createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-    admins: { [uid]: { role: 'admin', email, joinedAt: new Date().toISOString() } }
-  });
+  try{
+    await ref.set({
+      name: name || 'New department',
+      hospitalId: activeHospitalId,
+      createdBy: uid,
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+      admins: { [uid]: { role: 'admin', email, joinedAt: new Date().toISOString() } }
+    });
+  }catch(e){
+    // Firestore's own error here is a generic "Missing or insufficient
+    // permissions" -- isValidNewDepartment() in firestore.rules is the
+    // only thing that can deny this write, and the one condition on it
+    // that's actually reachable from the UI (as opposed to a genuine
+    // auth bug) is the hospital not having an active subscription.
+    if(e && e.code === 'permission-denied'){
+      throw new Error('Departments need an active subscription for this hospital -- see Plan in the sync panel to upgrade.');
+    }
+    throw e;
+  }
   wardsMyDepartments = wardsRememberDepartment(uid, ref.id, name || 'New department', activeHospitalId);
   return ref.id;
 }
@@ -5998,6 +6021,103 @@ function renderWardsGroupSelect(){
     signedOut.hidden = !!currentWardsUser;
     signedIn.hidden = !currentWardsUser;
     if(emailEl && currentWardsUser) emailEl.textContent = currentWardsUser.email || currentWardsUser.uid;
+  }
+  refreshWardsBillingUI();
+}
+
+/* ============================================================
+   Billing -- per-hospital Stripe subscription. Reads
+   hospitals/{id}.subscriptionStatus directly (never cached, since it
+   changes server-side via the Stripe webhook and the whole point is
+   showing the current truth). See functions/index.js and
+   firestore.rules (isValidNewDepartment) for how this field is
+   actually enforced -- this UI is just a convenience to view/change
+   it, never the source of truth for what a hospital can do.
+   ============================================================ */
+let wardsBillingBusy = false;
+async function refreshWardsBillingUI(){
+  const row = document.getElementById('wards-billing-row');
+  const actionsRow = document.getElementById('wards-billing-actions');
+  const statusEl = document.getElementById('wards-billing-status');
+  const upgradeBtn = document.getElementById('wards-billing-upgrade-btn');
+  const portalBtn = document.getElementById('wards-billing-portal-btn');
+  if(!row || !actionsRow || !statusEl || !upgradeBtn || !portalBtn) return;
+
+  if(!currentWardsUser || !activeHospitalId || !wfdb){
+    row.hidden = true;
+    actionsRow.hidden = true;
+    return;
+  }
+  row.hidden = false;
+  actionsRow.hidden = false;
+
+  let hospital = null;
+  try{
+    const doc = await wfdb.collection('hospitals').doc(activeHospitalId).get();
+    hospital = doc.exists ? doc.data() : null;
+  }catch(e){ /* offline or just-revoked access -- leave last-known status showing */ return; }
+  if(!hospital) return;
+
+  const isAdmin = hospital.admins && hospital.admins[currentWardsUser.uid];
+  const status = hospital.subscriptionStatus;
+  const active = status === 'active';
+  statusEl.textContent = active
+    ? 'Active -- departments and multi-team organization unlocked'
+    : 'Free -- one ward group, no departments. Upgrade to organize by department.';
+  upgradeBtn.hidden = !isAdmin || active;
+  portalBtn.hidden = !isAdmin || !hospital.stripeCustomerId;
+}
+
+async function wardsStartCheckout(){
+  const errEl = document.getElementById('wards-billing-error');
+  if(errEl) errEl.textContent = '';
+  if(wardsBillingBusy || !activeHospitalId) return;
+  wardsBillingBusy = true;
+  try{
+    const ok = await initWardsFirebase();
+    if(!ok) throw new Error('Cloud sync unavailable right now -- check your connection.');
+    const fn = wfFunctions.httpsCallable('createCheckoutSession');
+    const result = await fn({
+      hospitalId: activeHospitalId,
+      successUrl: location.href,
+      cancelUrl: location.href
+    });
+    if(result.data && result.data.url) location.href = result.data.url;
+  }catch(e){
+    if(errEl) errEl.textContent = (e && e.message) || 'Could not start checkout -- try again in a moment.';
+  }finally{
+    wardsBillingBusy = false;
+  }
+}
+
+async function wardsOpenBillingPortal(){
+  const errEl = document.getElementById('wards-billing-error');
+  if(errEl) errEl.textContent = '';
+  if(wardsBillingBusy || !activeHospitalId) return;
+  wardsBillingBusy = true;
+  try{
+    const ok = await initWardsFirebase();
+    if(!ok) throw new Error('Cloud sync unavailable right now -- check your connection.');
+    const fn = wfFunctions.httpsCallable('createPortalSession');
+    const result = await fn({ hospitalId: activeHospitalId, returnUrl: location.href });
+    if(result.data && result.data.url) location.href = result.data.url;
+  }catch(e){
+    if(errEl) errEl.textContent = (e && e.message) || 'Could not open billing -- try again in a moment.';
+  }finally{
+    wardsBillingBusy = false;
+  }
+}
+
+function setupWardsBillingUI(){
+  const upgradeBtn = document.getElementById('wards-billing-upgrade-btn');
+  const portalBtn = document.getElementById('wards-billing-portal-btn');
+  if(upgradeBtn && !upgradeBtn.dataset.wired){
+    upgradeBtn.dataset.wired = '1';
+    upgradeBtn.addEventListener('click', () => { haptic('Light'); wardsStartCheckout(); });
+  }
+  if(portalBtn && !portalBtn.dataset.wired){
+    portalBtn.dataset.wired = '1';
+    portalBtn.addEventListener('click', () => { haptic('Light'); wardsOpenBillingPortal(); });
   }
 }
 
@@ -12194,6 +12314,7 @@ function boot(){
   setupWardsSettingsUI();
   setupVitalsMoreMenu();
   setupVitalsShiftToolsPanel();
+  setupWardsBillingUI();
   setupBatterySaver();
   setupNightDim();
   setupCoveringBanner();

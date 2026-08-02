@@ -8,6 +8,23 @@ CLI access to your Firebase project): publishing the security rules.
 
 ## 1. Publish the security rules
 
+**Now that `firebase.json`/`.firebaserc` exist in this repo (added
+alongside the billing/backup Cloud Functions — see `functions/README.md`),
+the easiest way is the CLI, once you have it installed and logged in
+(`npm install -g firebase-tools`, then `firebase login`):**
+
+```
+firebase deploy --only firestore:rules
+```
+
+Run from the repo root. This replaces the manual copy-paste below and
+avoids the clipboard-corruption class of bug we ran into earlier (a
+console paste once failed with "Unexpected 'match'" purely from how the
+browser handled the paste, not a real bug in the file).
+
+**If you don't have the CLI set up yet**, the console still works the same
+as before:
+
 1. Open the [Firestore Rules editor](https://console.firebase.google.com/project/wards-a4e41/firestore/rules)
    for the `wards-a4e41` project.
 2. Select all the existing text in the editor and delete it.
@@ -15,8 +32,7 @@ CLI access to your Firebase project): publishing the security rules.
 4. Click **Publish**.
 
 Whenever the rules in `firestore.rules` change in the repo (I'll flag it when
-it happens), repeat this — there's no automatic deploy from the repo to your
-project without CLI credentials I don't have.
+it happens), repeat whichever method you're using.
 
 ## 2. Becoming a hospital's admin — self-service, no console step
 

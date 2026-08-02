@@ -59,11 +59,18 @@ rules_version = '2';
 //     WARDS_TERMS_VERSION); a mismatch against the app's current
 //     version constant re-prompts the user on next sign-in.
 //   usersByEmail/{emailKey}             { uid }   -- invite-by-email lookup
-//   hospitals/{hospitalId}              { name, createdBy, createdAt, admins: { [uid]: {role:'admin', email, joinedAt} } }
+//   hospitals/{hospitalId}              { name, createdBy, createdAt, admins: { [uid]: {role:'admin', email, joinedAt} },
+//                                          stripeCustomerId, stripeSubscriptionId, subscriptionStatus, currentPeriodEnd }
 //     -- the tenancy root. Creating one is how a user becomes its sole
 //     admin; there is no other way to gain hospital-admin authority
 //     (mirrors departments/wardGroups: creator-becomes-admin is
 //     server-enforced by isValidNewHospital, not a client claim).
+//     -- the billing fields are written ONLY by the stripeWebhook Cloud
+//     Function (functions/index.js), using the Admin SDK, which bypasses
+//     these rules entirely -- no client write path ever sets
+//     subscriptionStatus, so a user can never grant themselves the paid
+//     tier by crafting a request. See isValidNewDepartment() below for
+//     where subscriptionStatus is actually enforced.
 //   departments/{deptId}                { name, hospitalId, createdBy, createdAt, admins: { [uid]: {role:'admin', email, joinedAt} } }
 //   wardGroups/{groupId}                { name, hospitalId, createdBy, createdAt, departmentId (nullable), members: { [uid]: {role, email, joinedAt} } }
 //   wardGroups/{groupId}/patients/{id}  -- the actual patient records; each
@@ -157,13 +164,20 @@ function isAboveDeptPath(deptId) {
     && isHospitalAdmin(get(departmentDoc(deptId)).data.hospitalId);
 }
 
+// Departments are the paid-tier feature: a hospital's first ward group
+// (created directly under the hospital, no department needed) always
+// stays free -- multi-department organization is what needs an active
+// subscription. subscriptionStatus is written server-side only, by the
+// stripeWebhook Cloud Function (see functions/index.js); nothing here
+// ever trusts a client-supplied value for it.
 function isValidNewDepartment() {
   return signedIn()
     && request.resource.data.createdBy == request.auth.uid
     && request.resource.data.admins.keys().hasOnly([request.auth.uid])
     && request.resource.data.admins[request.auth.uid].role == 'admin'
     && request.resource.data.hospitalId is string
-    && isHospitalAdmin(request.resource.data.hospitalId);
+    && isHospitalAdmin(request.resource.data.hospitalId)
+    && get(hospitalDoc(request.resource.data.hospitalId)).data.get('subscriptionStatus', '') == 'active';
 }
 
 function groupDoc(groupId) {
