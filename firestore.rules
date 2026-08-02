@@ -116,6 +116,8 @@ rules_version = '2';
 //     queried via `.where('email','==', myEmail.toLowerCase())`.
 // =====================================================================
 
+service cloud.firestore {
+
 function signedIn() {
   return request.auth != null;
 }
@@ -550,4 +552,6 @@ match /databases/{database}/documents {
   match /{document=**} {
     allow read, write: if false;
   }
+}
+
 }
