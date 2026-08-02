@@ -6292,7 +6292,7 @@ function setupWardsBillingUI(){
    wardsSubscribeDeptChat/wardsSendDeptChatMessage/
    wardsPostDeptAnnouncement functions above for the Firestore side.
    ============================================================ */
-let wardsDeptIsAdminCache = null; // {deptId, isAdmin} -- avoid re-checking every render
+let wardsDeptIsAdminCache = null; // {uid, deptId, isAdmin} -- avoid re-checking every render
 
 function wardsRenderChatMessages(containerId, messages, emptyText){
   const el = document.getElementById(containerId);
@@ -6326,13 +6326,14 @@ function wardsRenderAnnouncements(list){
 
 async function wardsCheckIsDeptAdmin(deptId){
   if(!deptId) return false;
-  if(wardsDeptIsAdminCache && wardsDeptIsAdminCache.deptId === deptId) return wardsDeptIsAdminCache.isAdmin;
+  const uid = currentWardsUser ? currentWardsUser.uid : null;
+  if(wardsDeptIsAdminCache && wardsDeptIsAdminCache.deptId === deptId && wardsDeptIsAdminCache.uid === uid) return wardsDeptIsAdminCache.isAdmin;
   let isAdmin = false;
   try{
     const doc = await wfdb.collection('departments').doc(deptId).get();
     isAdmin = !!(doc.exists && doc.data().admins && currentWardsUser && doc.data().admins[currentWardsUser.uid]);
   }catch(e){ isAdmin = false; } // not an admin/hospital-admin -- get() denied, that's expected
-  wardsDeptIsAdminCache = { deptId, isAdmin };
+  wardsDeptIsAdminCache = { uid, deptId, isAdmin };
   return isAdmin;
 }
 
@@ -6403,6 +6404,7 @@ function setupWardsChatUI(){
     wardsChatSwitchTab(activeSyncGroupId ? 'ward' : 'dept');
   });
   if(closeBtn) closeBtn.addEventListener('click', wardsCloseChatModal);
+  if(modal) modal.addEventListener('click', e => { if(e.target === modal) wardsCloseChatModal(); });
   if(wardTab) wardTab.addEventListener('click', () => wardsChatSwitchTab('ward'));
   if(deptTab) deptTab.addEventListener('click', () => wardsChatSwitchTab('dept'));
 
@@ -6412,7 +6414,7 @@ function setupWardsChatUI(){
     if(!text.trim()) return;
     wardInput.value = '';
     try{ await wardsSendGroupChatMessage(activeSyncGroupId, text); }
-    catch(e){ showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'error'); }
+    catch(e){ wardInput.value = text; showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'error'); }
   }
   async function sendDept(){
     if(!deptInput || !activeDepartmentId) return;
@@ -6420,7 +6422,7 @@ function setupWardsChatUI(){
     if(!text.trim()) return;
     deptInput.value = '';
     try{ await wardsSendDeptChatMessage(activeDepartmentId, text); }
-    catch(e){ showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'error'); }
+    catch(e){ deptInput.value = text; showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'error'); }
   }
   async function sendAnnouncement(){
     if(!announceInput || !activeDepartmentId) return;
@@ -6428,7 +6430,7 @@ function setupWardsChatUI(){
     if(!text.trim()) return;
     announceInput.value = '';
     try{ await wardsPostDeptAnnouncement(activeDepartmentId, text); }
-    catch(e){ showToast('Could not post — ' + ((e && e.message) || 'try again.'), 'error'); }
+    catch(e){ announceInput.value = text; showToast('Could not post — ' + ((e && e.message) || 'try again.'), 'error'); }
   }
 
   if(wardSendBtn) wardSendBtn.addEventListener('click', sendWard);
@@ -6482,6 +6484,8 @@ async function wardsOnAuthChanged(user){
   } else {
     if(wardsGroupsUnsub){ wardsGroupsUnsub(); wardsGroupsUnsub = null; }
     if(wardsPendingInvitesUnsub){ wardsPendingInvitesUnsub(); wardsPendingInvitesUnsub = null; }
+    wardsCloseChatModal();
+    wardsDeptIsAdminCache = null;
     selectWardsSyncGroup(null);
     wardsMyGroups = [];
     wardsMyHospitals = [];
@@ -6716,7 +6720,9 @@ function setupWardsSyncUI(){
     if(!activeSyncGroupId){ if(inviteErr) inviteErr.textContent = 'Select a ward group first.'; return; }
     const g = wardsMyGroups.find(g => g.groupId === activeSyncGroupId);
     try{
-      await wardsInviteToGroup(activeSyncGroupId, g ? g.groupName : activeSyncGroupId, activeHospitalId, email, activeDepartmentId);
+      const groupSnap = await wfdb.collection('wardGroups').doc(activeSyncGroupId).get();
+      const groupDepartmentId = groupSnap.exists ? (groupSnap.data().departmentId || null) : null;
+      await wardsInviteToGroup(activeSyncGroupId, g ? g.groupName : activeSyncGroupId, activeHospitalId, email, groupDepartmentId);
       inviteModal.hidden = true; inviteModal.classList.remove('show');
       showToast('Invite sent.', 'ok');
     }catch(e){ if(inviteErr) inviteErr.textContent = (e && e.message) || 'Could not send the invite.'; }
