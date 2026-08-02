@@ -268,3 +268,109 @@ exports.stripeWebhook = onRequest(
     }
   }
 );
+
+/* ============================================================
+   3. Account deletion -- required for Play Store publishing (Google
+   requires an in-app account-deletion path for any app with account
+   creation), and a normal GDPR/DPDP "right to erasure" request either
+   way. Has to be a Cloud Function: removing an admin's own uid from a
+   hospital/department/ward-group's admins map is blocked client-side
+   by firestore.rules' "admins.size() > 0" invariant (the same one that
+   stops an admin removing themself as a client write) -- deleting an
+   account is legitimately allowed to do that, but only server-side,
+   and only after checking it won't orphan the org unit (see below).
+   Deleting the actual Firebase Auth user also requires the Admin SDK.
+   ============================================================ */
+exports.deleteMyAccount = onCall({}, async (request) => {
+  if (!request.auth) throw new HttpsError('unauthenticated', 'Sign in required.');
+  const uid = request.auth.uid;
+  const db = admin.firestore();
+
+  // ---- 1. Refuse if deleting this account would leave a hospital,
+  // department, or ward group with zero admins -- same invariant
+  // firestore.rules already enforces everywhere else an admin can be
+  // removed. The user has to add a co-admin, or delete/hand off the
+  // org unit, before their account can go.
+  const blockers = [];
+
+  // Ward-group admin status is indexed in groupMemberships, so this is
+  // a cheap query rather than a collection scan.
+  const myGroupAdminships = await db.collection('groupMemberships')
+    .where('uid', '==', uid).where('role', '==', 'admin').get();
+  for (const doc of myGroupAdminships.docs) {
+    const groupId = doc.data().groupId;
+    const groupSnap = await db.doc(`wardGroups/${groupId}`).get();
+    if (!groupSnap.exists) continue;
+    const members = groupSnap.data().members || {};
+    const hasOtherAdmin = Object.entries(members).some(([memberUid, m]) => memberUid !== uid && m && m.role === 'admin');
+    if (!hasOtherAdmin) blockers.push(`ward group "${groupSnap.data().name || groupId}"`);
+  }
+
+  // Hospitals and departments have no admin-uid index (admin status
+  // only lives in each doc's own `admins` map) -- this scans both
+  // collections. Fine at this app's current scale; add a proper
+  // adminOf index if either collection ever gets large enough for that
+  // to matter.
+  const [hospitalsSnap, departmentsSnap] = await Promise.all([
+    db.collection('hospitals').get(),
+    db.collection('departments').get(),
+  ]);
+  for (const doc of hospitalsSnap.docs) {
+    const admins = doc.data().admins || {};
+    if (admins[uid] && !Object.keys(admins).some((otherUid) => otherUid !== uid)) {
+      blockers.push(`hospital "${doc.data().name || doc.id}"`);
+    }
+  }
+  for (const doc of departmentsSnap.docs) {
+    const admins = doc.data().admins || {};
+    if (admins[uid] && !Object.keys(admins).some((otherUid) => otherUid !== uid)) {
+      blockers.push(`department "${doc.data().name || doc.id}"`);
+    }
+  }
+
+  if (blockers.length) {
+    throw new HttpsError(
+      'failed-precondition',
+      `You're the only admin of ${blockers.join(', ')} -- add a co-admin or delete it before deleting your account.`
+    );
+  }
+
+  // ---- 2. Not blocked -- remove this uid everywhere it appears.
+  const batch = db.batch();
+
+  const myGroupMemberships = await db.collection('groupMemberships').where('uid', '==', uid).get();
+  for (const doc of myGroupMemberships.docs) {
+    batch.delete(doc.ref);
+    batch.update(db.doc(`wardGroups/${doc.data().groupId}`), {
+      [`members.${uid}`]: admin.firestore.FieldValue.delete(),
+    });
+  }
+  const myDeptMemberships = await db.collection('departmentMemberships').where('uid', '==', uid).get();
+  for (const doc of myDeptMemberships.docs) batch.delete(doc.ref);
+
+  for (const doc of hospitalsSnap.docs) {
+    if ((doc.data().admins || {})[uid]) {
+      batch.update(doc.ref, {[`admins.${uid}`]: admin.firestore.FieldValue.delete()});
+    }
+  }
+  for (const doc of departmentsSnap.docs) {
+    if ((doc.data().admins || {})[uid]) {
+      batch.update(doc.ref, {[`admins.${uid}`]: admin.firestore.FieldValue.delete()});
+    }
+  }
+
+  batch.delete(db.doc(`users/${uid}`));
+
+  await batch.commit();
+
+  // ---- 3. Delete the actual sign-in account. Content this user
+  // authored elsewhere (chat messages, audit-log entries, vitals log
+  // entries) is deliberately left in place -- those are immutable
+  // clinical/audit records other people on the same ward rely on, not
+  // personal data tied to a live account, and they already store a
+  // plain display name captured at the time rather than a live
+  // reference back to this profile.
+  await admin.auth().deleteUser(uid);
+
+  return {ok: true};
+});

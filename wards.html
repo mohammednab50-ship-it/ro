@@ -2873,6 +2873,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           </div>
           <div class="ws-row" style="gap:8px;">
             <button type="button" class="settings-btn" id="wards-sync-signout-btn">Sign out</button>
+            <button type="button" class="settings-btn settings-btn-danger" id="wards-delete-account-btn">Delete account…</button>
           </div>
           <p class="qh-note" id="wards-sync-status-note"></p>
         </div>
@@ -3977,6 +3978,17 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <p class="login-error" id="wards-invite-error" role="alert"></p>
     <button type="button" class="settings-btn w-100" id="wards-invite-send-btn">Send invite</button>
     <p class="wards-qr-disclaimer">They'll see this invite next time they sign in (any account, even if they haven't signed up yet — the invite is stored under their email). They join as a plain member, never an admin.</p>
+  </div>
+</div>
+
+<div class="wards-qr-modal" id="wards-delete-account-modal" hidden>
+  <div class="wards-qr-card wards-qr-card--left" role="dialog" aria-modal="true" aria-labelledby="wards-delete-account-title">
+    <button type="button" class="mat-lb-close" id="wards-delete-account-close" aria-label="Close">&times;</button>
+    <h3 id="wards-delete-account-title">Delete your account</h3>
+    <p class="wards-qr-disclaimer">This permanently deletes your sign-in account and removes you from every ward group, department, and hospital you belong to. Local-only patient data on this device is not affected. Messages, audit entries, and vitals you already logged stay in the record for your team — this only removes your account, not what you've already charted. This can't be undone.</p>
+    <div class="ws-row"><input type="text" id="wards-delete-account-confirm-input" class="settings-select w-100" placeholder="Type DELETE to confirm" autocomplete="off"></div>
+    <p class="login-error" id="wards-delete-account-error" role="alert"></p>
+    <button type="button" class="settings-btn settings-btn-danger w-100" id="wards-delete-account-confirm-btn" disabled>Delete my account</button>
   </div>
 </div>
 
@@ -5528,7 +5540,7 @@ async function wardsFindUidByEmail(email){
    gate shipped (no matching field yet either), and version bumps (stale
    value stored), without needing to track Firebase's isNewUser flag
    across both the email/password and Google sign-in paths. */
-const WARDS_TERMS_VERSION = '2026-08-02-draft-2';
+const WARDS_TERMS_VERSION = '2026-08-02-draft-3';
 const WARDS_TERMS_AND_PRIVACY_HTML = `
 <h4>Terms of Use</h4>
 <p><strong>Last updated:</strong> [NEEDS INPUT: date of actual publication]</p>
@@ -5562,7 +5574,8 @@ const WARDS_TERMS_AND_PRIVACY_HTML = `
 <li><strong>Who can see synced data:</strong> members of the specific ward group a patient belongs to, that group's department admin (if any), and that hospital's admin(s). [NEEDS INPUT: confirm this matches your institution's actual data-governance expectations — e.g. does your hospital require broader or narrower visibility than "ward group members + department/hospital admins"?]</li>
 <li><strong>Audit trail:</strong> for synced ward groups, Wards writes a lightweight log of who added/removed a patient, logged a reading, or logged an escalation, readable by that group's admin and above, for oversight purposes.</li>
 <li><strong>We (the software's operator) do not access your data ourselves</strong> in the ordinary course of operating the app — Firestore access is governed entirely by the security rules described above, scoped to your own account's memberships. [NEEDS INPUT: if there's ever a legitimate operational reason for the software operator to access data — e.g. responding to a legal request, debugging a reported bug with the account holder's permission — that should be stated explicitly here, not left implicit.]</li>
-<li><strong>Data retention:</strong> you can configure an automatic purge of archived (discharged) patient records after a set number of days, from within the app. [NEEDS INPUT: what happens to data on account deletion — is there a deletion process today? If not, that's a gap worth closing before this is a real, published privacy policy.]</li>
+<li><strong>Data retention:</strong> you can configure an automatic purge of archived (discharged) patient records after a set number of days, from within the app.</li>
+<li><strong>Account deletion:</strong> from Settings → Account, you can permanently delete your sign-in account and your membership in every hospital, department, and ward group. If you're the sole admin of a hospital, department, or ward group, you'll need to add a co-admin or delete that org unit first — deleting your account can't leave one with no admin. Content you already contributed to shared records (chat messages, audit-log entries, vitals you logged for shared patients) stays in place for your former team, since those are part of the shared clinical/audit record rather than personal data tied to your live account.</li>
 </ul>
 <h4>Both apps</h4>
 <ul>
@@ -6732,6 +6745,43 @@ function setupWardsSyncUI(){
     try{ await wardsSignInGoogle(); }catch(e){ setErr(wardsAuthErrorMessage(e)); }
   });
   if(signoutBtn) signoutBtn.addEventListener('click', async () => { await wardsSignOut(); });
+
+  const deleteAccountBtn = document.getElementById('wards-delete-account-btn');
+  const deleteModal = document.getElementById('wards-delete-account-modal');
+  const deleteCloseBtn = document.getElementById('wards-delete-account-close');
+  const deleteConfirmInput = document.getElementById('wards-delete-account-confirm-input');
+  const deleteConfirmBtn = document.getElementById('wards-delete-account-confirm-btn');
+  const deleteErrEl = document.getElementById('wards-delete-account-error');
+  if(deleteAccountBtn && deleteModal){
+    deleteAccountBtn.addEventListener('click', () => {
+      if(deleteErrEl) deleteErrEl.textContent = '';
+      if(deleteConfirmInput) deleteConfirmInput.value = '';
+      if(deleteConfirmBtn) deleteConfirmBtn.disabled = true;
+      deleteModal.hidden = false; deleteModal.classList.add('show');
+      if(deleteConfirmInput) deleteConfirmInput.focus();
+    });
+  }
+  if(deleteCloseBtn) deleteCloseBtn.addEventListener('click', () => { deleteModal.hidden = true; deleteModal.classList.remove('show'); });
+  if(deleteConfirmInput) deleteConfirmInput.addEventListener('input', () => {
+    if(deleteConfirmBtn) deleteConfirmBtn.disabled = deleteConfirmInput.value.trim() !== 'DELETE';
+  });
+  if(deleteConfirmBtn) deleteConfirmBtn.addEventListener('click', async () => {
+    if(deleteErrEl) deleteErrEl.textContent = '';
+    if(deleteConfirmInput && deleteConfirmInput.value.trim() !== 'DELETE') return;
+    deleteConfirmBtn.disabled = true;
+    try{
+      const ok = await initWardsFirebase();
+      if(!ok) throw new Error('Could not reach the account service — check your connection.');
+      const fn = wfFunctions.httpsCallable('deleteMyAccount');
+      await fn();
+      deleteModal.hidden = true; deleteModal.classList.remove('show');
+      await wardsSignOut();
+      showToast('Account deleted.', 'ok');
+    }catch(e){
+      if(deleteErrEl) deleteErrEl.textContent = (e && e.message) || 'Could not delete your account — try again.';
+      deleteConfirmBtn.disabled = false;
+    }
+  });
 
   const groupSelect = document.getElementById('wards-sync-group-select');
   if(groupSelect) groupSelect.addEventListener('change', () => { selectWardsSyncGroup(groupSelect.value || null); });

@@ -189,6 +189,77 @@ paying hospital customers who are pushing for it):
    process itself — this is typically a specialized consultant engagement,
    not something either of us can do in this repo.
 
+## 8. Path to publishing Wards on Google Play with subscriptions
+
+**Status: ⛔ not published yet — three blockers below, plus the setup
+checklist that was already tracked in section 2.**
+
+### Blockers specific to publishing (beyond section 2's general checklist)
+
+- 🚫 **Google Play billing policy vs. the in-app Stripe upgrade button.**
+  Play generally requires Google Play Billing (their cut: 15-30%) for
+  subscriptions purchased *inside* the app, and restricts linking out to
+  external payment for that purpose. A B2B, per-hospital-seat model like
+  this one may qualify for Play's business/enterprise exemption, but
+  that's a policy determination, not a code change — needs checking
+  against Play's current Payments policy before the existing Stripe flow
+  (`wards.html`'s "Upgrade hospital…" button, `functions/index.js`'s
+  `createCheckoutSession`) is safe to ship as-is. If it doesn't qualify,
+  the usual safe pattern is: hospital admins subscribe on a **web portal
+  outside the app**, and the app only *reads* `subscriptionStatus` — a
+  real architecture change, not a tweak, so worth resolving this first.
+- ✅ **Account deletion.** Play requires an in-app path to delete an
+  account for any app that supports creating one — done: Settings →
+  Account → "Delete account…" in the signed-in cloud-sync panel, backed
+  by `functions/index.js`'s `deleteMyAccount` callable. It blocks deletion
+  if the user is the sole admin of a hospital/department/ward group
+  (same "never zero admins" invariant `firestore.rules` already enforces
+  elsewhere), otherwise removes their account, memberships, and admin
+  status everywhere, and deletes the Firebase Auth user. Historical
+  content they authored (chat, audit-log entries) stays, as shared
+  clinical/audit record rather than personal account data — see the
+  updated Terms/Privacy text for the user-facing version of this.
+  **Still needed:** Play also wants a *web-accessible* deletion URL (not
+  just in-app) — a small hosted page hitting the same callable, or
+  documenting the in-app path on your public Terms/Privacy page.
+- 🚫 **Published Terms/Privacy Policy at a public URL.** Play requires a
+  privacy policy link on the store listing. The current text
+  (`WARDS_TERMS_AND_PRIVACY_HTML` in `wards.html`) is in-app only,
+  lawyer-unreviewed, and still has `[NEEDS INPUT]` placeholders — same
+  blocker as section 1, surfaced again here because it specifically
+  blocks store submission, not just "real" legal safety.
+
+### Setup checklist (yours — no console/account access on my end)
+
+Same items as section 2, called out again because they're the literal
+list between here and a Play Store listing: Firebase Blaze plan, deploy
+`firestore.rules` and the Cloud Functions in this file (backup + Stripe +
+the new `deleteMyAccount`), a Stripe account/Product/Price/webhook, a
+Play Console account, a **release signing keystore** (`android-wards`'s
+`build.gradle` has an empty `release` block right now — no signing
+config at all), OAuth consent screen branding (the `firebaseapp.com`
+popup from earlier), and the Play Data Safety / Health apps declaration
+forms (health-data apps get extra review). `versionCode`/`versionName`
+in `android-wards/app/build.gradle` are still the untouched defaults
+(`1`, `"1.0"`) — needs a real versioning scheme before first upload.
+
+### Other product gaps worth closing before charging real hospitals
+
+- ⛔ **Subscription-lapse UX.** Today, if a hospital's `subscriptionStatus`
+  stops being `'active'`, department creation just starts failing at the
+  rules layer with no explanatory in-app messaging — a bad experience
+  mid-shift.
+- ⛔ **Free trial.** The webhook already treats Stripe's `trialing` status
+  as active; `createCheckoutSession` just needs to request a trial period
+  when creating the session.
+- ⛔ **Offline queue for chat sends** — they currently just fail with a
+  toast on a dropped connection.
+- ⛔ **Push notifications** — needs the native FCM path (see the earlier
+  conversation); blocked on registering the Android app in Firebase
+  Console and downloading `google-services.json`.
+- ⛔ **Error monitoring** (e.g. Sentry) — carried over from section 2,
+  worth prioritizing once real hospitals are paying.
+
 ## Suggested order of operations
 
 1. Talk to a healthcare/data-privacy lawyer; get real Terms/Privacy and a
