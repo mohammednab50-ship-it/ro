@@ -2604,6 +2604,22 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-qr-card .mat-lb-close{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--ink-faint);font-size:22px;cursor:pointer;line-height:1;}
 .wards-qr-card .mat-lb-close:hover{color:var(--ink);}
 
+.wards-terms-modal{z-index:1500;}
+.wards-terms-card{max-width:600px;max-height:88vh;overflow-y:auto;text-align:left;padding:26px 24px 20px;}
+.wards-terms-flag{font-family:var(--ff-sans);font-size:11.5px;color:var(--ink-faint);margin:0 0 14px;}
+.wards-terms-body{font-family:var(--ff-sans);font-size:13.5px;line-height:1.6;color:var(--ink-soft);
+  border:1px solid var(--line);border-radius:var(--r-sm);padding:14px 16px;max-height:42vh;overflow-y:auto;
+  background:var(--surface-raised, var(--surface));margin-bottom:14px;}
+.wards-terms-body h4{font-family:var(--ff-sans);font-size:14px;font-weight:700;color:var(--ink);margin:16px 0 6px;}
+.wards-terms-body h4:first-child{margin-top:0;}
+.wards-terms-body p, .wards-terms-body li{margin:0 0 9px;}
+.wards-terms-body ul{margin:0 0 9px;padding-left:20px;}
+.wards-terms-body strong{color:var(--ink);}
+.wards-terms-checkbox{display:flex;align-items:flex-start;gap:9px;margin:0 0 14px;font-family:var(--ff-sans);
+  font-size:13px;color:var(--ink);cursor:pointer;line-height:1.4;text-align:left;}
+.wards-terms-checkbox input{margin-top:2px;width:16px;height:16px;flex:none;}
+.wards-terms-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;}
+
 .wards-tabbar{
   display:flex; gap:6px; padding:10px 28px; max-width:1280px; margin:0 auto;
   border-bottom:1px solid var(--line);
@@ -2822,6 +2838,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <p class="qh-note">Off by default. When a newly logged reading crosses the NEWS2 escalation threshold, plays a short synthesised alarm tone and/or a distinct double-pulse vibration &mdash; separate from the routine save feedback &mdash; so it can be felt/heard without looking at the screen. This tab needs to be open to fire; it's a convenience, not a monitor.</p>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-ambient-toggle"> Ambient vitals soundscape <span style="font-weight:500;">(experimental)</span></label>
         <p class="qh-note">Off by default. A very quiet, continuous synthesised tone whose pitch/tempo drifts with the sickest active patient's NEWS2 trend &mdash; a peripheral-awareness aid, not a monitor or an alarm. Separate from, and does not replace, the escalation alert sound above. Silent during quiet hours. This tab needs to stay open to play.</p>
+        <div class="ws-row">
+          <span class="ws-label">Terms &amp; Privacy<span class="ws-sub">Re-read the Terms of Use and Privacy Policy</span></span>
+          <button type="button" class="settings-btn" id="wards-view-terms-btn">View</button>
+        </div>
       </div>
     </div>
   </div>
@@ -3731,6 +3751,23 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   </div>
 </div>
 
+<div class="wards-qr-modal wards-terms-modal" id="wards-terms-modal" hidden role="dialog" aria-modal="true" aria-labelledby="wards-terms-title">
+  <div class="wards-qr-card wards-terms-card">
+    <h3 id="wards-terms-title">Terms of Use &amp; Privacy Policy</h3>
+    <p class="wards-terms-flag">Draft — not yet reviewed by a lawyer. See placeholders marked "NEEDS INPUT" below.</p>
+    <div class="wards-terms-body" id="wards-terms-body"></div>
+    <label class="wards-terms-checkbox" id="wards-terms-checkbox-row">
+      <input type="checkbox" id="wards-terms-checkbox">
+      I have read and agree to the Terms of Use and Privacy Policy.
+    </label>
+    <div class="wards-terms-actions">
+      <button type="button" class="settings-btn" id="wards-terms-decline">Decline &amp; sign out</button>
+      <button type="button" class="settings-btn" id="wards-terms-agree" disabled>Agree &amp; continue</button>
+      <button type="button" class="settings-btn" id="wards-terms-close" hidden>Close</button>
+    </div>
+  </div>
+</div>
+
 <div class="wards-qr-modal" id="wards-quicknote-modal" hidden>
   <div class="wards-qr-card wards-quicknote-card" role="dialog" aria-modal="true" aria-labelledby="wards-quicknote-title">
     <button type="button" class="mat-lb-close" id="wards-quicknote-close" aria-label="Close">&times;</button>
@@ -4167,6 +4204,9 @@ function setupWardsSettingsUI(){
     });
   }
   syncDemoUI();
+
+  const termsBtn = document.getElementById('wards-view-terms-btn');
+  if(termsBtn) termsBtn.addEventListener('click', () => { haptic('Light'); wardsShowTermsReadOnly(); });
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
@@ -4895,6 +4935,171 @@ function wardsAuthErrorMessage(err){
   return map[code] || (err && err.message) || 'Something went wrong. Please try again.';
 }
 
+/* ---- Terms of Use / Privacy Policy acceptance gate ----
+   Content mirrors TERMS_AND_PRIVACY_DRAFT.md in the repo root — a legal-
+   review DRAFT, "NEEDS INPUT" placeholders intentionally kept verbatim.
+   Bump WARDS_TERMS_VERSION any time the underlying doc changes materially
+   to re-prompt every account, including ones that already agreed.
+   Recorded server-side on users/{uid} (agreedToTermsVersion, agreedAt) —
+   unlike Rounds' localStorage-only record, this follows the account
+   across devices since Wards already has a Firestore profile doc for
+   signed-in users. Gate check is simply "does users/{uid}'s stored
+   version match WARDS_TERMS_VERSION" — that alone correctly covers
+   brand-new accounts (no doc yet), pre-existing accounts from before this
+   gate shipped (no matching field yet either), and version bumps (stale
+   value stored), without needing to track Firebase's isNewUser flag
+   across both the email/password and Google sign-in paths. */
+const WARDS_TERMS_VERSION = '2026-08-02-draft-1';
+const WARDS_TERMS_AND_PRIVACY_HTML = `
+<h4>Terms of Use</h4>
+<p><strong>Last updated:</strong> [NEEDS INPUT: date of actual publication]</p>
+<p>By creating an account or using Rounds or Wards ("the apps"), you agree to these terms.</p>
+<h4>What the apps are</h4>
+<p>Rounds is a personal clinical-reference and study tool (drug/condition lookup, spaced-repetition study aids, quizzes). Wards is a personal ward-based patient-charting aid (serial vitals, notes, and related department-specific fields for General/ICU/Surgery/Pediatrics/Maternity patients), with an optional feature to sync data to a shared database for your care team.</p>
+<p><strong>Neither app is a certified medical device, a replacement for your institution's official electronic health record (EHR) or nursing flowsheet, or a source of clinical guidance to be followed without your own independent clinical judgment.</strong> Content in Rounds (drug information, condition summaries, interaction checks, dosing calculators) is a reference aid only — always verify against your institution's protocols and current primary sources before acting on it. Wards is a personal charting convenience — your institution's official record system remains the definitive medical record; always chart there as required by your employer's policy.</p>
+<h4>Accounts</h4>
+<p>Creating an account requires a valid email address (or a Google account, if you choose that sign-in method). You're responsible for keeping your account credentials secure and for anything done using your account. Wards additionally offers an optional device-level PIN/biometric lock — this is separate from your account and does not replace normal account security practices (a strong password, not sharing your login).</p>
+<h4>Acceptable use</h4>
+<p>Don't use the apps to store or process real patient information unless you're authorized by your institution to do so and are complying with your institution's own data-handling policies and any applicable law. Don't attempt to access another user's, ward's, or hospital's data beyond what you're a legitimate member/admin of. Don't use the multi-hospital tenancy feature to create a "hospital" you don't have real authority to administer.</p>
+<h4>[NEEDS INPUT: liability/warranty disclaimer language]</h4>
+<p>Standard boilerplate ("provided as-is, no warranty, limitation of liability to the extent permitted by law") belongs here — this needs actual legal drafting specific to your jurisdiction and risk tolerance, not a placeholder written by an AI assistant.</p>
+<h4>Changes to these terms</h4>
+<p>If these terms change in a way that matters, you'll be asked to review and re-accept them the next time you sign in.</p>
+<h4>Privacy Policy</h4>
+<p><strong>Last updated:</strong> [NEEDS INPUT: date of actual publication]</p>
+<p>This section describes what data the apps actually collect and where it goes, as accurately as the current app code supports.</p>
+<h4>Rounds</h4>
+<ul>
+<li><strong>Account data:</strong> your email address (and display name, if you sign in with Google), handled by Firebase Authentication. This is the only personal data Rounds' account system stores.</li>
+<li><strong>Everything else is local-only.</strong> Bookmarks, personal notes on saved entries, quiz/study history, settings, and all other Rounds data are stored only in your browser/device's local storage. <strong>None of it is currently synced to any server</strong> — if you clear your browser data or switch devices, it does not carry over. [NEEDS INPUT: update this section if/when bookmark sync to Firestore is built — as of this writing it is not.]</li>
+<li>Rounds makes outbound requests to PubMed/NCBI (for literature search) and openFDA (for some drug data) when you use those specific features — these requests go to those third-party services directly from your device, not through any server we operate, and are subject to those services' own terms.</li>
+</ul>
+<h4>Wards</h4>
+<ul>
+<li><strong>Account data:</strong> same as above — email (and display name via Google sign-in), via Firebase Authentication.</li>
+<li><strong>By default, Wards is 100% local-only</strong> — no account required, no data leaves your device, patient data lives only in local browser/device storage.</li>
+<li><strong>If you sign in and select or create a "hospital" and a "ward group"</strong> (an explicit, opt-in action), patient data you enter for that ward group syncs to a shared cloud database (Google Firebase/Firestore) so your care team can see the same records in real time. This includes: patient identifiers you enter (name, bed, MRN if provided), vitals readings, clinical notes, and department-specific fields. <strong>A private, personal "nickname" field and a personal "something that went well" reflection note are deliberately excluded from sync and from every export/print/SBAR feature</strong> — those stay local-only by design.</li>
+<li><strong>Data isolation:</strong> each "hospital" in this system is a fully separate, isolated tenant — hospital admins can only see and manage their own hospital's data, never another hospital's, enforced by server-side security rules, not just app behavior.</li>
+<li><strong>Who can see synced data:</strong> members of the specific ward group a patient belongs to, that group's department admin (if any), and that hospital's admin(s). [NEEDS INPUT: confirm this matches your institution's actual data-governance expectations — e.g. does your hospital require broader or narrower visibility than "ward group members + department/hospital admins"?]</li>
+<li><strong>Audit trail:</strong> for synced ward groups, Wards writes a lightweight log of who added/removed a patient, logged a reading, or logged an escalation, readable by that group's admin and above, for oversight purposes.</li>
+<li><strong>We (the software's operator) do not access your data ourselves</strong> in the ordinary course of operating the app — Firestore access is governed entirely by the security rules described above, scoped to your own account's memberships. [NEEDS INPUT: if there's ever a legitimate operational reason for the software operator to access data — e.g. responding to a legal request, debugging a reported bug with the account holder's permission — that should be stated explicitly here, not left implicit.]</li>
+<li><strong>Data retention:</strong> you can configure an automatic purge of archived (discharged) patient records after a set number of days, from within the app. [NEEDS INPUT: what happens to data on account deletion — is there a deletion process today? If not, that's a gap worth closing before this is a real, published privacy policy.]</li>
+</ul>
+<h4>Both apps</h4>
+<ul>
+<li><strong>No advertising, no data sale, no third-party analytics/tracking SDKs</strong> are integrated into either app as of this writing.</li>
+<li><strong>Local device data</strong> (settings, local-only patients/bookmarks, the app lock PIN hash, etc.) never leaves your device regardless of sign-in status, except via a backup/export feature you explicitly trigger yourself (e.g. "Export all data," CSV export) — those produce a file you control, not an automatic upload anywhere.</li>
+</ul>
+<h4>[NEEDS INPUT: data subject rights section]</h4>
+<p>Depending on jurisdiction, you likely need an explicit section on how a user can request access to, correction of, or deletion of their data — this needs real operational backing (an actual process for handling such a request), not just a policy statement.</p>
+<h4>Contact</h4>
+<p>[NEEDS INPUT: a real contact — email address or process — for privacy questions or data requests.]</p>
+`;
+
+async function wardsHasAgreedToCurrentTerms(uid){
+  if(!wfdb) return false;
+  try{
+    const snap = await wfdb.collection('users').doc(uid).get();
+    const data = snap.exists ? snap.data() : null;
+    return !!(data && data.agreedToTermsVersion === WARDS_TERMS_VERSION);
+  }catch(e){
+    console.warn('Could not check terms agreement:', e);
+    return false;
+  }
+}
+async function wardsRecordTermsAgreement(user){
+  if(!wfdb) return;
+  await wfdb.collection('users').doc(user.uid).set({
+    email: user.email || '',
+    displayName: user.displayName || '',
+    agreedToTermsVersion: WARDS_TERMS_VERSION,
+    agreedAt: firebase.firestore.FieldValue.serverTimestamp()
+  }, { merge: true });
+}
+
+let wardsTermsGateWired = false;
+function wardsOpenTermsModal(){
+  const modal = document.getElementById('wards-terms-modal');
+  if(!modal) return null;
+  modal.hidden = false;
+  modal.classList.add('show');
+  return modal;
+}
+function wardsCloseTermsModal(){
+  const modal = document.getElementById('wards-terms-modal');
+  if(!modal) return;
+  modal.hidden = true;
+  modal.classList.remove('show');
+}
+function wardsWireTermsGateOnce(){
+  if(wardsTermsGateWired) return;
+  wardsTermsGateWired = true;
+  const checkbox = document.getElementById('wards-terms-checkbox');
+  const agreeBtn = document.getElementById('wards-terms-agree');
+  const declineBtn = document.getElementById('wards-terms-decline');
+  const closeBtn = document.getElementById('wards-terms-close');
+  checkbox.addEventListener('change', () => { agreeBtn.disabled = !checkbox.checked; });
+  agreeBtn.addEventListener('click', async () => {
+    if(checkbox.disabled || !checkbox.checked) return;
+    agreeBtn.disabled = true;
+    const user = agreeBtn._pendingUser;
+    const onAgree = agreeBtn._pendingOnAgree;
+    try{ await wardsRecordTermsAgreement(user); }catch(e){ console.warn('Could not record terms agreement:', e); }
+    wardsCloseTermsModal();
+    if(typeof onAgree === 'function') onAgree();
+  });
+  declineBtn.addEventListener('click', async () => {
+    wardsCloseTermsModal();
+    const onDecline = agreeBtn._pendingOnDecline;
+    await wardsSignOut();
+    if(typeof onDecline === 'function') onDecline();
+  });
+  closeBtn.addEventListener('click', () => { wardsCloseTermsModal(); });
+}
+function wardsShowTermsGate(user, onAgree, onDecline){
+  const modal = document.getElementById('wards-terms-modal');
+  if(!modal){ onAgree(); return; }
+  const body = document.getElementById('wards-terms-body');
+  if(body && !body.innerHTML) body.innerHTML = WARDS_TERMS_AND_PRIVACY_HTML;
+  wardsWireTermsGateOnce();
+  const checkbox = document.getElementById('wards-terms-checkbox');
+  const agreeBtn = document.getElementById('wards-terms-agree');
+  checkbox.checked = false;
+  agreeBtn.disabled = true;
+  agreeBtn.hidden = false;
+  agreeBtn._pendingUser = user;
+  agreeBtn._pendingOnAgree = onAgree;
+  agreeBtn._pendingOnDecline = onDecline;
+  document.getElementById('wards-terms-checkbox-row').hidden = false;
+  document.getElementById('wards-terms-decline').hidden = false;
+  document.getElementById('wards-terms-close').hidden = true;
+  wardsOpenTermsModal();
+}
+/* Read-only re-read from Settings — no agreement required, just Close. */
+function wardsShowTermsReadOnly(){
+  const modal = document.getElementById('wards-terms-modal');
+  if(!modal) return;
+  const body = document.getElementById('wards-terms-body');
+  if(body && !body.innerHTML) body.innerHTML = WARDS_TERMS_AND_PRIVACY_HTML;
+  wardsWireTermsGateOnce();
+  document.getElementById('wards-terms-checkbox-row').hidden = true;
+  document.getElementById('wards-terms-agree').hidden = true;
+  document.getElementById('wards-terms-decline').hidden = true;
+  document.getElementById('wards-terms-close').hidden = false;
+  wardsOpenTermsModal();
+}
+/* Resolves once this sign-in event is allowed to proceed: true if already
+   agreed or the user just agreed, false if they declined (already signed
+   out by the time this resolves — caller should stop, not load data). */
+function wardsGateOnTerms(user){
+  return wardsHasAgreedToCurrentTerms(user.uid).then(agreed => {
+    if(agreed) return true;
+    return new Promise(resolve => {
+      wardsShowTermsGate(user, () => resolve(true), () => resolve(false));
+    });
+  });
+}
+
 /* ---- hospitals: the tenancy root (see firestore.rules) — creating one
    IS how a user becomes its admin, replacing the old manual "bootstrap
    superAdmin via console" step entirely. There is no flat index
@@ -5254,9 +5459,11 @@ function renderWardsGroupSelect(){
   }
 }
 
-function wardsOnAuthChanged(user){
+async function wardsOnAuthChanged(user){
   currentWardsUser = user || null;
   if(user){
+    const ok = await wardsGateOnTerms(user);
+    if(!ok) return; // declined — already signed out; the next onAuthStateChanged(null) call does the cleanup below
     wardsSubscribeMyGroups(user.uid);
     wardsLoadMyHospitals(user.uid);
     wardsLoadMyDepartments(user.uid);
