@@ -282,6 +282,11 @@ body > header{background:transparent;position:sticky;top:0;z-index:50;padding:14
 .header-search .search-icon{width:18px;height:18px;color:var(--header-ink-soft);flex-shrink:0;}
 .header-search input{flex:1;border:none;background:transparent;color:var(--header-ink);font-family:var(--ff-sans);font-size:13.5px;padding:10px 0;outline:none;min-width:0;}
 .header-search input::placeholder{color:var(--header-ink-soft);}
+.search-shortcut-hint{font-family:var(--ff-mono);font-size:11px;font-weight:700;color:var(--header-ink-soft);
+  background:var(--paper);border:1px solid var(--header-line);border-radius:5px;padding:1px 6px;line-height:1.6;
+  flex-shrink:0;pointer-events:none;}
+.header-search:focus-within .search-shortcut-hint{display:none;}
+@media (max-width:880px){.search-shortcut-hint{display:none;}}
 .btn-search{border:none;background:var(--cta-bg);color:var(--cta-ink);border-radius:var(--r-pill);padding:10px 20px;font-size:12.5px;font-weight:700;letter-spacing:var(--tracking-wide);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);}
 
 /* ---- header "more tools" overflow menu ----
@@ -2941,6 +2946,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       </svg>
       <label for="search-input" class="sr-only" style="position:absolute;left:-9999px;">Search PubMed</label>
       <input id="search-input" type="search" placeholder='Search topics, drugs, or trials…' autocomplete="off" spellcheck="false">
+      <kbd class="search-shortcut-hint" id="search-shortcut-hint" aria-hidden="true">/</kbd>
       <button id="search-btn" class="btn-search" type="button">Search</button>
       <button id="search-everywhere-btn" class="btn-search-everywhere" type="button" title="Search everywhere — Literature, Drugs, Conditions, Advances, Trials at once">Everywhere</button>
     </form>
