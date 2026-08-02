@@ -71,7 +71,12 @@ rules_version = '2';
 //     'pediatrics'|'maternity') picking which charting sections the app
 //     shows for it — a per-patient tag, not a separate collection, since
 //     one ward group can hold patients from any mix of departments.
-//   wardGroups/{groupId}/invites/{emailKey}  { email, invitedBy, invitedAt } — pending invite for a not-yet-registered email
+//   wardGroups/{groupId}/invites/{emailKey}  { email, invitedBy, invitedAt } — pending invite,
+//     doc id is the lowercased invitee email (emailKey == email.trim().toLowerCase(),
+//     enforced on create so the doc id can be trusted as a proxy for its own
+//     `email` field elsewhere, e.g. isValidInviteAccept below). Created by a group
+//     admin/above; the invitee has never been a member yet so has no standing
+//     access to this subcollection to browse it directly (see pendingInvites).
 //   wardGroups/{groupId}/auditLog/{entryId}  { action, patientId, patientName, detail, uid, email, ts }
 //     — append-only audit trail. Any member can create an entry (Wards does,
 //     for patient add/remove, a new vitals reading, and an escalation
@@ -95,6 +100,20 @@ rules_version = '2';
 //     `departmentId` on wardGroups is a plain field (not a map key), so
 //     "all groups in my department" is a normal `where('departmentId','==',
 //     deptId)` equality query — no join collection needed for that one.
+//   pendingInvites/{inviteId}           { email, groupId, groupName, hospitalId, invitedBy, invitedByEmail, invitedAt }
+//     — a flat join-collection for the same reason groupMemberships is
+//     flat: an invited user isn't a member of the group yet, so has no
+//     way to know which `wardGroups/{groupId}/invites/{emailKey}`
+//     subcollection to even look under, and Firestore doesn't support a
+//     safely-rulable collection-group query here. Doc id convention:
+//     `${groupId}_${emailKey}` (emailKey == email.trim().toLowerCase()).
+//     Created by the SAME batched write that creates the matching
+//     wardGroups/{groupId}/invites/{emailKey} doc; deleted (by either
+//     side) in the same batch as that doc too — see isValidInviteAccept
+//     and wardsInviteToGroup/wardsAcceptInvite/wardsDeclineInvite in
+//     wards.html. The invites subcollection doc remains the actual
+//     authorization source; this collection is a read-side index only,
+//     queried via `.where('email','==', myEmail.toLowerCase())`.
 // =====================================================================
 
 function signedIn() {
@@ -147,6 +166,50 @@ function isValidNewDepartment() {
 
 function groupDoc(groupId) {
   return /databases/$(database)/documents/wardGroups/$(groupId);
+}
+
+// Whether the CALLER (never a client-supplied uid/email — always the
+// requester's own verified auth token email) has a pending invite to
+// this group. Doc id is the lowercased email, enforced at invite-create
+// time (see wardGroups/{groupId}/invites/{emailKey} rules below), so
+// checking existence at this exact path is sufficient proof — nobody
+// else can plant a doc at a path keyed by someone else's token email.
+function callerHasInviteFor(groupId) {
+  return signedIn()
+    && exists(/databases/$(database)/documents/wardGroups/$(groupId)/invites/$(request.auth.token.email.lower()));
+}
+
+// The ONE server-authorized way a user who is NOT YET a member can
+// modify a wardGroups doc: accepting their own pending invite. Every
+// condition here is load-bearing — see the attack-scenario walkthrough
+// in the commit that introduced this function.
+//   (a) not already a member — an existing member (even one just
+//       demoted) can't re-enter through this narrower door; the normal
+//       admin-only branch of the update rule governs them instead.
+//   (b) callerHasInviteFor(groupId) is the actual authorization: proof
+//       a group admin/above genuinely invited THIS caller's own email
+//       (never a client-supplied claim).
+//   (c) request.resource.data.diff(resource.data).affectedKeys() must
+//       be exactly {'members'} — no OTHER top-level field (name,
+//       hospitalId, departmentId, createdBy, createdAt, ...) may change
+//       in this write. This is what stops an invite-accept from also
+//       renaming the group or re-parenting it to another hospital.
+//   (d) within `members`, the diff's affected keys must be exactly the
+//       caller's own uid — this blocks touching (adding, removing, OR
+//       modifying) any OTHER member's entry in the same write, and
+//       since (a) already established the caller's uid isn't currently
+//       a key, this key can only be an ADDITION, never an overwrite.
+//   (e) the new entry's role must be literally 'member' — never
+//       'admin' or anything else — so an invite can never silently
+//       grant admin authority.
+function isValidInviteAccept(groupPath, groupId) {
+  return signedIn()
+    && exists(groupPath)
+    && !(request.auth.uid in get(groupPath).data.members)
+    && callerHasInviteFor(groupId)
+    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['members'])
+    && request.resource.data.members.diff(resource.data.members).affectedKeys().hasOnly([request.auth.uid])
+    && request.resource.data.members[request.auth.uid].role == 'member';
 }
 
 function isMemberPath(groupPath) {
@@ -250,7 +313,16 @@ match /databases/{database}/documents {
     // hospital-selection code in wards.html) — so list is simply denied.
     allow list: if false;
     allow create: if isValidNewHospital();
-    allow update: if isHospitalAdmin(hospitalId);
+    // `admins.size() > 0` blocks any update (including a co-admin removal,
+    // see wardsRemoveCoAdmin in wards.html) that would leave the admins
+    // map empty — a hospital must always keep at least one admin. This is
+    // server-side backstop for the same rule the app already enforces
+    // client-side; it's a cheap, always-true-for-legitimate-writes check
+    // since `admins` is a required field on every hospital doc, not a
+    // full diff of what else changed (this rule already leaves every
+    // other field open to an existing admin, by design — see class
+    // comment above on "existing admin's update is unrestricted").
+    allow update: if isHospitalAdmin(hospitalId) && request.resource.data.admins.size() > 0;
     allow delete: if isHospitalAdmin(hospitalId);
   }
 
@@ -272,8 +344,12 @@ match /databases/{database}/documents {
     // to a hospital they don't control (escaping that hospital's
     // oversight) or to one they don't belong to at all (spoofing a
     // relationship with it). Re-parenting isn't a supported operation.
+    // See the matching `admins.size() > 0` comment on hospitals/{hospitalId}
+    // above — same backstop, same reasoning, a department must always keep
+    // at least one admin too.
     allow update: if (isDepartmentAdmin(deptId) || isAboveDeptPath(deptId))
-      && request.resource.data.hospitalId == resource.data.hospitalId;
+      && request.resource.data.hospitalId == resource.data.hospitalId
+      && request.resource.data.admins.size() > 0;
     allow delete: if isAboveDeptPath(deptId); // deleting a whole department is hospital-admin-level only, not a department admin's own call
   }
 
@@ -304,11 +380,23 @@ match /databases/{database}/documents {
     // Only created/deleted as part of the *same batched write* that adds
     // or removes the uid from the corresponding group's `members` map —
     // so whoever is allowed to make that group change is allowed here too.
+    // Third branch: a user accepting their OWN invite creates their OWN
+    // membership-index entry (nobody above them does it for them, since
+    // they aren't a member yet for isGroupAdminPath/isAboveGroupPath to
+    // recognize). Gated on the exact same callerHasInviteFor() proof as
+    // isValidInviteAccept on the wardGroups doc itself — see that
+    // function's comment for the full attack-scenario reasoning. Scoped
+    // to `request.resource.data.uid == request.auth.uid` so this branch
+    // can never be used to create a membership row for anyone else.
     allow create: if signedIn()
       && request.resource.data.uid is string
       && (
         isGroupAdminPath(groupDoc(request.resource.data.groupId))
         || isAboveGroupPath(groupDoc(request.resource.data.groupId))
+        || (
+          request.resource.data.uid == request.auth.uid
+          && callerHasInviteFor(request.resource.data.groupId)
+        )
       );
     allow delete: if signedIn()
       && (
@@ -316,6 +404,46 @@ match /databases/{database}/documents {
         || isGroupAdminPath(groupDoc(resource.data.groupId))
         || isAboveGroupPath(groupDoc(resource.data.groupId))
       );
+  }
+
+  // ---- the read-side "invites addressed to me" index — see the schema
+  // comment above and callerHasInviteFor()/isValidInviteAccept() for why
+  // this needs to be a flat, equality-queryable collection rather than a
+  // collection-group query over wardGroups/*/invites. ----
+  match /pendingInvites/{inviteId} {
+    allow get: if signedIn() && (
+      resource.data.email == request.auth.token.email.lower()
+      || isGroupAdminPath(groupDoc(resource.data.groupId))
+      || isAboveGroupPath(groupDoc(resource.data.groupId))
+    );
+    // Same reasoning as groupMemberships' list rule above: constrained to
+    // match the app's actual `.where('email','==', myEmail.toLowerCase())`
+    // query (see wardsSubscribeMyPendingInvites in wards.html), not a
+    // blanket `signedIn()` — which would let any signed-in user enumerate
+    // every pending invite's email address project-wide.
+    allow list: if resource.data.email == request.auth.token.email.lower();
+    // Only created as part of the SAME batched write that creates the
+    // matching wardGroups/{groupId}/invites/{emailKey} doc (see
+    // wardsInviteToGroup in wards.html) — so whoever is allowed to make
+    // that invite is allowed here too. Not cross-checked against the
+    // sibling doc's content (batched writes don't let one write's rule
+    // read another uncommitted write in the same batch); the sibling
+    // doc's own create rule enforces its own invariants independently.
+    allow create: if signedIn()
+      && request.resource.data.email is string
+      && (
+        isGroupAdminPath(groupDoc(request.resource.data.groupId))
+        || isAboveGroupPath(groupDoc(request.resource.data.groupId))
+      );
+    // Deleted by a group admin/above revoking an invite, or by the
+    // invited user themselves declining/accepting their OWN invite
+    // (never anyone else's — pinned to their own verified token email).
+    allow delete: if signedIn() && (
+      resource.data.email == request.auth.token.email.lower()
+      || isGroupAdminPath(groupDoc(resource.data.groupId))
+      || isAboveGroupPath(groupDoc(resource.data.groupId))
+    );
+    allow update: if false; // no field of a pending invite is ever edited in place — only created and deleted
   }
 
   // ---- Ward groups (single system — patients within carry their own
@@ -346,10 +474,21 @@ match /databases/{database}/documents {
     // hospitalId) read/write access to this group's patient data — a
     // cross-hospital leak. Re-parenting isn't a supported operation;
     // create a new group under the new department/hospital instead.
-    allow update: if (isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
-        || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId)))
-      && request.resource.data.hospitalId == resource.data.hospitalId
-      && request.resource.data.departmentId == resource.data.departmentId;
+    // Second branch (isValidInviteAccept) is the narrow, provably-safe
+    // carve-out that lets a NOT-YET-a-member user modify this doc at all:
+    // accepting their own pending invite. It does not need its own
+    // hospitalId/departmentId lock repeated here — its internal
+    // diff().affectedKeys().hasOnly(['members']) check already forbids
+    // touching those fields (or any field besides `members`) at all, a
+    // strictly tighter guarantee than the explicit equality checks the
+    // first branch uses.
+    allow update: if (
+        (isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
+          || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId)))
+        && request.resource.data.hospitalId == resource.data.hospitalId
+        && request.resource.data.departmentId == resource.data.departmentId
+      )
+      || isValidInviteAccept(/databases/$(database)/documents/wardGroups/$(groupId), groupId);
     allow delete: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
       || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
 
@@ -359,20 +498,35 @@ match /databases/{database}/documents {
     }
     match /invites/{emailKey} {
       allow read: if signedIn() && (
-        resource.data.email == request.auth.token.email
+        resource.data.email == request.auth.token.email.lower()
         || isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
         || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId))
       );
-      // Not queried anywhere in the app yet (no invite UI exists — see
-      // README's "what's still pending"), so denied outright rather than
-      // left as an unconstrained `signedIn()` allow, which would let any
-      // signed-in user enumerate every pending invite's email address
-      // across every ward group. When invite UI is built, this should
-      // become `resource.data.email == request.auth.token.email` matched
-      // against an actual `.where('email','==', myEmail)` query.
+      // Deliberately still not queried in bulk anywhere in the app — an
+      // invited user has no standing membership to browse this
+      // subcollection directly, which is exactly why pendingInvites
+      // (top-level, flat, equality-queryable by email) exists. Left
+      // denied outright rather than a blanket `signedIn()` allow, which
+      // would let any signed-in user enumerate every pending invite's
+      // email address across every ward group.
       allow list: if false;
-      allow create, delete: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
-        || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
+      // emailKey must equal the invite's own declared (lowercased) email
+      // — this is what lets isValidInviteAccept and callerHasInviteFor
+      // trust "a doc exists at .../invites/$(myEmail.lower())" as
+      // sufficient proof of invitation, without separately re-checking
+      // the doc's `email` field content.
+      allow create: if (isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
+          || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId)))
+        && request.resource.data.email == emailKey;
+      // Deleted by a group admin/above revoking a not-yet-accepted
+      // invite, OR by the invited user themselves — declining, or as
+      // part of the same batch that accepts it (see isValidInviteAccept)
+      // — but only ever their OWN invite: resource.data.email is pinned
+      // to their own verified token email, never a client-supplied uid
+      // or someone else's address.
+      allow delete: if isGroupAdminPath(/databases/$(database)/documents/wardGroups/$(groupId))
+        || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId))
+        || resource.data.email == request.auth.token.email.lower();
     }
 
     // Append-only audit trail — any member can add an entry (Wards writes

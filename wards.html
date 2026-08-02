@@ -2604,6 +2604,16 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-qr-card .mat-lb-close{position:absolute;top:8px;right:10px;background:none;border:none;color:var(--ink-faint);font-size:22px;cursor:pointer;line-height:1;}
 .wards-qr-card .mat-lb-close:hover{color:var(--ink);}
 
+.wards-admins-card{max-width:380px;max-height:80vh;overflow-y:auto;text-align:left;}
+.wards-admins-list{margin:10px 0;display:flex;flex-direction:column;gap:6px;max-height:220px;overflow-y:auto;}
+.wards-admin-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 8px;border:1px solid var(--line);border-radius:var(--r-sm);font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);}
+.wards-admin-row .wards-admin-remove{background:none;border:none;color:var(--ink-faint);cursor:pointer;font-size:16px;line-height:1;padding:2px 4px;}
+.wards-admin-row .wards-admin-remove:hover{color:#c0392b;}
+.wards-pending-invite-row{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 9px;border:1px solid var(--line);border-radius:var(--r-sm);font-family:var(--ff-sans);font-size:12px;color:var(--ink-soft);margin-bottom:6px;background:var(--surface-raised, var(--surface));}
+.wards-pending-invite-row .wards-pi-actions{display:flex;gap:6px;flex:none;}
+.wards-pending-invite-row .wards-pi-actions button{font-size:11.5px;padding:4px 8px;}
+#wards-pending-invites-wrap[hidden]{display:none;}
+
 .wards-terms-modal{z-index:1500;}
 .wards-terms-card{max-width:600px;max-height:88vh;overflow-y:auto;text-align:left;padding:26px 24px 20px;}
 .wards-terms-flag{font-family:var(--ff-sans);font-size:11.5px;color:var(--ink-faint);margin:0 0 14px;}
@@ -2671,6 +2681,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         </div>
         <div id="wards-sync-signed-in" hidden>
           <p class="ws-label" style="margin-bottom:8px;">Signed in as <span id="wards-sync-user-email"></span></p>
+          <div id="wards-pending-invites-wrap" hidden style="margin-bottom:10px;">
+            <p class="ws-label" style="margin-bottom:6px;">Pending invites for you</p>
+            <div id="wards-pending-invites-list"></div>
+          </div>
           <div class="ws-row">
             <span class="ws-label">Hospital<span class="ws-sub">Ward groups you create belong to this hospital</span></span>
           </div>
@@ -2679,6 +2693,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           </select>
           <div class="ws-row" style="gap:8px;margin-bottom:8px;">
             <button type="button" class="settings-btn" id="wards-sync-newhospital-btn">Create hospital…</button>
+            <button type="button" class="settings-btn" id="wards-sync-hospitaladmins-btn" disabled>Admins…</button>
           </div>
           <div class="ws-row">
             <span class="ws-label">Department <span>(optional)</span><span class="ws-sub">Groups the ward group under a department within this hospital</span></span>
@@ -2688,6 +2703,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           </select>
           <div class="ws-row" style="gap:8px;margin-bottom:8px;">
             <button type="button" class="settings-btn" id="wards-sync-newdepartment-btn" disabled>Create department…</button>
+            <button type="button" class="settings-btn" id="wards-sync-deptadmins-btn" disabled>Admins…</button>
           </div>
           <div class="ws-row">
             <span class="ws-label">Ward group<span class="ws-sub">Patients in the selected group sync live</span></span>
@@ -2695,8 +2711,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <select id="wards-sync-group-select" class="settings-select" style="width:100%;margin-bottom:8px;">
             <option value="">Local-only (no sync)</option>
           </select>
-          <div class="ws-row" style="gap:8px;">
+          <div class="ws-row" style="gap:8px;margin-bottom:8px;">
             <button type="button" class="settings-btn" id="wards-sync-newgroup-btn">Create ward group…</button>
+            <button type="button" class="settings-btn" id="wards-sync-invite-btn" disabled>Invite…</button>
+          </div>
+          <div class="ws-row" style="gap:8px;">
             <button type="button" class="settings-btn" id="wards-sync-signout-btn">Sign out</button>
           </div>
           <p class="qh-note" id="wards-sync-status-note"></p>
@@ -3747,7 +3766,30 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <div class="ws-row"><input type="text" id="wards-newgroup-name" class="settings-select" placeholder="e.g. ICU Ward A" style="width:100%;"></div>
     <p class="login-error" id="wards-newgroup-error" role="alert"></p>
     <button type="button" class="settings-btn" id="wards-newgroup-create-btn" style="width:100%;">Create</button>
-    <p class="wards-qr-disclaimer">You'll be the group's admin and can invite teammates later from the Firebase console until an in-app invite flow is added. Belongs to the hospital currently selected above.</p>
+    <p class="wards-qr-disclaimer">You'll be the group's admin. Belongs to the hospital currently selected above. Invite teammates afterward from the "Invite…" button next to the ward group picker.</p>
+  </div>
+</div>
+
+<div class="wards-qr-modal" id="wards-admins-modal" hidden>
+  <div class="wards-qr-card wards-admins-card" role="dialog" aria-modal="true" aria-labelledby="wards-admins-title">
+    <button type="button" class="mat-lb-close" id="wards-admins-close" aria-label="Close">&times;</button>
+    <h3 id="wards-admins-title">Manage admins</h3>
+    <div class="wards-admins-list" id="wards-admins-list"></div>
+    <div class="ws-row"><input type="email" id="wards-admins-add-email" class="settings-select" placeholder="Colleague's email" style="flex:1;"></div>
+    <p class="login-error" id="wards-admins-error" role="alert"></p>
+    <button type="button" class="settings-btn" id="wards-admins-add-btn" style="width:100%;">Add as co-admin</button>
+    <p class="wards-qr-disclaimer">They must already have an account — if there's no account for that email yet, ask them to sign up first, then try again.</p>
+  </div>
+</div>
+
+<div class="wards-qr-modal" id="wards-invite-modal" hidden>
+  <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-invite-title">
+    <button type="button" class="mat-lb-close" id="wards-invite-close" aria-label="Close">&times;</button>
+    <h3 id="wards-invite-title">Invite by email</h3>
+    <div class="ws-row"><input type="email" id="wards-invite-email" class="settings-select" placeholder="Colleague's email" style="flex:1;"></div>
+    <p class="login-error" id="wards-invite-error" role="alert"></p>
+    <button type="button" class="settings-btn" id="wards-invite-send-btn" style="width:100%;">Send invite</button>
+    <p class="wards-qr-disclaimer">They'll see this invite next time they sign in (any account, even if they haven't signed up yet — the invite is stored under their email). They join as a plain member, never an admin.</p>
   </div>
 </div>
 
@@ -4876,6 +4918,8 @@ let wardsSyncPushTimer = null;
 let wardsPatientsPendingWrites = false;
 let wardsBatchInFlight = false;
 let wardsSyncErrored = false;
+let wardsPendingInvitesUnsub = null;
+let wardsMyPendingInvites = [];
 
 function getWardsActiveSyncGroupId(){ return activeSyncGroupId; }
 window.getWardsActiveSyncGroupId = getWardsActiveSyncGroupId;
@@ -4933,6 +4977,30 @@ function wardsAuthErrorMessage(err){
     'auth/network-request-failed': 'Network error — check your connection.'
   };
   return map[code] || (err && err.message) || 'Something went wrong. Please try again.';
+}
+
+/* ---- email -> uid lookup (usersByEmail, see firestore.rules) ----
+   Doc id IS the lowercased email itself (Firestore doc ids can contain
+   "@"/"." freely, so no character-substitution scheme is needed) —
+   chosen specifically so firestore.rules can recompute the same key from
+   request.auth.token.email.lower() without needing any string-transform
+   beyond .lower(), for the invite-accept and co-admin flows. Written
+   once per signed-in session (idempotent — harmless if called again). */
+function wardsEmailKey(email){
+  return (email || '').trim().toLowerCase();
+}
+async function wardsUpsertUsersByEmail(user){
+  if(!user || !user.email || !wfdb) return;
+  const key = wardsEmailKey(user.email);
+  try{
+    await wfdb.collection('usersByEmail').doc(key).set({ uid: user.uid }, { merge: true });
+  }catch(e){ console.warn('Wards: could not write usersByEmail lookup', e); }
+}
+async function wardsFindUidByEmail(email){
+  const key = wardsEmailKey(email);
+  if(!key) return null;
+  const doc = await wfdb.collection('usersByEmail').doc(key).get();
+  return doc.exists ? (doc.data().uid || null) : null;
 }
 
 /* ---- Terms of Use / Privacy Policy acceptance gate ----
@@ -5223,6 +5291,43 @@ async function wardsCreateDepartment(name){
   return ref.id;
 }
 
+/* ---- co-admins for a hospital or department — fully self-service (see
+   firestore.rules: an EXISTING admin's `update` on hospitals/departments
+   is already unrestricted, so adding/removing an admins map entry needs
+   no rules change beyond the `admins.size() > 0` "always keep at least
+   one admin" backstop already in place). `kind` is 'hospital' or
+   'department', matching the collection name directly. ---- */
+function wardsAdminsCollectionName(kind){ return kind === 'department' ? 'departments' : 'hospitals'; }
+
+async function wardsFetchAdmins(kind, docId){
+  const ok = await initWardsFirebase();
+  if(!ok) throw new Error('Could not reach the server.');
+  const doc = await wfdb.collection(wardsAdminsCollectionName(kind)).doc(docId).get();
+  if(!doc.exists) throw new Error('Not found.');
+  return doc.data().admins || {};
+}
+
+async function wardsAddCoAdmin(kind, docId, email){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const trimmed = (email || '').trim();
+  if(!trimmed) throw new Error('Enter an email address.');
+  const uid = await wardsFindUidByEmail(trimmed);
+  if(!uid) throw new Error('No account found for that email yet — ask them to sign up first, then try again.');
+  const ref = wfdb.collection(wardsAdminsCollectionName(kind)).doc(docId);
+  await ref.update({ [`admins.${uid}`]: { role: 'admin', email: wardsEmailKey(trimmed), joinedAt: new Date().toISOString() } });
+}
+
+async function wardsRemoveCoAdmin(kind, docId, uid){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const admins = await wardsFetchAdmins(kind, docId);
+  if(!(uid in admins)) return; // already gone
+  if(Object.keys(admins).length <= 1) throw new Error('A hospital/department must keep at least one admin — add another admin before removing the last one.');
+  const ref = wfdb.collection(wardsAdminsCollectionName(kind)).doc(docId);
+  await ref.update({ [`admins.${uid}`]: firebase.firestore.FieldValue.delete() });
+}
+
 function selectWardsDepartment(deptId){
   activeDepartmentId = deptId || null;
   try{
@@ -5283,6 +5388,99 @@ async function wardsCreateGroup(name){
   batch.set(membershipRef, { uid, groupId: groupRef.id, role: 'admin', groupName: name || 'New ward group', joinedAt: new Date().toISOString() });
   await batch.commit();
   return groupRef.id;
+}
+
+/* ---- ward-group invites — full self-service flow (see firestore.rules:
+   pendingInvites, isValidInviteAccept, callerHasInviteFor). The invitee
+   isn't a member yet and has no standing access to the group, so
+   discoverability goes through the flat, email-queryable pendingInvites
+   index rather than the wardGroups/{groupId}/invites subcollection
+   directly — see the schema comment in firestore.rules for why. ---- */
+function wardsGroupRole(groupId){
+  const g = wardsMyGroups.find(g => g.groupId === groupId);
+  return g ? g.role : null;
+}
+
+async function wardsInviteToGroup(groupId, groupName, hospitalId, email){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const emailKey = wardsEmailKey(email);
+  if(!emailKey) throw new Error('Enter an email address.');
+  const uid = currentWardsUser.uid;
+  const myEmail = currentWardsUser.email || '';
+  const inviteRef = wfdb.collection('wardGroups').doc(groupId).collection('invites').doc(emailKey);
+  const pendingRef = wfdb.collection('pendingInvites').doc(groupId + '_' + emailKey);
+  const batch = wfdb.batch();
+  batch.set(inviteRef, {
+    email: emailKey, invitedBy: uid,
+    invitedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  batch.set(pendingRef, {
+    email: emailKey, groupId, groupName: groupName || groupId, hospitalId: hospitalId || null,
+    invitedBy: uid, invitedByEmail: myEmail,
+    invitedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+  await batch.commit();
+}
+
+async function wardsRevokeInvite(groupId, email){
+  const ok = await initWardsFirebase();
+  if(!ok) throw new Error('Sign in first.');
+  const emailKey = wardsEmailKey(email);
+  const inviteRef = wfdb.collection('wardGroups').doc(groupId).collection('invites').doc(emailKey);
+  const pendingRef = wfdb.collection('pendingInvites').doc(groupId + '_' + emailKey);
+  const batch = wfdb.batch();
+  batch.delete(inviteRef);
+  batch.delete(pendingRef);
+  await batch.commit();
+}
+
+function wardsSubscribeMyPendingInvites(email){
+  if(wardsPendingInvitesUnsub){ wardsPendingInvitesUnsub(); wardsPendingInvitesUnsub = null; }
+  const emailKey = wardsEmailKey(email);
+  if(!emailKey) return;
+  wardsPendingInvitesUnsub = wfdb.collection('pendingInvites').where('email', '==', emailKey)
+    .onSnapshot(snap => {
+      wardsMyPendingInvites = snap.docs.map(d => Object.assign({ id: d.id }, d.data()));
+      renderWardsPendingInvites();
+    }, err => { console.warn('Wards: could not list pending invites', err); });
+}
+
+/* Accepting: the ONLY server-authorized write a not-yet-member can make
+   to a wardGroups doc (see isValidInviteAccept in firestore.rules) —
+   always joins as role 'member', never 'admin'. Batched with the
+   matching groupMemberships index entry and the deletion of both
+   invite records, exactly mirroring wardsCreateGroup's own
+   group-doc + membership-index batching pattern above. */
+async function wardsAcceptInvite(invite){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const uid = currentWardsUser.uid;
+  const email = currentWardsUser.email || '';
+  const groupRef = wfdb.collection('wardGroups').doc(invite.groupId);
+  const membershipRef = wfdb.collection('groupMemberships').doc(uid + '_' + invite.groupId);
+  const emailKey = wardsEmailKey(email);
+  const inviteRef = wfdb.collection('wardGroups').doc(invite.groupId).collection('invites').doc(emailKey);
+  const pendingRef = wfdb.collection('pendingInvites').doc(invite.id);
+  const batch = wfdb.batch();
+  batch.update(groupRef, { [`members.${uid}`]: { role: 'member', email, joinedAt: new Date().toISOString() } });
+  batch.set(membershipRef, { uid, groupId: invite.groupId, role: 'member', groupName: invite.groupName || invite.groupId, joinedAt: new Date().toISOString() });
+  batch.delete(inviteRef);
+  batch.delete(pendingRef);
+  await batch.commit();
+}
+
+async function wardsDeclineInvite(invite){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const email = currentWardsUser.email || '';
+  const emailKey = wardsEmailKey(email);
+  const inviteRef = wfdb.collection('wardGroups').doc(invite.groupId).collection('invites').doc(emailKey);
+  const pendingRef = wfdb.collection('pendingInvites').doc(invite.id);
+  const batch = wfdb.batch();
+  batch.delete(inviteRef);
+  batch.delete(pendingRef);
+  await batch.commit();
 }
 
 /* ---- patient sync ---- */
@@ -5449,6 +5647,12 @@ function renderWardsGroupSelect(){
   if(newDeptBtn) newDeptBtn.disabled = !activeHospitalId;
   const newGroupBtn = document.getElementById('wards-sync-newgroup-btn');
   if(newGroupBtn) newGroupBtn.disabled = !activeHospitalId;
+  const hospAdminsBtn = document.getElementById('wards-sync-hospitaladmins-btn');
+  if(hospAdminsBtn) hospAdminsBtn.disabled = !activeHospitalId;
+  const deptAdminsBtn = document.getElementById('wards-sync-deptadmins-btn');
+  if(deptAdminsBtn) deptAdminsBtn.disabled = !activeDepartmentId;
+  const inviteBtn = document.getElementById('wards-sync-invite-btn');
+  if(inviteBtn) inviteBtn.disabled = !(activeSyncGroupId && wardsGroupRole(activeSyncGroupId) === 'admin');
   const signedOut = document.getElementById('wards-sync-signed-out');
   const signedIn = document.getElementById('wards-sync-signed-in');
   const emailEl = document.getElementById('wards-sync-user-email');
@@ -5459,12 +5663,32 @@ function renderWardsGroupSelect(){
   }
 }
 
+function renderWardsPendingInvites(){
+  const wrap = document.getElementById('wards-pending-invites-wrap');
+  const list = document.getElementById('wards-pending-invites-list');
+  if(!wrap || !list) return;
+  if(!wardsMyPendingInvites.length){ wrap.hidden = true; list.innerHTML = ''; return; }
+  wrap.hidden = false;
+  list.innerHTML = wardsMyPendingInvites.map(inv => `
+    <div class="wards-pending-invite-row">
+      <span>${escapeHtml(inv.groupName || inv.groupId)}${inv.invitedByEmail ? ' &mdash; invited by ' + escapeHtml(inv.invitedByEmail) : ''}</span>
+      <span class="wards-pi-actions">
+        <button type="button" class="settings-btn" data-invite-accept="${escapeHtml(inv.id)}">Accept</button>
+        <button type="button" class="settings-btn" data-invite-decline="${escapeHtml(inv.id)}">Decline</button>
+      </span>
+    </div>
+  `).join('');
+}
+window.renderWardsPendingInvites = renderWardsPendingInvites;
+
 async function wardsOnAuthChanged(user){
   currentWardsUser = user || null;
   if(user){
     const ok = await wardsGateOnTerms(user);
     if(!ok) return; // declined — already signed out; the next onAuthStateChanged(null) call does the cleanup below
+    wardsUpsertUsersByEmail(user);
     wardsSubscribeMyGroups(user.uid);
+    wardsSubscribeMyPendingInvites(user.email);
     wardsLoadMyHospitals(user.uid);
     wardsLoadMyDepartments(user.uid);
     try{
@@ -5481,12 +5705,14 @@ async function wardsOnAuthChanged(user){
     }catch(e){}
   } else {
     if(wardsGroupsUnsub){ wardsGroupsUnsub(); wardsGroupsUnsub = null; }
+    if(wardsPendingInvitesUnsub){ wardsPendingInvitesUnsub(); wardsPendingInvitesUnsub = null; }
     selectWardsSyncGroup(null);
     wardsMyGroups = [];
     wardsMyHospitals = [];
     activeHospitalId = null;
     wardsMyDepartments = [];
     activeDepartmentId = null;
+    wardsMyPendingInvites = [];
   }
   renderWardsGroupSelect();
   updateWardsSyncIndicator();
@@ -5621,6 +5847,125 @@ function setupWardsSyncUI(){
   const historyClose = document.getElementById('wards-history-close');
   const historyModal = document.getElementById('wards-history-modal');
   if(historyClose && historyModal) historyClose.addEventListener('click', () => { historyModal.hidden = true; historyModal.classList.remove('show'); });
+
+  /* ---- manage admins (hospital or department co-admins) ---- */
+  let wardsAdminsModalKind = null, wardsAdminsModalDocId = null;
+  const adminsModal = document.getElementById('wards-admins-modal');
+  const adminsTitle = document.getElementById('wards-admins-title');
+  const adminsList = document.getElementById('wards-admins-list');
+  const adminsClose = document.getElementById('wards-admins-close');
+  const adminsAddEmail = document.getElementById('wards-admins-add-email');
+  const adminsErr = document.getElementById('wards-admins-error');
+  const adminsAddBtn = document.getElementById('wards-admins-add-btn');
+
+  async function refreshAdminsList(){
+    if(!adminsList || !wardsAdminsModalKind || !wardsAdminsModalDocId) return;
+    adminsList.innerHTML = '<p class="qh-note">Loading…</p>';
+    try{
+      const admins = await wardsFetchAdmins(wardsAdminsModalKind, wardsAdminsModalDocId);
+      const entries = Object.keys(admins).map(uid => ({ uid, email: admins[uid].email || uid }));
+      const canRemove = entries.length > 1;
+      adminsList.innerHTML = entries.map(a => `
+        <div class="wards-admin-row">
+          <span>${escapeHtml(a.email)}</span>
+          ${canRemove ? `<button type="button" class="wards-admin-remove" data-remove-admin="${escapeHtml(a.uid)}" aria-label="Remove admin">&times;</button>` : ''}
+        </div>
+      `).join('') || '<p class="qh-note">No admins found.</p>';
+    }catch(e){ adminsList.innerHTML = `<p class="qh-note">Could not load admins: ${escapeHtml((e && e.message) || 'unknown error')}</p>`; }
+  }
+  function openAdminsModal(kind, docId, title){
+    wardsAdminsModalKind = kind; wardsAdminsModalDocId = docId;
+    if(adminsTitle) adminsTitle.textContent = title;
+    if(adminsErr) adminsErr.textContent = '';
+    if(adminsAddEmail) adminsAddEmail.value = '';
+    if(adminsModal){ adminsModal.hidden = false; adminsModal.classList.add('show'); }
+    refreshAdminsList();
+  }
+  const hospAdminsBtn = document.getElementById('wards-sync-hospitaladmins-btn');
+  if(hospAdminsBtn) hospAdminsBtn.addEventListener('click', () => {
+    if(!activeHospitalId) return;
+    const h = wardsMyHospitals.find(h => h.id === activeHospitalId);
+    openAdminsModal('hospital', activeHospitalId, 'Manage admins — ' + (h ? h.name : activeHospitalId));
+  });
+  const deptAdminsBtn = document.getElementById('wards-sync-deptadmins-btn');
+  if(deptAdminsBtn) deptAdminsBtn.addEventListener('click', () => {
+    if(!activeDepartmentId) return;
+    const d = wardsMyDepartments.find(d => d.id === activeDepartmentId);
+    openAdminsModal('department', activeDepartmentId, 'Manage admins — ' + (d ? d.name : activeDepartmentId));
+  });
+  if(adminsClose) adminsClose.addEventListener('click', () => { adminsModal.hidden = true; adminsModal.classList.remove('show'); });
+  if(adminsAddBtn) adminsAddBtn.addEventListener('click', async () => {
+    if(adminsErr) adminsErr.textContent = '';
+    const email = (adminsAddEmail && adminsAddEmail.value || '').trim();
+    if(!email){ if(adminsErr) adminsErr.textContent = 'Enter an email address.'; return; }
+    try{
+      await wardsAddCoAdmin(wardsAdminsModalKind, wardsAdminsModalDocId, email);
+      if(adminsAddEmail) adminsAddEmail.value = '';
+      showToast('Co-admin added.', 'ok');
+      refreshAdminsList();
+    }catch(e){ if(adminsErr) adminsErr.textContent = (e && e.message) || 'Could not add co-admin.'; }
+  });
+  if(adminsList) adminsList.addEventListener('click', async (e) => {
+    const btn = e.target.closest('[data-remove-admin]');
+    if(!btn) return;
+    const uid = btn.getAttribute('data-remove-admin');
+    if(adminsErr) adminsErr.textContent = '';
+    try{
+      await wardsRemoveCoAdmin(wardsAdminsModalKind, wardsAdminsModalDocId, uid);
+      showToast('Admin removed.', 'ok');
+      refreshAdminsList();
+    }catch(e){ if(adminsErr) adminsErr.textContent = (e && e.message) || 'Could not remove admin.'; }
+  });
+
+  /* ---- invite by email (ward-group members) ---- */
+  const inviteBtn = document.getElementById('wards-sync-invite-btn');
+  const inviteModal = document.getElementById('wards-invite-modal');
+  const inviteClose = document.getElementById('wards-invite-close');
+  const inviteEmail = document.getElementById('wards-invite-email');
+  const inviteErr = document.getElementById('wards-invite-error');
+  const inviteSendBtn = document.getElementById('wards-invite-send-btn');
+  if(inviteBtn && inviteModal){
+    inviteBtn.addEventListener('click', () => {
+      if(!activeSyncGroupId || wardsGroupRole(activeSyncGroupId) !== 'admin') return;
+      if(inviteErr) inviteErr.textContent = '';
+      if(inviteEmail) inviteEmail.value = '';
+      inviteModal.hidden = false; inviteModal.classList.add('show'); if(inviteEmail) inviteEmail.focus();
+    });
+  }
+  if(inviteClose) inviteClose.addEventListener('click', () => { inviteModal.hidden = true; inviteModal.classList.remove('show'); });
+  if(inviteSendBtn) inviteSendBtn.addEventListener('click', async () => {
+    if(inviteErr) inviteErr.textContent = '';
+    const email = (inviteEmail && inviteEmail.value || '').trim();
+    if(!email){ if(inviteErr) inviteErr.textContent = 'Enter an email address.'; return; }
+    if(!activeSyncGroupId){ if(inviteErr) inviteErr.textContent = 'Select a ward group first.'; return; }
+    const g = wardsMyGroups.find(g => g.groupId === activeSyncGroupId);
+    try{
+      await wardsInviteToGroup(activeSyncGroupId, g ? g.groupName : activeSyncGroupId, activeHospitalId, email);
+      inviteModal.hidden = true; inviteModal.classList.remove('show');
+      showToast('Invite sent.', 'ok');
+    }catch(e){ if(inviteErr) inviteErr.textContent = (e && e.message) || 'Could not send the invite.'; }
+  });
+
+  /* ---- accept/decline pending invites for me ---- */
+  const pendingList = document.getElementById('wards-pending-invites-list');
+  if(pendingList) pendingList.addEventListener('click', async (e) => {
+    const acceptId = e.target.closest('[data-invite-accept]');
+    const declineId = e.target.closest('[data-invite-decline]');
+    if(!acceptId && !declineId) return;
+    const id = (acceptId || declineId).getAttribute(acceptId ? 'data-invite-accept' : 'data-invite-decline');
+    const invite = wardsMyPendingInvites.find(i => i.id === id);
+    if(!invite) return;
+    try{
+      if(acceptId){
+        await wardsAcceptInvite(invite);
+        showToast('Joined ' + (invite.groupName || 'the ward group') + '.', 'ok');
+        selectWardsSyncGroup(invite.groupId);
+      } else {
+        await wardsDeclineInvite(invite);
+        showToast('Invite declined.', 'ok');
+      }
+    }catch(e){ showToast((e && e.message) || 'Could not process the invite.', 'err'); }
+  });
 }
 
 async function initWardsCloudSync(){
