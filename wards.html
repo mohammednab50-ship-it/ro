@@ -2895,6 +2895,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <label for="vitals-new-age">Age <span>years (pediatrics)</span></label>
         <input id="vitals-new-age" type="number" min="0" max="17" step="0.1" inputmode="decimal" placeholder="e.g. 4">
       </div>
+      <div class="vitals-field">
+        <label for="vitals-new-gender">Gender <span>feeds the daily ward census</span></label>
+        <select id="vitals-new-gender">
+          <option value="">Not specified</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+        </select>
+      </div>
       <div class="vitals-dup-warning" id="vitals-dup-warning" hidden>
         <p class="vitals-sanity-msg" id="vitals-dup-warning-msg"></p>
       </div>
@@ -2988,6 +2996,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
               <option value="contact">Contact</option>
               <option value="droplet">Droplet</option>
               <option value="airborne">Airborne</option>
+            </select>
+          </label>
+          <label class="vitals-isolation-select-wrap" title="Patient gender — feeds the daily ward census">
+            <span>Gender</span>
+            <select id="vitals-gender-select">
+              <option value="">Not specified</option>
+              <option value="male">Male</option>
+              <option value="female">Female</option>
             </select>
           </label>
           <label class="vitals-isolation-select-wrap" title="How often this patient's vitals should be checked — used by the 'not seen recently' sweep instead of the department default when set">
@@ -5584,6 +5600,7 @@ function initVitals(){
   setupBedsideBrief();
   setupBorrowedForm();
   setupIsolationSelect();
+  setupGenderSelect();
   setupMaternitySection();
   setupIcuSection();
   setupSurgerySection();
@@ -6763,6 +6780,7 @@ function setupAddPatientForm(){
   const deptInput = document.getElementById('vitals-new-dept');
   const ageField = document.getElementById('vitals-new-age-field');
   const ageInput = document.getElementById('vitals-new-age');
+  const genderInput = document.getElementById('vitals-new-gender');
   const dupWarning = document.getElementById('vitals-dup-warning');
   const dupWarningMsg = document.getElementById('vitals-dup-warning-msg');
   if(!openBtn || !form || openBtn.dataset.wired) return;
@@ -6786,6 +6804,7 @@ function setupAddPatientForm(){
     if(deptInput) deptInput.value = 'general';
     if(ageInput) ageInput.value = '';
     if(ageField) ageField.hidden = true;
+    if(genderInput) genderInput.value = '';
     resetDupWarning();
   };
   openBtn.addEventListener('click', () => {
@@ -6825,6 +6844,7 @@ function setupAddPatientForm(){
     if(department === 'pediatrics' && ageInput && ageInput.value.trim() !== ''){
       patient.pediatrics = { ageYears: parseFloat(ageInput.value) };
     }
+    if(genderInput && genderInput.value) patient.gender = genderInput.value;
     const syncGid = (typeof window.getWardsActiveSyncGroupId === 'function') ? window.getWardsActiveSyncGroupId() : null;
     if(syncGid) patient.groupId = syncGid;
     vitalsState.patients.push(patient);
@@ -7499,6 +7519,8 @@ function renderVitalsMain(){
 
   const isoSelect = document.getElementById('vitals-isolation-select');
   if(isoSelect) isoSelect.value = p.isolation || 'none';
+  const genderSelect = document.getElementById('vitals-gender-select');
+  if(genderSelect) genderSelect.value = p.gender || '';
   populateReadingIntervalSelect(p);
 
   const allergiesForm = document.getElementById('vitals-allergies-form');
@@ -8933,6 +8955,22 @@ function setupIsolationSelect(){
     const p = activePatient();
     if(!p) return;
     p.isolation = select.value === 'none' ? '' : select.value;
+    saveVitalsData();
+    renderPatientList();
+    haptic('Light');
+  });
+}
+
+/* ---- gender — 'male'|'female'|unset, feeds the daily ward census's
+   male/female/unspecified counts (see the census engine below). ---- */
+function setupGenderSelect(){
+  const select = document.getElementById('vitals-gender-select');
+  if(!select || select.dataset.wired) return;
+  select.dataset.wired = '1';
+  select.addEventListener('change', () => {
+    const p = activePatient();
+    if(!p) return;
+    p.gender = select.value || '';
     saveVitalsData();
     renderPatientList();
     haptic('Light');
