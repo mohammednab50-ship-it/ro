@@ -1371,6 +1371,34 @@ body.locked{overflow:hidden;}
   .onb-slide{animation:none;}
 }
 
+/* Terms of Use / Privacy Policy acceptance gate — blocks everything else
+   post-sign-in until a new or version-mismatched account agrees. */
+.terms-gate-overlay{position:fixed;inset:0;z-index:1400;display:grid;place-items:center;padding:24px;
+  background:rgba(5,6,5,0.78);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);}
+.terms-gate-overlay[hidden]{display:none;}
+.terms-gate-card{position:relative;width:100%;max-width:600px;max-height:88vh;overflow-y:auto;
+  background:var(--shell-raised);border:1px solid var(--shell-line);border-radius:var(--r-lg);
+  padding:28px 26px 22px;box-shadow:0 30px 80px rgba(0,0,0,0.6);}
+.terms-gate-card h2{font-family:var(--ff-display);font-size:22px;font-weight:800;color:var(--shell-ink);margin:0 0 4px;}
+.terms-gate-flag{font-family:var(--ff-mono);font-size:11.5px;color:var(--evidence-bright);margin:0 0 16px;}
+.terms-gate-body{font-family:var(--ff-sans);font-size:13.5px;line-height:1.6;color:var(--shell-ink-soft);
+  border:1px solid var(--shell-line);border-radius:var(--r-sm);padding:16px 18px;max-height:42vh;overflow-y:auto;
+  background:rgba(0,0,0,0.18);}
+.terms-gate-body h3{font-family:var(--ff-sans);font-size:14.5px;font-weight:700;color:var(--shell-ink);margin:18px 0 6px;}
+.terms-gate-body h3:first-child{margin-top:0;}
+.terms-gate-body p, .terms-gate-body li{margin:0 0 10px;}
+.terms-gate-body ul{margin:0 0 10px;padding-left:20px;}
+.terms-gate-body strong{color:var(--shell-ink);}
+.terms-gate-checkbox{display:flex;align-items:flex-start;gap:10px;margin:16px 0 4px;font-family:var(--ff-sans);
+  font-size:13.5px;color:var(--shell-ink);cursor:pointer;line-height:1.4;}
+.terms-gate-checkbox input{margin-top:2px;width:16px;height:16px;flex:none;}
+.terms-gate-actions{display:flex;gap:10px;justify-content:flex-end;margin-top:18px;flex-wrap:wrap;}
+@media (max-width:480px){
+  .terms-gate-card{padding:22px 18px 18px;}
+  .terms-gate-actions{flex-direction:column-reverse;}
+  .terms-gate-actions .onb-btn{width:100%;text-align:center;}
+}
+
 /* Rename username modal — reuses onboarding card look */
 .rename-overlay{position:fixed;inset:0;z-index:1300;display:grid;place-items:center;padding:24px;
   background:rgba(5,6,5,0.72);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
@@ -1910,7 +1938,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   body::before{display:none !important;}
   header, .tabbar, .bottom-nav, .chapters, .disclaimer, .pulse-line-wrap,
   #global-scroll-top, .cache-banner, .card-foot, .bookmark-note-actions,
-  .rename-overlay, .login-overlay, .onb-overlay{display:none !important;}
+  .rename-overlay, .login-overlay, .onb-overlay, .terms-gate-overlay{display:none !important;}
   .layout{grid-template-columns:1fr !important;}
   .card, .drug-live, .approval-card, .advance-item, .trial-item{box-shadow:none !important;border:1px solid #ccc !important;break-inside:avoid;}
   a{color:#000 !important;text-decoration:underline;}
@@ -2083,6 +2111,23 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <button type="button" class="login-link" id="login-forgot">Forgot password?</button>
     </div>
   </form>
+</div>
+
+<div class="terms-gate-overlay" id="terms-gate-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="terms-gate-title">
+  <div class="terms-gate-card" role="document">
+    <h2 id="terms-gate-title">Terms of Use &amp; Privacy Policy</h2>
+    <p class="terms-gate-flag">Draft — not yet reviewed by a lawyer. See placeholders marked "NEEDS INPUT" below.</p>
+    <div class="terms-gate-body" id="terms-gate-body"></div>
+    <label class="terms-gate-checkbox" id="terms-gate-checkbox-row">
+      <input type="checkbox" id="terms-gate-checkbox">
+      I have read and agree to the Terms of Use and Privacy Policy.
+    </label>
+    <div class="terms-gate-actions">
+      <button type="button" class="onb-btn onb-btn-ghost" id="terms-gate-decline">Decline &amp; sign out</button>
+      <button type="button" class="onb-btn onb-btn-primary" id="terms-gate-agree" disabled>Agree &amp; continue</button>
+      <button type="button" class="onb-btn onb-btn-primary" id="terms-gate-close" hidden>Close</button>
+    </div>
+  </div>
 </div>
 
 <div class="rounds-lock-overlay" id="rounds-lock-overlay">
@@ -2401,6 +2446,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
     <div class="settings-row">
       <div class="settings-label"><strong>App lock</strong><span class="settings-sub">Biometric/PIN gate before Rounds opens</span></div>
       <button type="button" class="settings-btn" id="settings-applock-btn">Set up</button>
+    </div>
+
+    <div class="settings-row">
+      <div class="settings-label"><strong>Terms &amp; Privacy</strong><span class="settings-sub">Re-read the Terms of Use and Privacy Policy</span></div>
+      <button type="button" class="settings-btn" id="settings-view-terms">View</button>
     </div>
 
     <div class="settings-row">
@@ -12818,6 +12868,134 @@ function authErrorMessage(err){
   return map[code] || (err && err.message) || 'Something went wrong. Please try again.';
 }
 
+/* ---- Terms of Use / Privacy Policy acceptance gate ----
+   Content mirrors TERMS_AND_PRIVACY_DRAFT.md in the repo root — a legal-
+   review DRAFT, "NEEDS INPUT" placeholders intentionally kept verbatim.
+   Bump TERMS_VERSION (any time the underlying doc changes materially) to
+   re-prompt every account, including ones that already agreed. Gate check
+   is simply "has this uid's stored version === TERMS_VERSION" — that alone
+   correctly covers brand-new accounts (nothing stored yet), pre-existing
+   accounts from before this gate shipped (nothing stored yet either), and
+   version bumps (stale value stored) without needing to track Firebase's
+   isNewUser flag across every different sign-in path. */
+const TERMS_VERSION = '2026-08-02-draft-1';
+function termsStorageKey(uid){ return 'rounds_terms_agreed_v1_' + uid; }
+function hasAgreedToCurrentTerms(uid){
+  try{ return localStorage.getItem(termsStorageKey(uid)) === TERMS_VERSION; }catch(e){ return false; }
+}
+function recordTermsAgreement(uid){
+  try{ localStorage.setItem(termsStorageKey(uid), TERMS_VERSION); }catch(e){}
+}
+
+const TERMS_AND_PRIVACY_HTML = `
+<h3>Terms of Use</h3>
+<p><strong>Last updated:</strong> [NEEDS INPUT: date of actual publication]</p>
+<p>By creating an account or using Rounds or Wards ("the apps"), you agree to these terms.</p>
+<h3>What the apps are</h3>
+<p>Rounds is a personal clinical-reference and study tool (drug/condition lookup, spaced-repetition study aids, quizzes). Wards is a personal ward-based patient-charting aid (serial vitals, notes, and related department-specific fields for General/ICU/Surgery/Pediatrics/Maternity patients), with an optional feature to sync data to a shared database for your care team.</p>
+<p><strong>Neither app is a certified medical device, a replacement for your institution's official electronic health record (EHR) or nursing flowsheet, or a source of clinical guidance to be followed without your own independent clinical judgment.</strong> Content in Rounds (drug information, condition summaries, interaction checks, dosing calculators) is a reference aid only — always verify against your institution's protocols and current primary sources before acting on it. Wards is a personal charting convenience — your institution's official record system remains the definitive medical record; always chart there as required by your employer's policy.</p>
+<h3>Accounts</h3>
+<p>Creating an account requires a valid email address (or a Google account, if you choose that sign-in method). You're responsible for keeping your account credentials secure and for anything done using your account. Wards additionally offers an optional device-level PIN/biometric lock — this is separate from your account and does not replace normal account security practices (a strong password, not sharing your login).</p>
+<h3>Acceptable use</h3>
+<p>Don't use the apps to store or process real patient information unless you're authorized by your institution to do so and are complying with your institution's own data-handling policies and any applicable law. Don't attempt to access another user's, ward's, or hospital's data beyond what you're a legitimate member/admin of. Don't use the multi-hospital tenancy feature to create a "hospital" you don't have real authority to administer.</p>
+<h3>[NEEDS INPUT: liability/warranty disclaimer language]</h3>
+<p>Standard boilerplate ("provided as-is, no warranty, limitation of liability to the extent permitted by law") belongs here — this needs actual legal drafting specific to your jurisdiction and risk tolerance, not a placeholder written by an AI assistant.</p>
+<h3>Changes to these terms</h3>
+<p>If these terms change in a way that matters, you'll be asked to review and re-accept them the next time you sign in.</p>
+<h3>Privacy Policy</h3>
+<p><strong>Last updated:</strong> [NEEDS INPUT: date of actual publication]</p>
+<p>This section describes what data the apps actually collect and where it goes, as accurately as the current app code supports.</p>
+<h3>Rounds</h3>
+<ul>
+<li><strong>Account data:</strong> your email address (and display name, if you sign in with Google), handled by Firebase Authentication. This is the only personal data Rounds' account system stores.</li>
+<li><strong>Everything else is local-only.</strong> Bookmarks, personal notes on saved entries, quiz/study history, settings, and all other Rounds data are stored only in your browser/device's local storage. <strong>None of it is currently synced to any server</strong> — if you clear your browser data or switch devices, it does not carry over. [NEEDS INPUT: update this section if/when bookmark sync to Firestore is built — as of this writing it is not.]</li>
+<li>Rounds makes outbound requests to PubMed/NCBI (for literature search) and openFDA (for some drug data) when you use those specific features — these requests go to those third-party services directly from your device, not through any server we operate, and are subject to those services' own terms.</li>
+</ul>
+<h3>Wards</h3>
+<ul>
+<li><strong>Account data:</strong> same as above — email (and display name via Google sign-in), via Firebase Authentication.</li>
+<li><strong>By default, Wards is 100% local-only</strong> — no account required, no data leaves your device, patient data lives only in local browser/device storage.</li>
+<li><strong>If you sign in and select or create a "hospital" and a "ward group"</strong> (an explicit, opt-in action), patient data you enter for that ward group syncs to a shared cloud database (Google Firebase/Firestore) so your care team can see the same records in real time. This includes: patient identifiers you enter (name, bed, MRN if provided), vitals readings, clinical notes, and department-specific fields. <strong>A private, personal "nickname" field and a personal "something that went well" reflection note are deliberately excluded from sync and from every export/print/SBAR feature</strong> — those stay local-only by design.</li>
+<li><strong>Data isolation:</strong> each "hospital" in this system is a fully separate, isolated tenant — hospital admins can only see and manage their own hospital's data, never another hospital's, enforced by server-side security rules, not just app behavior.</li>
+<li><strong>Who can see synced data:</strong> members of the specific ward group a patient belongs to, that group's department admin (if any), and that hospital's admin(s). [NEEDS INPUT: confirm this matches your institution's actual data-governance expectations — e.g. does your hospital require broader or narrower visibility than "ward group members + department/hospital admins"?]</li>
+<li><strong>Audit trail:</strong> for synced ward groups, Wards writes a lightweight log of who added/removed a patient, logged a reading, or logged an escalation, readable by that group's admin and above, for oversight purposes.</li>
+<li><strong>We (the software's operator) do not access your data ourselves</strong> in the ordinary course of operating the app — Firestore access is governed entirely by the security rules described above, scoped to your own account's memberships. [NEEDS INPUT: if there's ever a legitimate operational reason for the software operator to access data — e.g. responding to a legal request, debugging a reported bug with the account holder's permission — that should be stated explicitly here, not left implicit.]</li>
+<li><strong>Data retention:</strong> you can configure an automatic purge of archived (discharged) patient records after a set number of days, from within the app. [NEEDS INPUT: what happens to data on account deletion — is there a deletion process today? If not, that's a gap worth closing before this is a real, published privacy policy.]</li>
+</ul>
+<h3>Both apps</h3>
+<ul>
+<li><strong>No advertising, no data sale, no third-party analytics/tracking SDKs</strong> are integrated into either app as of this writing.</li>
+<li><strong>Local device data</strong> (settings, local-only patients/bookmarks, the app lock PIN hash, etc.) never leaves your device regardless of sign-in status, except via a backup/export feature you explicitly trigger yourself (e.g. "Export all data," CSV export) — those produce a file you control, not an automatic upload anywhere.</li>
+</ul>
+<h3>[NEEDS INPUT: data subject rights section]</h3>
+<p>Depending on jurisdiction, you likely need an explicit section on how a user can request access to, correction of, or deletion of their data — this needs real operational backing (an actual process for handling such a request), not just a policy statement.</p>
+<h3>Contact</h3>
+<p>[NEEDS INPUT: a real contact — email address or process — for privacy questions or data requests.]</p>
+`;
+
+let termsGateWired = false;
+function wireTermsGateOnce(){
+  if(termsGateWired) return;
+  termsGateWired = true;
+  const overlay = document.getElementById('terms-gate-overlay');
+  const checkbox = document.getElementById('terms-gate-checkbox');
+  const agreeBtn = document.getElementById('terms-gate-agree');
+  const declineBtn = document.getElementById('terms-gate-decline');
+  const closeBtn = document.getElementById('terms-gate-close');
+  checkbox.addEventListener('change', () => { agreeBtn.disabled = !checkbox.checked; });
+  agreeBtn.addEventListener('click', () => {
+    if(checkbox.disabled || !checkbox.checked) return;
+    const u = agreeBtn._pendingUser;
+    const cb = agreeBtn._pendingCb;
+    recordTermsAgreement(u.uid);
+    overlay.hidden = true;
+    if(typeof cb === 'function') cb();
+  });
+  declineBtn.addEventListener('click', async () => {
+    overlay.hidden = true;
+    await signOutUser();
+    location.reload();
+  });
+  closeBtn.addEventListener('click', () => { overlay.hidden = true; });
+}
+function showTermsGate(user, onAgreed){
+  const overlay = document.getElementById('terms-gate-overlay');
+  if(!overlay){ onAgreed(); return; }
+  const body = document.getElementById('terms-gate-body');
+  if(body && !body.innerHTML) body.innerHTML = TERMS_AND_PRIVACY_HTML;
+  wireTermsGateOnce();
+  const checkbox = document.getElementById('terms-gate-checkbox');
+  document.getElementById('terms-gate-checkbox-row').hidden = false;
+  const agreeBtn = document.getElementById('terms-gate-agree');
+  checkbox.checked = false;
+  agreeBtn.disabled = true;
+  agreeBtn.hidden = false;
+  document.getElementById('terms-gate-decline').hidden = false;
+  document.getElementById('terms-gate-close').hidden = true;
+  agreeBtn._pendingUser = user;
+  agreeBtn._pendingCb = onAgreed;
+  overlay.hidden = false;
+}
+function gateOnTerms(user, onReady){
+  if(!user || hasAgreedToCurrentTerms(user.uid)){ onReady(); return; }
+  showTermsGate(user, onReady);
+}
+
+/* Read-only re-read of the same policy content from Settings — no
+   agreement required, just a Close button. */
+function showTermsReadOnly(){
+  const overlay = document.getElementById('terms-gate-overlay');
+  if(!overlay) return;
+  const body = document.getElementById('terms-gate-body');
+  if(body && !body.innerHTML) body.innerHTML = TERMS_AND_PRIVACY_HTML;
+  wireTermsGateOnce();
+  document.getElementById('terms-gate-checkbox-row').hidden = true;
+  document.getElementById('terms-gate-agree').hidden = true;
+  document.getElementById('terms-gate-decline').hidden = true;
+  document.getElementById('terms-gate-close').hidden = false;
+  overlay.hidden = false;
+}
+
 let appBooted = false;
 let currentUser = null;
 function enterApp(user){
@@ -12831,11 +13009,13 @@ function enterApp(user){
   if(settingsBtn){ settingsBtn.hidden = false; settingsBtn.onclick = openSettings; }
   refreshGreeting();
   if(!appBooted){ appBooted = true; init(); }
-  maybeShowOnboarding();
-  const whatsNewShown = maybeShowWhatsNew();
-  maybeShowDigest(whatsNewShown);
-  if(typeof setupWardsAppLockGate === 'function') setupWardsAppLockGate();
-  setTimeout(() => { if(typeof maybeShowCaseOfDay === 'function') maybeShowCaseOfDay(); }, 1600);
+  gateOnTerms(user, () => {
+    maybeShowOnboarding();
+    const whatsNewShown = maybeShowWhatsNew();
+    maybeShowDigest(whatsNewShown);
+    if(typeof setupWardsAppLockGate === 'function') setupWardsAppLockGate();
+    setTimeout(() => { if(typeof maybeShowCaseOfDay === 'function') maybeShowCaseOfDay(); }, 1600);
+  });
 }
 
 function displayNameFor(user){
@@ -13328,6 +13508,9 @@ function openSettings(){
 
   const whatsNewBtn = document.getElementById('settings-view-whatsnew');
   if(whatsNewBtn) whatsNewBtn.onclick = () => { haptic('Light'); openWhatsNew(); };
+
+  const termsBtn = document.getElementById('settings-view-terms');
+  if(termsBtn) termsBtn.onclick = () => { haptic('Light'); showTermsReadOnly(); };
 
   const flaggedBtn = document.getElementById('settings-view-flagged');
   if(flaggedBtn) flaggedBtn.onclick = () => openFlaggedEntries();
