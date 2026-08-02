@@ -94,6 +94,22 @@ rules_version = '2';
 //     -- a rank-and-file member can write history but not browse it,
 //     matching "who did what" being an oversight tool rather than a
 //     general-purpose feed.
+//   wardGroups/{groupId}/chat/{msgId}   { text, senderUid, senderName, sentAt }
+//     -- this ward group's own text chat. Same membership check as
+//     patients/; immutable once posted (no update/delete in v1).
+//   departments/{deptId}/chat/{msgId}   { text, senderUid, senderName, sentAt }
+//     -- department-wide chat, shared by every ward group under it.
+//     Readable/writable by isDepartmentMember() (see that function) or
+//     a department/hospital admin.
+//   departments/{deptId}/announcements/{annId}  { text, postedBy, postedByName, postedAt }
+//     -- one-way admin broadcast to the same audience as chat above,
+//     but only a department/hospital admin can post one.
+//   departmentMemberships/{uid}_{deptId}  { uid, deptId, joinedAt }
+//     -- flat join-index mirroring groupMemberships below, purely so
+//     isDepartmentMember() can do a cheap exists() check instead of an
+//     un-expressible "member of any group under this department" query.
+//     Written in the same batch as wardsCreateGroup/wardsAcceptInvite
+//     whenever the group being joined/created has a departmentId.
 //   groupMemberships/{uid}_{groupId}    { uid, groupId, role, groupName, joinedAt }
 //     -- a flat join-collection purely so a signed-in user can list "which
 //     groups am I in" via a simple `where('uid','==',myUid)` query
@@ -162,6 +178,21 @@ function isDepartmentAdmin(deptId) {
 function isAboveDeptPath(deptId) {
   return exists(departmentDoc(deptId))
     && isHospitalAdmin(get(departmentDoc(deptId)).data.hospitalId);
+}
+
+// Whether the caller is a MEMBER (not necessarily admin) of some ward
+// group that belongs to this department -- used to gate the
+// department-wide chat/announcements to "everyone actually working in
+// this department," not just its admins. Departments have no `members`
+// map of their own (only `admins`), so this reads the flat
+// departmentMemberships/{uid}_{deptId} index instead -- same
+// "denormalized flat index, kept in sync by whichever write already has
+// permission to touch the real membership" pattern as groupMemberships,
+// see wardsCreateGroup/wardsAcceptInvite in wards.html for where it's
+// written.
+function isDepartmentMember(deptId) {
+  return signedIn() && deptId != null
+    && exists(/databases/$(database)/documents/departmentMemberships/$(request.auth.uid + '_' + deptId));
 }
 
 // Departments are the paid-tier feature: a hospital's first ward group
@@ -367,6 +398,56 @@ match /databases/{database}/documents {
       && request.resource.data.hospitalId == resource.data.hospitalId
       && request.resource.data.admins.size() > 0;
     allow delete: if isAboveDeptPath(deptId); // deleting a whole department is hospital-admin-level only, not a department admin's own call
+
+    // ---- department-wide text chat -- everyone actually working in the
+    // department (any ward-group member under it, via
+    // isDepartmentMember), plus its admins/hospital admin. Messages are
+    // immutable once posted (no update/delete) -- simplest safe v1 for a
+    // chat log; editing/retracting a message is a possible future
+    // addition, not attempted here. ----
+    match /chat/{msgId} {
+      allow read: if isDepartmentMember(deptId) || isDepartmentAdmin(deptId) || isAboveDeptPath(deptId);
+      allow create: if (isDepartmentMember(deptId) || isDepartmentAdmin(deptId) || isAboveDeptPath(deptId))
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000;
+      allow update, delete: if false;
+    }
+
+    // ---- department announcements -- one-way broadcast, same readers as
+    // chat above, but posting is admin-only (a "bar," not a discussion). ----
+    match /announcements/{annId} {
+      allow read: if isDepartmentMember(deptId) || isDepartmentAdmin(deptId) || isAboveDeptPath(deptId);
+      allow create: if (isDepartmentAdmin(deptId) || isAboveDeptPath(deptId))
+        && request.resource.data.postedBy == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000;
+      allow delete: if isDepartmentAdmin(deptId) || isAboveDeptPath(deptId); // admins can retract an announcement
+      allow update: if false;
+    }
+  }
+
+  // ---- department membership index -- mirrors groupMemberships exactly
+  // (see that collection's comment for the full reasoning): doc id
+  // `${uid}_${deptId}`, written in the SAME batch as whatever action
+  // already grants the user membership of a ward group tagged with that
+  // department (wardsCreateGroup / wardsAcceptInvite in wards.html), so
+  // whoever's allowed to make that group-membership change is allowed
+  // here too. Exists purely so isDepartmentMember() above can do a cheap
+  // exists() check instead of an un-expressible "is a member of any
+  // group under this department" query. ----
+  match /departmentMemberships/{membershipId} {
+    allow read: if signedIn() && (
+      resource.data.uid == request.auth.uid
+      || isAboveDeptPath(resource.data.deptId)
+    );
+    allow list: if resource.data.uid == request.auth.uid;
+    allow create: if signedIn()
+      && request.resource.data.uid == request.auth.uid
+      && request.resource.data.deptId is string;
+    allow delete: if signedIn() && resource.data.uid == request.auth.uid;
   }
 
   // ---- the read-side "my groups" index ----
@@ -559,6 +640,22 @@ match /databases/{database}/documents {
         || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
       allow update: if false;
       allow delete: if isHospitalAdmin(get(/databases/$(database)/documents/wardGroups/$(groupId)).data.hospitalId);
+    }
+
+    // ---- this ward group's own text chat -- same membership check as
+    // the patients subcollection above, immutable messages (no
+    // update/delete) for the same "simplest safe v1" reasoning as
+    // departments/{deptId}/chat. ----
+    match /chat/{msgId} {
+      allow read: if isMemberPath(/databases/$(database)/documents/wardGroups/$(groupId))
+        || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId));
+      allow create: if (isMemberPath(/databases/$(database)/documents/wardGroups/$(groupId))
+          || isAboveGroupPath(/databases/$(database)/documents/wardGroups/$(groupId)))
+        && request.resource.data.senderUid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() > 0
+        && request.resource.data.text.size() <= 2000;
+      allow update, delete: if false;
     }
   }
 

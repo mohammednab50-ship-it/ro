@@ -268,6 +268,7 @@ body > header{background:transparent;position:sticky;top:0;z-index:50;padding:14
 .btn-search:active{transform:scale(0.97);}
 
 .theme-toggle{width:34px;height:34px;border:1px solid var(--header-line);border-radius:50%;background:transparent;display:grid;place-items:center;cursor:pointer;color:var(--header-ink-soft);transition:border-color var(--dur-base) var(--ease-out),color var(--dur-base) var(--ease-out),background var(--dur-base) var(--ease-out);}
+.theme-toggle[hidden]{display:none;}
 .theme-toggle:hover{color:var(--header-ink);border-color:var(--evidence);background:var(--evidence-bg);}
 #a11y-toggle[aria-pressed="true"]{color:var(--evidence-dark);border-color:var(--evidence);background:var(--evidence-bg);}
 .theme-toggle svg{width:18px;height:18px;}
@@ -2663,6 +2664,25 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-qr-card video{width:100%;max-height:280px;border-radius:8px;background:#000;object-fit:cover;}
 .wards-qr-value{font-family:var(--ff-mono);font-size:13px;color:var(--ink-soft);margin:12px 0 6px;word-break:break-all;}
 .wards-qr-disclaimer{font-family:var(--ff-sans);font-size:11.5px;color:var(--ink-faint);line-height:1.5;margin:0;}
+
+/* ---- team chat ---- */
+.wards-chat-card{max-width:480px;display:flex;flex-direction:column;max-height:80vh;}
+.wards-chat-tabs{display:flex;gap:6px;background:var(--paper-deep);border:1px solid var(--line);border-radius:var(--r-pill);padding:3px;margin-top:4px;}
+.wards-chat-tab{flex:1;border:none;background:none;padding:7px 10px;border-radius:var(--r-pill);font-family:var(--ff-sans);font-size:12.5px;font-weight:700;color:var(--ink-faint);cursor:pointer;}
+.wards-chat-tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);}
+.wards-chat-messages{flex:1;min-height:180px;max-height:38vh;overflow-y:auto;text-align:left;margin:10px 0;padding:4px 2px;display:flex;flex-direction:column;gap:8px;}
+.wards-chat-msg{max-width:85%;padding:7px 11px;border-radius:14px;background:var(--surface-raised);align-self:flex-start;}
+.wards-chat-msg.mine{align-self:flex-end;background:var(--evidence-bg);}
+.wards-chat-msg .wcm-meta{display:block;font-family:var(--ff-sans);font-size:10.5px;font-weight:700;color:var(--ink-faint);margin-bottom:2px;}
+.wards-chat-msg .wcm-text{font-family:var(--ff-sans);font-size:13px;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
+.wards-chat-empty{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-faint);text-align:center;padding:24px 8px;}
+.wards-chat-composer{display:flex;gap:8px;}
+.wards-chat-composer input{flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);color:var(--ink);font-family:var(--ff-sans);font-size:13px;}
+.wards-chat-announcements{display:flex;flex-direction:column;gap:6px;max-height:26vh;overflow-y:auto;margin-bottom:8px;}
+.wards-chat-announcements[style*="display: none"]{display:none;}
+.wards-chat-announce-item{padding:8px 11px;border-radius:var(--r-sm);background:var(--fresh-bg);border-left:2px solid var(--fresh);text-align:left;}
+.wards-chat-announce-item .wcm-meta{display:block;font-family:var(--ff-sans);font-size:10.5px;font-weight:700;color:var(--fresh);margin-bottom:2px;}
+.wards-chat-announce-item .wcm-text{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
 .wb-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
 .wb-name{font-family:var(--ff-display);font-size:16px;font-weight:700;color:var(--ink);}
 .wb-bed{font-family:var(--ff-mono);font-size:12px;color:var(--ink-faint);}
@@ -2823,6 +2843,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div id="wards-wellwall-list" class="wards-wellwall-list"></div>
       </div>
     </div>
+    <button id="wards-chat-btn" class="theme-toggle" type="button" aria-label="Team chat" title="Team chat — ward group + department, sign in and select a hospital first" hidden>
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 5.5h16v11H9l-4 3.5v-3.5H4v-11Z" stroke-linejoin="round"/></svg>
+      <span class="wards-quicknote-badge" id="wards-chat-badge" hidden></span>
+    </button>
     <button id="wards-export-all" class="theme-toggle" type="button" aria-label="Export all Wards data" title="Export all Wards data (Vitals + Maternity backup)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
@@ -4089,6 +4113,40 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <h3 id="wards-brief-title" style="text-align:center;">First 5 minutes</h3>
     <div id="wards-brief-content"></div>
     <p class="wards-qr-disclaimer">A condensed glance for walking up to this patient the first time — not a substitute for the full chart.</p>
+  </div>
+</div>
+
+<div class="wards-qr-modal" id="wards-chat-modal" hidden>
+  <div class="wards-qr-card wards-chat-card" role="dialog" aria-modal="true" aria-labelledby="wards-chat-title" style="max-width:480px;text-align:left;">
+    <button type="button" class="mat-lb-close" id="wards-chat-close" aria-label="Close">&times;</button>
+    <h3 id="wards-chat-title" style="text-align:center;">Team chat</h3>
+    <div class="wards-chat-tabs" role="tablist" aria-label="Chat scope">
+      <button type="button" class="wards-chat-tab" id="wards-chat-tab-ward" role="tab" aria-selected="true">This ward</button>
+      <button type="button" class="wards-chat-tab" id="wards-chat-tab-dept" role="tab" aria-selected="false">Department</button>
+    </div>
+    <p class="wards-qr-disclaimer" style="margin-top:8px;">Messages are visible to everyone with access to this ward/department, kept as long as the ward group or department exists — don't put anything here you wouldn't want on the record. Use patient bed/initials rather than full identifying details where you can.</p>
+
+    <div id="wards-chat-ward-pane">
+      <div class="wards-chat-announcements" id="wards-chat-ward-context-note" style="display:none;"></div>
+      <div class="wards-chat-messages" id="wards-chat-ward-messages"></div>
+      <div class="wards-chat-composer">
+        <input type="text" id="wards-chat-ward-input" maxlength="2000" placeholder="Message this ward…" autocomplete="off">
+        <button type="button" class="settings-btn" id="wards-chat-ward-send-btn">Send</button>
+      </div>
+    </div>
+
+    <div id="wards-chat-dept-pane" hidden>
+      <div class="wards-chat-announcements" id="wards-chat-announcements-list"></div>
+      <div class="ws-row" id="wards-chat-announce-row" style="gap:8px;margin-bottom:10px;" hidden>
+        <input type="text" id="wards-chat-announce-input" maxlength="2000" placeholder="Post an announcement to the whole department…" autocomplete="off">
+        <button type="button" class="settings-btn" id="wards-chat-announce-btn">Post</button>
+      </div>
+      <div class="wards-chat-messages" id="wards-chat-dept-messages"></div>
+      <div class="wards-chat-composer">
+        <input type="text" id="wards-chat-dept-input" maxlength="2000" placeholder="Message the department…" autocomplete="off">
+        <button type="button" class="settings-btn" id="wards-chat-dept-send-btn">Send</button>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -5752,6 +5810,10 @@ async function wardsCreateGroup(name){
     members: { [uid]: { role: 'admin', email, joinedAt: new Date().toISOString() } }
   });
   batch.set(membershipRef, { uid, groupId: groupRef.id, role: 'admin', groupName: name || 'New ward group', joinedAt: new Date().toISOString() });
+  if(activeDepartmentId){
+    const deptMembershipRef = wfdb.collection('departmentMemberships').doc(uid + '_' + activeDepartmentId);
+    batch.set(deptMembershipRef, { uid, deptId: activeDepartmentId, joinedAt: new Date().toISOString() });
+  }
   await batch.commit();
   return groupRef.id;
 }
@@ -5767,7 +5829,7 @@ function wardsGroupRole(groupId){
   return g ? g.role : null;
 }
 
-async function wardsInviteToGroup(groupId, groupName, hospitalId, email){
+async function wardsInviteToGroup(groupId, groupName, hospitalId, email, departmentId){
   const ok = await initWardsFirebase();
   if(!ok || !currentWardsUser) throw new Error('Sign in first.');
   const emailKey = wardsEmailKey(email);
@@ -5783,6 +5845,7 @@ async function wardsInviteToGroup(groupId, groupName, hospitalId, email){
   });
   batch.set(pendingRef, {
     email: emailKey, groupId, groupName: groupName || groupId, hospitalId: hospitalId || null,
+    departmentId: departmentId || null,
     invitedBy: uid, invitedByEmail: myEmail,
     invitedAt: firebase.firestore.FieldValue.serverTimestamp()
   });
@@ -5831,6 +5894,10 @@ async function wardsAcceptInvite(invite){
   const batch = wfdb.batch();
   batch.update(groupRef, { [`members.${uid}`]: { role: 'member', email, joinedAt: new Date().toISOString() } });
   batch.set(membershipRef, { uid, groupId: invite.groupId, role: 'member', groupName: invite.groupName || invite.groupId, joinedAt: new Date().toISOString() });
+  if(invite.departmentId){
+    const deptMembershipRef = wfdb.collection('departmentMemberships').doc(uid + '_' + invite.departmentId);
+    batch.set(deptMembershipRef, { uid, deptId: invite.departmentId, joinedAt: new Date().toISOString() });
+  }
   batch.delete(inviteRef);
   batch.delete(pendingRef);
   await batch.commit();
@@ -5847,6 +5914,95 @@ async function wardsDeclineInvite(invite){
   batch.delete(inviteRef);
   batch.delete(pendingRef);
   await batch.commit();
+}
+
+/* ============================================================
+   Team chat -- ward-group chat, department-wide chat, and
+   department announcements. Three independent Firestore-backed
+   real-time feeds (see the schema comment + isDepartmentMember() in
+   firestore.rules for the access model): a ward group's own chat is
+   member-only for that group; department chat/announcements are
+   shared by everyone in any ward group under that department, via
+   the departmentMemberships flat index kept in sync by
+   wardsCreateGroup/wardsAcceptInvite above. Messages are immutable
+   once posted (no edit/delete) -- simplest safe v1 for a chat log.
+   ============================================================ */
+let wardsGroupChatUnsub = null;
+let wardsDeptChatUnsub = null;
+let wardsDeptAnnouncementsUnsub = null;
+
+function wardsChatDisplayName(){
+  if(!currentWardsUser) return 'Unknown';
+  return currentWardsUser.displayName || (currentWardsUser.email ? currentWardsUser.email.split('@')[0] : 'Unknown');
+}
+
+function wardsSubscribeGroupChat(groupId, onMessages){
+  if(wardsGroupChatUnsub){ wardsGroupChatUnsub(); wardsGroupChatUnsub = null; }
+  if(!groupId || !wfdb){ onMessages([]); return; }
+  wardsGroupChatUnsub = wfdb.collection('wardGroups').doc(groupId).collection('chat')
+    .orderBy('sentAt', 'asc').limitToLast(200)
+    .onSnapshot(snap => {
+      onMessages(snap.docs.map(d => Object.assign({ id: d.id }, d.data())));
+    }, err => { console.warn('Wards: ward chat unavailable', err); onMessages([]); });
+}
+
+async function wardsSendGroupChatMessage(groupId, text){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const trimmed = (text || '').trim();
+  if(!trimmed) return;
+  await wfdb.collection('wardGroups').doc(groupId).collection('chat').add({
+    text: trimmed.slice(0, 2000),
+    senderUid: currentWardsUser.uid,
+    senderName: wardsChatDisplayName(),
+    sentAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+function wardsSubscribeDeptChat(deptId, onMessages){
+  if(wardsDeptChatUnsub){ wardsDeptChatUnsub(); wardsDeptChatUnsub = null; }
+  if(!deptId || !wfdb){ onMessages([]); return; }
+  wardsDeptChatUnsub = wfdb.collection('departments').doc(deptId).collection('chat')
+    .orderBy('sentAt', 'asc').limitToLast(200)
+    .onSnapshot(snap => {
+      onMessages(snap.docs.map(d => Object.assign({ id: d.id }, d.data())));
+    }, err => { console.warn('Wards: department chat unavailable', err); onMessages([]); });
+}
+
+async function wardsSendDeptChatMessage(deptId, text){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const trimmed = (text || '').trim();
+  if(!trimmed) return;
+  await wfdb.collection('departments').doc(deptId).collection('chat').add({
+    text: trimmed.slice(0, 2000),
+    senderUid: currentWardsUser.uid,
+    senderName: wardsChatDisplayName(),
+    sentAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
+}
+
+function wardsSubscribeDeptAnnouncements(deptId, onMessages){
+  if(wardsDeptAnnouncementsUnsub){ wardsDeptAnnouncementsUnsub(); wardsDeptAnnouncementsUnsub = null; }
+  if(!deptId || !wfdb){ onMessages([]); return; }
+  wardsDeptAnnouncementsUnsub = wfdb.collection('departments').doc(deptId).collection('announcements')
+    .orderBy('postedAt', 'desc').limit(20)
+    .onSnapshot(snap => {
+      onMessages(snap.docs.map(d => Object.assign({ id: d.id }, d.data())));
+    }, err => { console.warn('Wards: department announcements unavailable', err); onMessages([]); });
+}
+
+async function wardsPostDeptAnnouncement(deptId, text){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const trimmed = (text || '').trim();
+  if(!trimmed) return;
+  await wfdb.collection('departments').doc(deptId).collection('announcements').add({
+    text: trimmed.slice(0, 2000),
+    postedBy: currentWardsUser.uid,
+    postedByName: wardsChatDisplayName(),
+    postedAt: firebase.firestore.FieldValue.serverTimestamp()
+  });
 }
 
 /* ---- patient sync ---- */
@@ -6028,6 +6184,8 @@ function renderWardsGroupSelect(){
     if(emailEl && currentWardsUser) emailEl.textContent = currentWardsUser.email || currentWardsUser.uid;
   }
   refreshWardsBillingUI();
+  const chatBtn = document.getElementById('wards-chat-btn');
+  if(chatBtn) chatBtn.hidden = !(currentWardsUser && (activeSyncGroupId || activeDepartmentId));
 }
 
 /* ============================================================
@@ -6124,6 +6282,161 @@ function setupWardsBillingUI(){
     portalBtn.dataset.wired = '1';
     portalBtn.addEventListener('click', () => { haptic('Light'); wardsOpenBillingPortal(); });
   }
+}
+
+/* ============================================================
+   Team chat UI -- opens a modal with two tabs (this ward / this
+   department), each a live message feed + composer, plus an
+   announcements list pinned above the department chat. See the
+   wardsSubscribeGroupChat/wardsSendGroupChatMessage/
+   wardsSubscribeDeptChat/wardsSendDeptChatMessage/
+   wardsPostDeptAnnouncement functions above for the Firestore side.
+   ============================================================ */
+let wardsDeptIsAdminCache = null; // {deptId, isAdmin} -- avoid re-checking every render
+
+function wardsRenderChatMessages(containerId, messages, emptyText){
+  const el = document.getElementById(containerId);
+  if(!el) return;
+  if(!messages.length){
+    el.innerHTML = `<p class="wards-chat-empty">${escapeHtml(emptyText)}</p>`;
+    return;
+  }
+  const myUid = currentWardsUser ? currentWardsUser.uid : null;
+  el.innerHTML = messages.map(m => {
+    const mine = m.senderUid === myUid;
+    const when = m.sentAt && m.sentAt.toDate ? fmtWardsDateTime(m.sentAt.toDate()) : '';
+    return `<div class="wards-chat-msg${mine ? ' mine' : ''}">` +
+      `<span class="wcm-meta">${escapeHtml(m.senderName || 'Unknown')}${when ? ' &middot; ' + escapeHtml(when) : ''}</span>` +
+      `<span class="wcm-text">${escapeHtml(m.text || '')}</span></div>`;
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function wardsRenderAnnouncements(list){
+  const el = document.getElementById('wards-chat-announcements-list');
+  if(!el) return;
+  if(!list.length){ el.innerHTML = ''; return; }
+  el.innerHTML = list.map(a => {
+    const when = a.postedAt && a.postedAt.toDate ? fmtWardsDateTime(a.postedAt.toDate()) : '';
+    return `<div class="wards-chat-announce-item">` +
+      `<span class="wcm-meta">&#128226; ${escapeHtml(a.postedByName || 'Admin')}${when ? ' &middot; ' + escapeHtml(when) : ''}</span>` +
+      `<span class="wcm-text">${escapeHtml(a.text || '')}</span></div>`;
+  }).join('');
+}
+
+async function wardsCheckIsDeptAdmin(deptId){
+  if(!deptId) return false;
+  if(wardsDeptIsAdminCache && wardsDeptIsAdminCache.deptId === deptId) return wardsDeptIsAdminCache.isAdmin;
+  let isAdmin = false;
+  try{
+    const doc = await wfdb.collection('departments').doc(deptId).get();
+    isAdmin = !!(doc.exists && doc.data().admins && currentWardsUser && doc.data().admins[currentWardsUser.uid]);
+  }catch(e){ isAdmin = false; } // not an admin/hospital-admin -- get() denied, that's expected
+  wardsDeptIsAdminCache = { deptId, isAdmin };
+  return isAdmin;
+}
+
+function wardsChatSwitchTab(tab){
+  const wardTab = document.getElementById('wards-chat-tab-ward');
+  const deptTab = document.getElementById('wards-chat-tab-dept');
+  const wardPane = document.getElementById('wards-chat-ward-pane');
+  const deptPane = document.getElementById('wards-chat-dept-pane');
+  if(!wardTab || !deptTab || !wardPane || !deptPane) return;
+  const onWard = tab === 'ward';
+  wardTab.setAttribute('aria-selected', onWard ? 'true' : 'false');
+  deptTab.setAttribute('aria-selected', onWard ? 'false' : 'true');
+  wardPane.hidden = !onWard;
+  deptPane.hidden = onWard;
+
+  if(onWard){
+    const note = document.getElementById('wards-chat-ward-context-note');
+    if(note) note.style.display = 'none';
+    if(activeSyncGroupId){
+      wardsSubscribeGroupChat(activeSyncGroupId, msgs => wardsRenderChatMessages('wards-chat-ward-messages', msgs, 'No messages yet — say hello.'));
+    }else{
+      wardsRenderChatMessages('wards-chat-ward-messages', [], 'Select a ward group in the sync panel first.');
+    }
+  }else{
+    if(activeDepartmentId){
+      wardsSubscribeDeptChat(activeDepartmentId, msgs => wardsRenderChatMessages('wards-chat-dept-messages', msgs, 'No messages yet — say hello.'));
+      wardsSubscribeDeptAnnouncements(activeDepartmentId, wardsRenderAnnouncements);
+      wardsCheckIsDeptAdmin(activeDepartmentId).then(isAdmin => {
+        const row = document.getElementById('wards-chat-announce-row');
+        if(row) row.hidden = !isAdmin;
+      });
+    }else{
+      wardsRenderChatMessages('wards-chat-dept-messages', [], 'Select a department in the sync panel first.');
+      wardsRenderAnnouncements([]);
+      const row = document.getElementById('wards-chat-announce-row');
+      if(row) row.hidden = true;
+    }
+  }
+}
+
+function wardsCloseChatModal(){
+  const modal = document.getElementById('wards-chat-modal');
+  if(modal){ modal.hidden = true; modal.classList.remove('show'); }
+  if(wardsGroupChatUnsub){ wardsGroupChatUnsub(); wardsGroupChatUnsub = null; }
+  if(wardsDeptChatUnsub){ wardsDeptChatUnsub(); wardsDeptChatUnsub = null; }
+  if(wardsDeptAnnouncementsUnsub){ wardsDeptAnnouncementsUnsub(); wardsDeptAnnouncementsUnsub = null; }
+}
+
+function setupWardsChatUI(){
+  const btn = document.getElementById('wards-chat-btn');
+  const modal = document.getElementById('wards-chat-modal');
+  const closeBtn = document.getElementById('wards-chat-close');
+  const wardTab = document.getElementById('wards-chat-tab-ward');
+  const deptTab = document.getElementById('wards-chat-tab-dept');
+  const wardInput = document.getElementById('wards-chat-ward-input');
+  const wardSendBtn = document.getElementById('wards-chat-ward-send-btn');
+  const deptInput = document.getElementById('wards-chat-dept-input');
+  const deptSendBtn = document.getElementById('wards-chat-dept-send-btn');
+  const announceInput = document.getElementById('wards-chat-announce-input');
+  const announceBtn = document.getElementById('wards-chat-announce-btn');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+
+  btn.addEventListener('click', () => {
+    if(!modal) return;
+    haptic('Light');
+    modal.hidden = false; modal.classList.add('show');
+    wardsChatSwitchTab(activeSyncGroupId ? 'ward' : 'dept');
+  });
+  if(closeBtn) closeBtn.addEventListener('click', wardsCloseChatModal);
+  if(wardTab) wardTab.addEventListener('click', () => wardsChatSwitchTab('ward'));
+  if(deptTab) deptTab.addEventListener('click', () => wardsChatSwitchTab('dept'));
+
+  async function sendWard(){
+    if(!wardInput || !activeSyncGroupId) return;
+    const text = wardInput.value;
+    if(!text.trim()) return;
+    wardInput.value = '';
+    try{ await wardsSendGroupChatMessage(activeSyncGroupId, text); }
+    catch(e){ showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'error'); }
+  }
+  async function sendDept(){
+    if(!deptInput || !activeDepartmentId) return;
+    const text = deptInput.value;
+    if(!text.trim()) return;
+    deptInput.value = '';
+    try{ await wardsSendDeptChatMessage(activeDepartmentId, text); }
+    catch(e){ showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'error'); }
+  }
+  async function sendAnnouncement(){
+    if(!announceInput || !activeDepartmentId) return;
+    const text = announceInput.value;
+    if(!text.trim()) return;
+    announceInput.value = '';
+    try{ await wardsPostDeptAnnouncement(activeDepartmentId, text); }
+    catch(e){ showToast('Could not post — ' + ((e && e.message) || 'try again.'), 'error'); }
+  }
+
+  if(wardSendBtn) wardSendBtn.addEventListener('click', sendWard);
+  if(wardInput) wardInput.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); sendWard(); } });
+  if(deptSendBtn) deptSendBtn.addEventListener('click', sendDept);
+  if(deptInput) deptInput.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); sendDept(); } });
+  if(announceBtn) announceBtn.addEventListener('click', sendAnnouncement);
+  if(announceInput) announceInput.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); sendAnnouncement(); } });
 }
 
 function renderWardsPendingInvites(){
@@ -6403,7 +6716,7 @@ function setupWardsSyncUI(){
     if(!activeSyncGroupId){ if(inviteErr) inviteErr.textContent = 'Select a ward group first.'; return; }
     const g = wardsMyGroups.find(g => g.groupId === activeSyncGroupId);
     try{
-      await wardsInviteToGroup(activeSyncGroupId, g ? g.groupName : activeSyncGroupId, activeHospitalId, email);
+      await wardsInviteToGroup(activeSyncGroupId, g ? g.groupName : activeSyncGroupId, activeHospitalId, email, activeDepartmentId);
       inviteModal.hidden = true; inviteModal.classList.remove('show');
       showToast('Invite sent.', 'ok');
     }catch(e){ if(inviteErr) inviteErr.textContent = (e && e.message) || 'Could not send the invite.'; }
@@ -12320,6 +12633,7 @@ function boot(){
   setupVitalsMoreMenu();
   setupVitalsShiftToolsPanel();
   setupWardsBillingUI();
+  setupWardsChatUI();
   setupBatterySaver();
   setupNightDim();
   setupCoveringBanner();
