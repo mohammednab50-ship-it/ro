@@ -2651,6 +2651,21 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-lock-error{color:#c62828;font-family:var(--ff-sans);font-size:12.5px;min-height:16px;margin:0 0 10px;}
 .wards-lock-actions{display:flex;flex-direction:column;gap:8px;}
 
+.wards-login-gate{position:fixed;inset:0;z-index:950;display:grid;place-items:center;background:var(--bg,#0b0d10);padding:20px;overflow-y:auto;}
+.wards-login-gate[hidden]{display:none;}
+.wards-login-card{max-width:340px;width:100%;background:var(--surface);border-radius:var(--r-md);padding:28px 24px;text-align:center;box-shadow:var(--shadow-lift,0 12px 34px rgba(0,0,0,.3));}
+.wards-login-brand{display:flex;align-items:center;gap:10px;margin-bottom:18px;text-align:left;}
+.wards-login-card h2{margin:0 0 4px;font-family:var(--ff-display);font-size:19px;color:var(--ink);}
+.wards-login-card p.wards-login-sub{margin:0 0 18px;font-family:var(--ff-sans);font-size:13px;color:var(--ink-faint);}
+.wards-login-field{text-align:left;margin-bottom:10px;}
+.wards-login-field label{display:block;font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:4px;}
+.wards-login-field input{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--bg-soft,var(--surface));color:var(--ink);font-family:var(--ff-sans);font-size:14px;box-sizing:border-box;}
+.wards-login-actions{display:flex;flex-direction:column;gap:8px;margin-top:14px;}
+.wards-login-links{display:flex;flex-direction:column;gap:6px;margin-top:12px;}
+.wards-login-links button{background:none;border:none;color:var(--evidence);font-family:var(--ff-sans);font-size:12.5px;cursor:pointer;padding:2px;}
+.wards-login-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--ink-faint);font-family:var(--ff-sans);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;}
+.wards-login-divider::before,.wards-login-divider::after{content:'';flex:1;height:1px;background:var(--line);}
+
 .wards-demo-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
   padding:8px 20px;background:#664d03;color:#fff3cd;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
 .wards-demo-banner span,.wards-covering-banner span{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:center;}
@@ -2778,13 +2793,13 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       <span class="dot" aria-hidden="true"></span><span class="label">Online</span>
     </span>
     <div class="wards-settings-wrap">
-      <button id="wards-sync-toggle" class="theme-toggle" type="button" aria-label="Cloud sync" title="Sign in to sync patients across devices (optional)" aria-expanded="false" aria-pressed="false">
+      <button id="wards-sync-toggle" class="theme-toggle" type="button" aria-label="Cloud sync" title="Account &amp; cloud sync — syncing patients across devices is still optional" aria-expanded="false" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M7 18a4.5 4.5 0 0 1-.4-8.98A6 6 0 0 1 18 8.5a4 4 0 0 1-1 7.87" stroke-linecap="round" stroke-linejoin="round"/></svg>
         <span class="wards-sync-dot" id="wards-sync-dot" hidden></span>
       </button>
       <div class="quiet-hours-panel wards-settings-panel" id="wards-sync-panel" hidden>
         <div id="wards-sync-signed-out">
-          <p class="ws-label" style="margin-bottom:8px;">Sync patients across devices<span class="ws-sub">Optional — sign in with the same account you use for Rounds</span></p>
+          <p class="ws-label" style="margin-bottom:8px;">Sync patients across devices<span class="ws-sub">You're already signed in to use Wards — syncing patients to a ward group here is a separate, still-optional step</span></p>
           <div class="ws-row"><input type="email" id="wards-sync-email" class="settings-select" placeholder="Email" autocomplete="email" style="flex:1;"></div>
           <div class="ws-row"><input type="password" id="wards-sync-pass" class="settings-select" placeholder="Password" autocomplete="current-password" minlength="6" style="flex:1;"></div>
           <p class="login-error" id="wards-sync-error" role="alert" style="margin:2px 0 6px;"></p>
@@ -4174,6 +4189,41 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   <span class="wld-msg">Shift done. Nice work.</span>
 </div>
 
+<div class="wards-login-gate" id="wards-login-gate" role="dialog" aria-modal="true" aria-labelledby="wards-login-title">
+  <form class="wards-login-card" id="wards-login-form" autocomplete="on">
+    <div class="wards-login-brand">
+      <span class="wards-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2 7 4-14 2 7h8"/></svg></span>
+      <div>
+        <h2 id="wards-login-title" style="margin:0;">Wards</h2>
+        <p class="wards-login-sub" style="margin:0;">Sign in to continue</p>
+      </div>
+    </div>
+    <p class="wards-login-sub" id="wards-login-status-note">An account is required to use Wards. Your patient data still stays on this device unless you explicitly join a ward group to sync it.</p>
+
+    <button class="settings-btn w-100" id="wards-login-google-btn" type="button">Continue with Google</button>
+    <div class="wards-login-divider"><span>or</span></div>
+
+    <div class="wards-login-field">
+      <label for="wards-login-email">Email</label>
+      <input id="wards-login-email" type="email" autocomplete="email" required>
+    </div>
+    <div class="wards-login-field">
+      <label for="wards-login-pass">Password</label>
+      <input id="wards-login-pass" type="password" autocomplete="current-password" minlength="6" required>
+    </div>
+    <p class="login-error" id="wards-login-error" role="alert" aria-live="assertive"></p>
+    <p class="wards-login-sub" id="wards-login-status" aria-live="polite" style="margin:0;"></p>
+
+    <div class="wards-login-actions">
+      <button type="submit" class="settings-btn w-100" id="wards-login-submit-btn">Sign in</button>
+    </div>
+    <div class="wards-login-links">
+      <button type="button" class="settings-btn" id="wards-login-toggle-mode">Create an account</button>
+      <button type="button" class="settings-btn" id="wards-login-forgot">Forgot password?</button>
+    </div>
+  </form>
+</div>
+
 <div class="wards-lock-overlay" id="wards-lock-overlay">
   <div class="wards-lock-card" role="dialog" aria-modal="true" aria-labelledby="wards-lock-title">
     <h2 id="wards-lock-title">Wards is locked</h2>
@@ -5449,13 +5499,13 @@ async function wardsFindUidByEmail(email){
    gate shipped (no matching field yet either), and version bumps (stale
    value stored), without needing to track Firebase's isNewUser flag
    across both the email/password and Google sign-in paths. */
-const WARDS_TERMS_VERSION = '2026-08-02-draft-1';
+const WARDS_TERMS_VERSION = '2026-08-02-draft-2';
 const WARDS_TERMS_AND_PRIVACY_HTML = `
 <h4>Terms of Use</h4>
 <p><strong>Last updated:</strong> [NEEDS INPUT: date of actual publication]</p>
 <p>By creating an account or using Rounds or Wards ("the apps"), you agree to these terms.</p>
 <h4>What the apps are</h4>
-<p>Rounds is a personal clinical-reference and study tool (drug/condition lookup, spaced-repetition study aids, quizzes). Wards is a personal ward-based patient-charting aid (serial vitals, notes, and related department-specific fields for General/ICU/Surgery/Pediatrics/Maternity patients), with an optional feature to sync data to a shared database for your care team.</p>
+<p>Rounds is a personal clinical-reference and study tool (drug/condition lookup, spaced-repetition study aids, quizzes). Wards is a personal ward-based patient-charting aid (serial vitals, notes, and related department-specific fields for General/ICU/Surgery/Pediatrics/Maternity patients), with an optional feature to sync data to a shared database for your care team. Wards requires an account to sign in before use; Rounds does not.</p>
 <p><strong>Neither app is a certified medical device, a replacement for your institution's official electronic health record (EHR) or nursing flowsheet, or a source of clinical guidance to be followed without your own independent clinical judgment.</strong> Content in Rounds (drug information, condition summaries, interaction checks, dosing calculators) is a reference aid only — always verify against your institution's protocols and current primary sources before acting on it. Wards is a personal charting convenience — your institution's official record system remains the definitive medical record; always chart there as required by your employer's policy.</p>
 <h4>Accounts</h4>
 <p>Creating an account requires a valid email address (or a Google account, if you choose that sign-in method). You're responsible for keeping your account credentials secure and for anything done using your account. Wards additionally offers an optional device-level PIN/biometric lock — this is separate from your account and does not replace normal account security practices (a strong password, not sharing your login).</p>
@@ -5477,7 +5527,7 @@ const WARDS_TERMS_AND_PRIVACY_HTML = `
 <h4>Wards</h4>
 <ul>
 <li><strong>Account data:</strong> same as above — email (and display name via Google sign-in), via Firebase Authentication.</li>
-<li><strong>By default, Wards is 100% local-only</strong> — no account required, no data leaves your device, patient data lives only in local browser/device storage.</li>
+<li><strong>Signing in is required to use Wards.</strong> By default, though, your patient data stays 100% local-only after you sign in — no data leaves your device, patient data lives only in local browser/device storage, until you take the separate, explicit step below of joining a ward group.</li>
 <li><strong>If you sign in and select or create a "hospital" and a "ward group"</strong> (an explicit, opt-in action), patient data you enter for that ward group syncs to a shared cloud database (Google Firebase/Firestore) so your care team can see the same records in real time. This includes: patient identifiers you enter (name, bed, MRN if provided), vitals readings, clinical notes, and department-specific fields. <strong>A private, personal "nickname" field and a personal "something that went well" reflection note are deliberately excluded from sync and from every export/print/SBAR feature</strong> — those stay local-only by design.</li>
 <li><strong>Data isolation:</strong> each "hospital" in this system is a fully separate, isolated tenant — hospital admins can only see and manage their own hospital's data, never another hospital's, enforced by server-side security rules, not just app behavior.</li>
 <li><strong>Who can see synced data:</strong> members of the specific ward group a patient belongs to, that group's department admin (if any), and that hospital's admin(s). [NEEDS INPUT: confirm this matches your institution's actual data-governance expectations — e.g. does your hospital require broader or narrower visibility than "ward group members + department/hospital admins"?]</li>
@@ -6572,6 +6622,8 @@ async function wardsOnAuthChanged(user){
   if(user){
     const ok = await wardsGateOnTerms(user);
     if(!ok) return; // declined — already signed out; the next onAuthStateChanged(null) call does the cleanup below
+    wardsHideLoginGate();
+    if(!wardsLockConfig()) showWardsOnboarding();
     wardsUpsertUsersByEmail(user);
     wardsSubscribeMyGroups(user.uid);
     wardsSubscribeMyPendingInvites(user.email);
@@ -6602,6 +6654,7 @@ async function wardsOnAuthChanged(user){
     wardsMyDepartments = [];
     activeDepartmentId = null;
     wardsMyPendingInvites = [];
+    wardsShowLoginGate();
   }
   renderWardsGroupSelect();
   updateWardsSyncIndicator();
@@ -6859,12 +6912,100 @@ function setupWardsSyncUI(){
   });
 }
 
+/* ---- mandatory login gate — an account is now required to use Wards at
+   all (see WARDS_TERMS_AND_PRIVACY_HTML, updated to match). Patient data
+   entered after signing in still stays local-only unless the user
+   explicitly joins a ward group, exactly as before -- this gate only
+   requires *an account*, it doesn't force cloud sync. Reuses the
+   full-screen overlay pattern from .wards-lock-overlay (the PIN lock),
+   shown by default in markup so there's no flash of usable app content
+   before auth state resolves. */
+function wardsShowLoginGate(msg){
+  const gate = document.getElementById('wards-login-gate');
+  if(gate) gate.hidden = false;
+  const note = document.getElementById('wards-login-status-note');
+  if(note) note.textContent = msg || 'An account is required to use Wards. Your patient data still stays on this device unless you explicitly join a ward group to sync it.';
+}
+function wardsHideLoginGate(){
+  const gate = document.getElementById('wards-login-gate');
+  if(gate) gate.hidden = true;
+}
+let wardsLoginGateWired = false;
+function setupWardsLoginGate(){
+  if(wardsLoginGateWired) return;
+  wardsLoginGateWired = true;
+  const form = document.getElementById('wards-login-form');
+  const emailInput = document.getElementById('wards-login-email');
+  const passInput = document.getElementById('wards-login-pass');
+  const errEl = document.getElementById('wards-login-error');
+  const statusEl = document.getElementById('wards-login-status');
+  const submitBtn = document.getElementById('wards-login-submit-btn');
+  const googleBtn = document.getElementById('wards-login-google-btn');
+  const toggleBtn = document.getElementById('wards-login-toggle-mode');
+  const forgotBtn = document.getElementById('wards-login-forgot');
+  let mode = 'signin';
+  const setErr = m => { if(errEl) errEl.textContent = m || ''; };
+  const setStatus = m => { if(statusEl) statusEl.textContent = m || ''; };
+
+  function applyMode(){
+    const signup = mode === 'signup';
+    if(submitBtn) submitBtn.textContent = signup ? 'Create account' : 'Sign in';
+    if(toggleBtn) toggleBtn.textContent = signup ? 'Have an account? Sign in' : 'Create an account';
+    if(passInput) passInput.setAttribute('autocomplete', signup ? 'new-password' : 'current-password');
+    setErr(''); setStatus('');
+  }
+  if(toggleBtn) toggleBtn.addEventListener('click', () => { mode = mode === 'signin' ? 'signup' : 'signin'; applyMode(); });
+
+  if(form) form.addEventListener('submit', async e => {
+    e.preventDefault();
+    setErr(''); setStatus('');
+    const email = (emailInput && emailInput.value || '').trim();
+    const pass = passInput && passInput.value || '';
+    if(!email || !pass){ setErr('Enter your email and password.'); return; }
+    if(submitBtn) submitBtn.disabled = true;
+    try{ await wardsSignInEmail(email, pass, mode === 'signup'); } // onAuthStateChanged handles the rest
+    catch(e){ setErr(wardsAuthErrorMessage(e)); }
+    finally{ if(submitBtn) submitBtn.disabled = false; }
+  });
+
+  if(googleBtn) googleBtn.addEventListener('click', async () => {
+    setErr(''); setStatus('');
+    googleBtn.disabled = true;
+    try{ await wardsSignInGoogle(); }
+    catch(e){
+      // Popups don't work inside a packaged Capacitor app -- same limitation
+      // Rounds' login already flags explicitly rather than showing a raw
+      // Firebase error; email/password sign-in still works either way.
+      if((e && e.code) === 'auth/operation-not-supported-in-this-environment'){
+        setErr('Google sign-in needs the native app packaging step — use email/password for now.');
+      } else {
+        setErr(wardsAuthErrorMessage(e));
+      }
+    }
+    finally{ googleBtn.disabled = false; }
+  });
+
+  if(forgotBtn) forgotBtn.addEventListener('click', async () => {
+    setErr(''); setStatus('');
+    const email = (emailInput && emailInput.value || '').trim();
+    if(!email){ setErr('Enter your email first, then reset the password.'); return; }
+    try{
+      const ok = await initWardsFirebase();
+      if(!ok) throw new Error('Could not reach the sign-in service — check your connection.');
+      await wfbAuth.sendPasswordResetEmail(email);
+      setStatus('Password reset email sent.');
+    }catch(e){ setErr(wardsAuthErrorMessage(e)); }
+  });
+}
+
 async function initWardsCloudSync(){
   setupWardsSyncUI();
+  setupWardsLoginGate();
   const ok = await initWardsFirebase();
   if(!ok){
     wardsSyncSetError(null);
-    return; // no network / blocked — Wards keeps working fully locally
+    wardsShowLoginGate('Could not reach the sign-in service — check your connection, then reload.');
+    return; // no network / blocked — login is required, so the gate stays up until it can be reached
   }
   wfbAuth.onAuthStateChanged(wardsOnAuthChanged);
 }
@@ -12739,6 +12880,7 @@ function setupWardsAppLock(){
 }
 
 function boot(){
+  initWardsCloudSync(); // wire + show the mandatory login gate first, before anything else can be interacted with
   applyTheme(getInitialTheme());
   const toggle = document.getElementById('theme-toggle');
   if(toggle) toggle.onclick = toggleTheme;
@@ -12765,11 +12907,9 @@ function boot(){
   setupWellWall();
   setupWardsTabs();
   wardsSwitchView('vitals');
-  initWardsCloudSync();
   setupWardsAppLock();
   const tutorialBtn = document.getElementById('wards-view-tutorial-btn');
   if(tutorialBtn) tutorialBtn.addEventListener('click', () => { haptic('Light'); showWardsOnboarding(true); });
-  if(!wardsLockConfig()) showWardsOnboarding();
 }
 
 if(document.readyState === 'loading'){
