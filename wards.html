@@ -8875,6 +8875,7 @@ function renderVitalsMain(){
   if(p.id !== lastRenderedVitalsPatientId){
     const searchInput = document.getElementById('vitals-log-search');
     if(searchInput) searchInput.value = ''; // clear any filter left over from the previous patient
+    hideVitalsSanityBanner(); // avoid an implausible-vitals entry from the previous patient getting saved onto this one
     lastRenderedVitalsPatientId = p.id;
   }
 
