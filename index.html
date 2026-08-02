@@ -282,7 +282,27 @@ body > header{background:transparent;position:sticky;top:0;z-index:50;padding:14
 .header-search .search-icon{width:18px;height:18px;color:var(--header-ink-soft);flex-shrink:0;}
 .header-search input{flex:1;border:none;background:transparent;color:var(--header-ink);font-family:var(--ff-sans);font-size:13.5px;padding:10px 0;outline:none;min-width:0;}
 .header-search input::placeholder{color:var(--header-ink-soft);}
-.btn-search{border:none;background:var(--cta-bg);color:var(--cta-ink);border-radius:var(--r-pill);padding:10px 20px;font-size:12.5px;font-weight:700;letter-spacing:var(--tracking-wide);cursor:pointer;transition:background var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);}
+.btn-search{border:none;background:var(--cta-bg);color:var(--cta-ink);border-radius:var(--r-pill);padding:10px 20px;font-size:12.5px;font-weight:700;letter-spacing:var(--tracking-wide);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);}
+
+/* ---- header "more tools" overflow menu ----
+   Convert/Ask/Graph/Quiz/Drill/Cases used to sit as six more buttons
+   directly in the search row, competing with the input and the two
+   things actually used every search (Search, Everywhere) for space —
+   at some widths the row overflowed and the primary Search button got
+   squeezed down to nearly nothing. Now they live behind one icon
+   button, same click-to-toggle popover pattern used elsewhere. */
+.header-tools-wrap{position:relative;}
+.header-tools-btn[aria-expanded="true"]{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
+.header-tools-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:60;width:230px;
+  background:var(--surface-raised);border:1px solid var(--line);border-radius:var(--r-md);
+  box-shadow:var(--shadow-lift);padding:8px;font-family:var(--ff-sans);display:flex;flex-direction:column;gap:2px;}
+.header-tools-menu[hidden]{display:none;}
+.header-tools-menu-btn{display:flex;flex-direction:column;align-items:flex-start;gap:1px;width:100%;text-align:left;
+  border:none;background:none;color:var(--ink);border-radius:var(--r-sm);padding:8px 10px;cursor:pointer;
+  font-family:var(--ff-sans);font-size:13px;font-weight:700;transition:background var(--dur-fast) var(--ease-out);}
+.header-tools-menu-btn span{font-size:11px;font-weight:500;color:var(--ink-faint);}
+.header-tools-menu-btn:hover{background:var(--evidence-bg);}
+@media (max-width:640px){ .header-tools-menu{right:auto;left:0;} }
 .btn-search:hover{background:var(--cta-bg-hover);transform:translateY(-1px);}
 .btn-search:active{transform:scale(0.97);}
 .btn-search-everywhere{border:1px solid var(--header-line);background:none;color:var(--header-ink-soft);border-radius:var(--r-pill);padding:9px 14px;font-size:11.5px;font-weight:600;letter-spacing:var(--tracking-wide);cursor:pointer;white-space:nowrap;flex-shrink:0;transition:border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
@@ -2921,15 +2941,22 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
       <input id="search-input" type="search" placeholder='Search topics, drugs, or trials…' autocomplete="off" spellcheck="false">
       <button id="search-btn" class="btn-search" type="button">Search</button>
       <button id="search-everywhere-btn" class="btn-search-everywhere" type="button" title="Search everywhere — Literature, Drugs, Conditions, Advances, Trials at once">Everywhere</button>
-      <button id="unit-converter-btn" class="btn-search-everywhere" type="button" title="Quick unit converter — kg/lb, °C/°F, mL/fl oz, mg/mmol">Convert</button>
-      <button id="ask-btn" class="btn-search-everywhere" type="button" title="Ask a plain-language question — ranked answers from this app's own Drugs/Conditions/Trials content">Ask</button>
-      <button id="graph-btn" class="btn-search-everywhere" type="button" title="Visual graph of drug/condition/interaction connections">Graph</button>
-      <button id="quiz-btn" class="btn-search-everywhere" type="button" title="Spaced-repetition quiz from your bookmarks">Quiz</button>
-      <button id="drill-btn" class="btn-search-everywhere" type="button" title="Muscle memory — ultra-fast single-fact flashcard drill">Drill</button>
-      <button id="cases-btn" class="btn-search-everywhere" type="button" title="Case vignettes for self-study">Cases</button>
     </form>
     <div class="header-actions">
     <span id="welcome-greeting" class="welcome-greeting" hidden></span>
+    <div class="header-tools-wrap">
+      <button id="header-tools-btn" class="theme-toggle header-tools-btn" type="button" aria-label="More tools" title="Convert, Ask, Graph, Quiz, Drill, Cases" aria-haspopup="true" aria-expanded="false">
+        <svg viewBox="0 0 18 18" fill="none" aria-hidden="true"><circle cx="4" cy="9" r="1.4" fill="currentColor"/><circle cx="9" cy="9" r="1.4" fill="currentColor"/><circle cx="14" cy="9" r="1.4" fill="currentColor"/></svg>
+      </button>
+      <div class="header-tools-menu" id="header-tools-menu" hidden>
+        <button id="unit-converter-btn" class="header-tools-menu-btn" type="button" title="Quick unit converter — kg/lb, °C/°F, mL/fl oz, mg/mmol">Convert <span>unit converter</span></button>
+        <button id="ask-btn" class="header-tools-menu-btn" type="button" title="Ask a plain-language question — ranked answers from this app's own Drugs/Conditions/Trials content">Ask <span>plain-language Q&amp;A</span></button>
+        <button id="graph-btn" class="header-tools-menu-btn" type="button" title="Visual graph of drug/condition/interaction connections">Graph <span>visual connections</span></button>
+        <button id="quiz-btn" class="header-tools-menu-btn" type="button" title="Spaced-repetition quiz from your bookmarks">Quiz <span>spaced repetition</span></button>
+        <button id="drill-btn" class="header-tools-menu-btn" type="button" title="Muscle memory — ultra-fast single-fact flashcard drill">Drill <span>fast flashcards</span></button>
+        <button id="cases-btn" class="header-tools-menu-btn" type="button" title="Case vignettes for self-study">Cases <span>self-study vignettes</span></button>
+      </div>
+    </div>
     <button id="settings-toggle" class="theme-toggle" type="button" aria-label="Settings" title="Settings" hidden>
       <svg viewBox="0 0 18 18" fill="none" aria-hidden="true">
         <circle cx="9" cy="9" r="2.3" stroke="currentColor" stroke-width="1.5"/>
@@ -12618,6 +12645,25 @@ function setupTheme(){
    Init
    ============================================================ */
 
+function setupHeaderToolsMenu(){
+  const btn = document.getElementById('header-tools-btn');
+  const menu = document.getElementById('header-tools-menu');
+  if(!btn || !menu || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const isHidden = menu.hidden;
+    menu.hidden = !isHidden;
+    btn.setAttribute('aria-expanded', isHidden ? 'true' : 'false');
+  });
+  document.addEventListener('click', (e) => {
+    if(!menu.hidden && !menu.contains(e.target) && e.target !== btn){ menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); }
+  });
+  menu.querySelectorAll('.header-tools-menu-btn').forEach(b => {
+    b.addEventListener('click', () => { menu.hidden = true; btn.setAttribute('aria-expanded', 'false'); });
+  });
+}
+
 function init(){
   const verEl = document.getElementById('app-version');
   if(verEl) verEl.textContent = 'Rounds v' + APP_VERSION;
@@ -12627,6 +12673,7 @@ function init(){
   applyTheme(getInitialTheme());
   setupTheme();
   setupDisclaimer();
+  setupHeaderToolsMenu();
   setupSearch();
   setupDrugSearch();
   setupTabs();
