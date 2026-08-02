@@ -330,13 +330,17 @@ body > header{background:transparent;position:sticky;top:0;z-index:50;padding:14
 
 /* ---- disclaimer ---- */
 .disclaimer{max-width:1280px;margin:0 auto;padding:16px 40px 0;}
-.disclaimer-box{background:var(--caution-bg);border:1px solid var(--caution-line);border-radius:var(--r-md);padding:14px 18px;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;box-shadow:var(--shadow-sm);}
+.disclaimer-box{position:relative;background:var(--caution-bg);border:1px solid var(--caution-line);border-radius:var(--r-md);padding:14px 18px;display:grid;grid-template-columns:auto 1fr auto;gap:16px;align-items:center;box-shadow:var(--shadow-sm);}
 .disclaimer-eyebrow{font-family:var(--ff-sans);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:var(--tracking-wide);color:var(--caution);padding-right:16px;line-height:1.6;align-self:stretch;display:flex;align-items:center;}
 .disclaimer-box p{margin:0;font-family:var(--ff-sans);font-size:13.5px;line-height:1.55;color:var(--caution);}
 .disclaimer-box p strong{font-weight:700;}
-.disclaimer-box button{background:none;border:none;color:var(--caution);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;border-radius:var(--r-sm);transition:background var(--dur-fast) var(--ease-out);align-self:start;}
+/* Pulled out of the grid flow and pinned to the corner -- previously
+   a plain in-flow grid item, which meant it landed centered *below*
+   the paragraph once the grid collapsed to one column on mobile,
+   instead of reading as a close button. */
+.disclaimer-box button{position:absolute;top:8px;right:8px;background:none;border:none;color:var(--caution);cursor:pointer;font-size:20px;line-height:1;padding:2px 6px;border-radius:var(--r-sm);transition:background var(--dur-fast) var(--ease-out);}
 .disclaimer-box button:hover{background:rgba(209,55,42,0.12);}
-@media (max-width:680px){.disclaimer-box{grid-template-columns:1fr;}.disclaimer-eyebrow{border-right:none;padding-right:0;padding-bottom:0;}}
+@media (max-width:680px){.disclaimer-box{grid-template-columns:1fr;padding-right:36px;}.disclaimer-eyebrow{border-right:none;padding-right:0;padding-bottom:0;}}
 
 /* ---- tabbar (magazine section nav) ---- */
 .tabbar{max-width:1280px;margin:0 auto;padding:28px 40px 0;display:flex;gap:36px;border-bottom:1px solid var(--line);overflow-x:auto;}
@@ -479,6 +483,8 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 
 .rounds-demo-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
   padding:8px 20px;background:#664d03;color:#fff3cd;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
+.rounds-demo-banner span{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:center;}
+.wi{width:15px;height:15px;flex-shrink:0;vertical-align:-3px;}
 .rounds-demo-banner button{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;
   border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:700;cursor:pointer;}
 .rounds-demo-banner button:hover{background:rgba(255,255,255,.22);}
@@ -2982,7 +2988,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 </header>
 
 <div class="rounds-demo-banner" id="rounds-demo-banner" hidden>
-  <span>&#9888; DEMO MODE — sample bookmarks shown below. Nothing here is your real saved data, and nothing you do while demoing is saved.</span>
+  <span><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4 2.5 20.5h19L12 4Z" stroke-linejoin="round"/><path d="M12 10.2v4.3" stroke-linecap="round"/><circle cx="12" cy="17.6" r="0.9" fill="currentColor" stroke="none"/></svg> DEMO MODE — sample bookmarks shown below. Nothing here is your real saved data, and nothing you do while demoing is saved.</span>
   <button type="button" id="rounds-demo-exit-btn">Exit demo mode</button>
 </div>
 
