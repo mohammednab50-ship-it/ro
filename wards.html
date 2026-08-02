@@ -1563,6 +1563,11 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-add-actions{display:flex;gap:8px;}
 
 .vitals-empty{padding:var(--space-9) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:14.5px;line-height:1.6;}
+.vitals-empty-icon{width:40px;height:40px;color:var(--line);margin-bottom:14px;}
+.vitals-empty p strong{color:var(--ink-soft);font-size:16px;}
+.vitals-board-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:var(--space-8) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:13.5px;}
+.vitals-board-empty[hidden]{display:none;}
+.vitals-board-empty svg{width:28px;height:28px;color:var(--line);}
 
 .vitals-patient-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:var(--space-4);}
 .vitals-kicker{font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--evidence-dark);margin:0 0 6px;}
@@ -1744,7 +1749,11 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .note-photo-btn.has-photo{border-style:solid;color:var(--ink);}
 .note-photo-name{color:var(--ink-faint);max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
 .note-photo-thumb{display:inline-block;width:44px;height:44px;border-radius:6px;object-fit:cover;cursor:pointer;border:1px solid var(--line);vertical-align:middle;margin-top:4px;}
-.note-photo-view-btn{margin-left:6px;border:none;background:none;cursor:pointer;font-size:13px;padding:0;vertical-align:middle;}
+.note-photo-view-btn{margin-left:6px;border:none;background:none;cursor:pointer;font-size:13px;padding:0;vertical-align:middle;color:var(--ink-soft);display:inline-flex;align-items:center;}
+.note-photo-view-btn:hover{color:var(--evidence-dark);}
+
+/* ---- shared small inline icon (replaces ad-hoc emoji in banners/buttons) ---- */
+.wi{width:15px;height:15px;flex-shrink:0;vertical-align:-3px;}
 
 /* ---- reading-interval override ---- */
 .vitals-isolation-select-wrap input[type="number"]{border:1px solid var(--line);border-radius:var(--r-pill);padding:7px 9px;font-family:var(--ff-sans);font-size:12.5px;background:var(--surface);color:var(--ink-soft);}
@@ -1812,6 +1821,12 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 /* ---- roster-wide board view ---- */
 .vitals-main-toprow{display:flex;align-items:flex-start;justify-content:space-between;gap:var(--space-4);flex-wrap:wrap;}
 .vitals-main-toprow-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+/* Groups the 4 view-switcher pills (Board view/Bed map/Archive/Ward
+   census) into one visually contained control instead of 4 pills
+   floating loose next to the weather badge -- same idea as a
+   segmented control, tolerant of the labels' very different lengths. */
+.vitals-view-switcher{display:inline-flex;flex-wrap:wrap;gap:6px;padding:4px;background:var(--paper-deep);border:1px solid var(--line);border-radius:var(--r-md);}
+.vitals-view-switcher .vitals-board-toggle-btn{background:var(--surface);}
 .wards-weather-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--ink-faint);cursor:default;}
 .wards-weather-badge[hidden]{display:none;}
 .wards-weather-icon{font-size:15px;line-height:1;}
@@ -2552,10 +2567,16 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 /* ---- display settings popover (text size / colour-blind-safe / battery saver) ---- */
 .wards-settings-wrap{position:relative;}
 #wards-settings-toggle[aria-pressed="true"]{color:var(--evidence-dark);border-color:var(--evidence);background:var(--evidence-bg);}
-.wards-settings-panel{width:270px;max-height:min(70vh,560px);overflow-y:auto;}
-.wards-settings-panel .ws-row{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
+.wards-settings-panel{width:300px;max-height:min(70vh,560px);overflow-y:auto;}
+/* Stacked (label, then its control, on their own lines) instead of a
+   cramped side-by-side row -- at 270px wide, a label like "Open on
+   launch" fighting a dropdown for the same line wrapped to 2-3 lines. */
+.wards-settings-panel .ws-row{display:flex; flex-direction:column; align-items:flex-start; gap:6px; margin-bottom:14px;}
 .wards-settings-panel .ws-label{display:flex; flex-direction:column; gap:2px; font-size:12.5px; font-weight:600; color:var(--ink);}
 .wards-settings-panel .ws-sub{font-size:10.5px; font-weight:500; color:var(--ink-faint);}
+.wards-settings-panel .ws-row > select,
+.wards-settings-panel .ws-row > button:not(.seg-btn),
+.wards-settings-panel .ws-row > input{align-self:stretch;}
 .wards-settings-panel .qh-note{margin-bottom:12px;}
 .wards-settings-panel .qh-note:last-child{margin-bottom:0;}
 .ws-shift-presets{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
@@ -2602,6 +2623,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 
 .wards-demo-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
   padding:8px 20px;background:#664d03;color:#fff3cd;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
+.wards-demo-banner span,.wards-covering-banner span{display:inline-flex;align-items:center;gap:7px;flex-wrap:wrap;justify-content:center;}
 .wards-demo-banner button{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;
   border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:700;cursor:pointer;}
 .wards-demo-banner button:hover{background:rgba(255,255,255,.22);}
@@ -2903,12 +2925,12 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 </header>
 
 <div class="wards-demo-banner" id="wards-demo-banner" hidden>
-  <span>&#9888; DEMO MODE — fake sample patients shown below. Nothing here is your real data, and nothing you do while demoing is saved.</span>
+  <span><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4 2.5 20.5h19L12 4Z" stroke-linejoin="round"/><path d="M12 10.2v4.3" stroke-linecap="round"/><circle cx="12" cy="17.6" r="0.9" fill="currentColor" stroke="none"/></svg> DEMO MODE — fake sample patients shown below. Nothing here is your real data, and nothing you do while demoing is saved.</span>
   <button type="button" id="wards-demo-exit-btn">Exit demo mode</button>
 </div>
 
 <div class="wards-covering-banner" id="wards-covering-banner" hidden>
-  <span>&#128100; <strong id="wards-covering-name"></strong> is currently covering these patients &mdash; check with them before acting on anything urgent.</span>
+  <span><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.2-4 4-6 7.5-6s6.3 2 7.5 6" stroke-linecap="round"/></svg> <strong id="wards-covering-name"></strong> is currently covering these patients &mdash; check with them before acting on anything urgent.</span>
   <button type="button" id="wards-covering-clear-btn">Back now</button>
 </div>
 
@@ -2935,14 +2957,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <ol class="chapter-list" id="patient-list"></ol>
 
     <button type="button" class="vitals-btn-primary vitals-add-patient-cta" id="vitals-add-patient-btn">+ Add patient</button>
-    <button type="button" class="vitals-add-patient-btn vitals-btn-outline" id="vitals-scan-patient-btn" hidden>&#128247; Scan patient ID</button>
+    <button type="button" class="vitals-add-patient-btn vitals-btn-outline" id="vitals-scan-patient-btn" hidden><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-1.6A1.5 1.5 0 0 1 9.8 4.6h4.4a1.5 1.5 0 0 1 1.3.8L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg> Scan patient ID</button>
 
     <div class="vitals-shift-tools-wrap">
       <button type="button" class="vitals-btn-ghost vitals-shift-tools-btn" id="vitals-shift-tools-btn" aria-expanded="false">Shift tools&hellip;</button>
       <div class="vitals-shift-tools-panel" id="vitals-shift-tools-panel" hidden>
         <button type="button" class="vitals-more-menu-btn" id="vitals-sbar-all-btn" title="Generate one combined SBAR handover for every patient marked as yours this shift">SBAR &mdash; my patients this shift</button>
         <button type="button" class="vitals-more-menu-btn" id="vitals-endshift-btn" title="Your shift recap plus an aggregate of what's due across your active patients">End-of-shift summary</button>
-        <button type="button" class="vitals-more-menu-btn" id="vitals-import-btn">&#8593; Import patients (CSV/JSON)</button>
+        <button type="button" class="vitals-more-menu-btn" id="vitals-import-btn"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke-linecap="round" stroke-linejoin="round"/></svg> Import patients (CSV/JSON)</button>
         <label class="vitals-more-menu-select-row" id="vitals-roster-sort-wrap" title="How the patient list above is ordered">
           <span>Sort by</span>
           <select id="vitals-roster-sort">
@@ -3011,10 +3033,12 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <span class="wards-weather-icon" id="wards-weather-icon" aria-hidden="true"></span>
           <span class="wards-weather-label" id="wards-weather-label"></span>
         </span>
-        <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-board-toggle-btn" aria-pressed="false">Board view — all patients</button>
-        <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-mapview-toggle-btn" aria-pressed="false">Bed map</button>
-        <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-archive-toggle-btn" aria-pressed="false">Archive</button>
-        <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-census-toggle-btn" aria-pressed="false" title="Auto-computed daily census log for the current ward">Ward census</button>
+        <div class="vitals-view-switcher" role="group" aria-label="Patient view">
+          <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-board-toggle-btn" aria-pressed="false">Board view — all patients</button>
+          <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-mapview-toggle-btn" aria-pressed="false">Bed map</button>
+          <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-archive-toggle-btn" aria-pressed="false">Archive</button>
+          <button type="button" class="vitals-btn-outline vitals-board-toggle-btn" id="vitals-census-toggle-btn" aria-pressed="false" title="Auto-computed daily census log for the current ward">Ward census</button>
+        </div>
       </div>
     </div>
 
@@ -3028,13 +3052,13 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 
     <div id="vitals-board" class="vitals-board" hidden>
       <div class="vitals-board-grid" id="vitals-board-grid"></div>
-      <p class="vitals-board-empty" id="vitals-board-empty" hidden>No patients on the roster yet — add one on the left.</p>
+      <p class="vitals-board-empty" id="vitals-board-empty" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke-linecap="round"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4.5" stroke-linecap="round"/></svg>No patients on the roster yet — add one on the left.</p>
     </div>
 
     <div id="vitals-mapview" class="vitals-board" hidden>
       <p class="vitals-disclaimer" style="margin-bottom:var(--space-4);">Bed map is a visual layout of the same active-roster data as the board view — not a real-time facility floor plan.</p>
       <div class="vitals-mapview-grid" id="vitals-mapview-grid"></div>
-      <p class="vitals-board-empty" id="vitals-mapview-empty" hidden>No patients on the roster yet — add one on the left.</p>
+      <p class="vitals-board-empty" id="vitals-mapview-empty" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke-linecap="round"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4.5" stroke-linecap="round"/></svg>No patients on the roster yet — add one on the left.</p>
     </div>
 
     <div id="vitals-import-panel" class="vitals-board" hidden>
@@ -3060,7 +3084,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <input id="vitals-archive-search" type="text" placeholder="Search archive — name, bed, MRN, department" autocomplete="off">
       </div>
       <div class="vitals-board-grid" id="vitals-archive-grid"></div>
-      <p class="vitals-board-empty" id="vitals-archive-empty" hidden>No archived patients yet.</p>
+      <p class="vitals-board-empty" id="vitals-archive-empty" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke-linecap="round"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4.5" stroke-linecap="round"/></svg>No archived patients yet.</p>
     </div>
 
     <div id="vitals-census" class="vitals-board" hidden>
@@ -3069,11 +3093,12 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       </p>
       <button type="button" class="vitals-btn-primary" id="vitals-census-lognow-btn" style="margin-bottom:var(--space-4);">Log today's census now</button>
       <div class="vitals-table-wrap" id="vitals-census-table-wrap"></div>
-      <p class="vitals-board-empty" id="vitals-census-empty" hidden>No census entries logged yet for this ward.</p>
+      <p class="vitals-board-empty" id="vitals-census-empty" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke-linecap="round"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4.5" stroke-linecap="round"/></svg>No census entries logged yet for this ward.</p>
     </div>
 
     <div id="vitals-empty" class="vitals-empty">
-      <p>Add a patient on the left to start charting serial vitals through your shift. Everything you enter here stays only on this device.</p>
+      <svg class="vitals-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1" stroke-linecap="round"/><path d="M8.5 11h7M8.5 14.5h7M8.5 18h4.5" stroke-linecap="round"/></svg>
+      <p><strong>No patients yet.</strong><br>Add one on the left to start charting serial vitals through your shift. Everything you enter here stays only on this device.</p>
     </div>
 
     <div id="vitals-patient-view" hidden>
@@ -3397,7 +3422,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <label for="v-notes">Notes</label>
           <textarea id="v-notes" rows="2" maxlength="280" placeholder="Optional — e.g. position change, agitation, intervention given"></textarea>
           <div class="note-photo-row">
-            <label class="note-photo-btn" for="v-notes-photo" id="v-notes-photo-label">📷 Attach photo<span class="note-photo-name" id="v-notes-photo-name"></span></label>
+            <label class="note-photo-btn" for="v-notes-photo" id="v-notes-photo-label"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-1.6A1.5 1.5 0 0 1 9.8 4.6h4.4a1.5 1.5 0 0 1 1.3.8L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg> Attach photo<span class="note-photo-name" id="v-notes-photo-name"></span></label>
             <input type="file" accept="image/*" id="v-notes-photo" class="hidden">
           </div>
         </div>
@@ -3632,7 +3657,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
               <label class="mat-lbl" for="mat-f-notes">Note</label>
               <textarea id="mat-f-notes" placeholder="Presenting complaint, examination, plan&hellip;" style="min-height:90px"></textarea>
               <div class="note-photo-row">
-                <label class="note-photo-btn" for="mat-f-notes-photo" id="mat-f-notes-photo-label">📷 Attach photo<span class="note-photo-name" id="mat-f-notes-photo-name"></span></label>
+                <label class="note-photo-btn" for="mat-f-notes-photo" id="mat-f-notes-photo-label"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-1.6A1.5 1.5 0 0 1 9.8 4.6h4.4a1.5 1.5 0 0 1 1.3.8L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg> Attach photo<span class="note-photo-name" id="mat-f-notes-photo-name"></span></label>
                 <input type="file" accept="image/*" id="mat-f-notes-photo" class="hidden">
               </div>
             </div>
@@ -6741,7 +6766,7 @@ function renderVitalsBoard(){
     const latest = latestVitalsEntryFor(p);
     const n2 = latest ? computeNews2(latest, p) : null;
     const isoBadge = isolationBadgeHtml(p.isolation);
-    const allergyIcon = (p.allergies || '').trim() ? '<span title="Has known allergies" aria-label="Has known allergies">&#9888;&#65039;</span>' : '';
+    const allergyIcon = (p.allergies || '').trim() ? '<span title="Has known allergies" aria-label="Has known allergies"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4 2.5 20.5h19L12 4Z" stroke-linejoin="round"/><path d="M12 10.2v4.3" stroke-linecap="round"/><circle cx="12" cy="17.6" r="0.9" fill="currentColor" stroke="none"/></svg></span>' : '';
 
     let vitalsLine = '<span class="vitals-board-noreadings">No readings logged yet</span>';
     if(latest){
@@ -7547,7 +7572,7 @@ function setupAddPatientForm(){
         dupConfirmed = true;
         saveBtn.textContent = 'Add anyway';
         if(dupWarning && dupWarningMsg){
-          dupWarningMsg.innerHTML = `&#9888; This looks like it might be the same as <b>${escapeHtml(dup.name || 'Unnamed')}</b> ` +
+          dupWarningMsg.innerHTML = `<svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4 2.5 20.5h19L12 4Z" stroke-linejoin="round"/><path d="M12 10.2v4.3" stroke-linecap="round"/><circle cx="12" cy="17.6" r="0.9" fill="currentColor" stroke="none"/></svg> This looks like it might be the same as <b>${escapeHtml(dup.name || 'Unnamed')}</b> ` +
             `(bed ${escapeHtml(dup.bed || '—')}${dup.mrn ? ', MRN ' + escapeHtml(dup.mrn) : ''}), already on the roster — ` +
             `use the existing patient instead of adding a duplicate, or press Add anyway if this is genuinely a different patient.`;
           dupWarning.hidden = false;
@@ -8775,7 +8800,7 @@ function renderVitalsTable(){
       <td data-col="gcs">${escapeHtml(entry.gcs || '—')}</td>
       <td data-col="uop">${escapeHtml(entry.uop || '—')}</td>
       ${n2Cell.replace('<td', '<td data-col="news2"')}
-      <td data-col="notes" class="vitals-td-notes">${escapeHtml(entry.notes || '')}${entry.hasPhoto ? `<button type="button" class="note-photo-view-btn" data-view-note-photo="${entry.id}" title="View attached photo">📷</button>` : ''}</td>
+      <td data-col="notes" class="vitals-td-notes">${escapeHtml(entry.notes || '')}${entry.hasPhoto ? `<button type="button" class="note-photo-view-btn" data-view-note-photo="${entry.id}" title="View attached photo"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-1.6A1.5 1.5 0 0 1 9.8 4.6h4.4a1.5 1.5 0 0 1 1.3.8L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg></button>` : ''}</td>
       <td><button type="button" class="vitals-row-delete" aria-label="Delete this reading" data-entry-id="${entry.id}">
         <svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M5 7h14M9 7V5a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2m-8 0 1 13a2 2 0 0 0 2 2h4a2 2 0 0 0 2-2l1-13" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>
       </button></td>`;
@@ -9279,7 +9304,7 @@ function renderAllergyBanner(p){
   const text = (p && p.allergies || '').trim();
   if(!text){ banner.hidden = true; banner.innerHTML = ''; return; }
   banner.hidden = false;
-  banner.innerHTML = `&#9888; Allergies: <span class="allergy-list">${escapeHtml(text)}</span>`;
+  banner.innerHTML = `<svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4 2.5 20.5h19L12 4Z" stroke-linejoin="round"/><path d="M12 10.2v4.3" stroke-linecap="round"/><circle cx="12" cy="17.6" r="0.9" fill="currentColor" stroke="none"/></svg> Allergies: <span class="allergy-list">${escapeHtml(text)}</span>`;
 }
 
 /* ---- Nickname / mnemonic — a private, personal memory-aid tag kept in
@@ -10668,7 +10693,7 @@ function renderMaternityNotesLog(m){
     '<div class="mat-note-entry">' +
       '<div class="nh"><span class="t">' + escapeHtml(fmtVitalsTime(n.at)) + '</span>' + shiftBandTagHtml(n.at) +
         (n.author ? '<span class="who">· ' + escapeHtml(n.author) + '</span>' : '') +
-        (n.hasPhoto ? '<button type="button" class="note-photo-view-btn" data-view-note-photo="' + n.id + '" title="View attached photo">📷</button>' : '') +
+        (n.hasPhoto ? '<button type="button" class="note-photo-view-btn" data-view-note-photo="' + n.id + '" title="View attached photo"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-1.6A1.5 1.5 0 0 1 9.8 4.6h4.4a1.5 1.5 0 0 1 1.3.8L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg></button>' : '') +
         '<button type="button" class="del" data-del-note="' + n.id + '">Remove</button></div>' +
       (n.note ? '<div class="body">' + escapeHtml(n.note) + '</div>' : '') +
       (n.advice ? '<div class="adv"><b>Advice:</b> ' + escapeHtml(n.advice) + '</div>' : '') +
