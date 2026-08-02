@@ -138,6 +138,49 @@ draft content in `TERMS_AND_PRIVACY_DRAFT.md` (an explicit checkbox +
 - Users can re-read the same content any time from Settings ("Terms &
   Privacy" → View) without re-agreeing.
 
+## 5. Self-service co-admins and ward-group invites
+
+Two more console-only operations are now fully self-service, in-app:
+
+**Adding a second admin to a hospital or department.** Open the cloud-sync
+panel, select the hospital (or department), and click **Admins…** next to
+it. Enter a colleague's email and click **Add as co-admin** — this resolves
+their email to a uid via `usersByEmail` (now actually written to, at
+sign-in: `wardsUpsertUsersByEmail` in `wards.html`; previously the
+collection existed only in the rules/schema with nothing populating it) and
+adds `{[uid]: {role:'admin', email, joinedAt}}` to the doc's `admins` map.
+If nobody's signed up with that email yet, the app says so plainly and asks
+you to try again once they have — there's no pending-invite tier for this
+one, by design (see the Part 1/Part 2 split in the commit that added this).
+The same modal lists current admins with a remove (×) button; removing the
+last remaining admin is blocked both client-side and server-side
+(`admins.size() > 0` in `firestore.rules`) — a hospital or department can
+never be left adminless. No rules change was needed for the add/remove
+writes themselves: an existing admin's `update` on their own hospital/
+department was already unrestricted, so this was purely an app-code gap.
+
+**Inviting a teammate to a specific ward group.** A group admin clicks
+**Invite…** next to the ward-group picker and enters an email — this
+writes two documents in one batch: `wardGroups/{groupId}/invites/{emailKey}`
+(the existing, previously UI-less subcollection) and a new flat
+`pendingInvites/{groupId}_{emailKey}` doc, which is what lets the invited
+user *find* the invite at all without a collection-group query (see the
+schema comment block in `firestore.rules` for the full reasoning). Anyone
+signed in sees a "Pending invites for you" list in the cloud-sync panel
+(queried via `.where('email','==', myEmail.toLowerCase())`) with Accept/
+Decline buttons. Accepting is the one narrow, server-validated way a
+not-yet-member can write to a `wardGroups` doc at all
+(`isValidInviteAccept()` in `firestore.rules` — a diff-based carve-out that
+only allows adding the caller's own uid to `members` with role `'member'`,
+never `'admin'`, and touching no other field); declining just deletes both
+invite records. An admin revoking a not-yet-accepted invite
+(`wardsRevokeInvite` in `wards.html`) reuses the same
+`isGroupAdminPath`/`isAboveGroupPath` delete permission the invites
+subcollection already had — **note: this function has no admin-facing UI
+wired up yet** (no "invites I've sent, with a revoke button" list exists;
+an admin can still revoke by other means if this becomes a real need, but
+it's a real gap worth closing next, not silently assumed solved).
+
 **What's still pending:**
 - Rounds (`index.html`) has Firebase Auth but its own bookmarks are not
   yet synced to Firestore — that's a separate, not-yet-built piece of work
@@ -147,18 +190,15 @@ draft content in `TERMS_AND_PRIVACY_DRAFT.md` (an explicit checkbox +
   and a department dropdown, same self-service creator-becomes-admin flow
   as hospitals. Creating a ward group under a selected department stamps
   its `departmentId`; picking a different hospital clears the department
-  selection if it doesn't belong to the new one. Adding a *second* admin to
-  a department still has to be done by hand in the console (same gap as
-  hospitals, see below).
-- There's no in-app UI yet to add a *second* admin to a hospital you
-  created, or to see/manage hospitals across devices beyond the one that
-  created/selected them (the app remembers "my hospitals" client-side per
-  account, then re-verifies against the live doc — there's no server-side
-  index of "which hospitals is this uid an admin of" yet). Add a co-admin
-  by hand in the console for now (edit the hospital doc's `admins` map).
-- Invites (`wardGroups/{groupId}/invites`) have rules but no in-app UI —
-  for now, adding a teammate to a ward group's `members` map has to be
-  done by hand in the Firestore console (or by whoever built this next).
+  selection if it doesn't belong to the new one.
+- ~~There's no in-app UI yet to add a *second* admin to a hospital/
+  department~~ — fixed, see "Self-service co-admins and ward-group
+  invites" above.
+- ~~Invites (`wardGroups/{groupId}/invites`) have rules but no in-app UI~~
+  — fixed, see above. The one remaining loose end: an admin has no
+  in-app list of invites *they've sent* to revoke a not-yet-accepted one
+  (the backend function exists — `wardsRevokeInvite` — just no button
+  wired to it yet).
 - The Google Drive backup feature described below hasn't been built.
 - Both apps have an optional app-level lock (WebAuthn platform
   authenticator with a salted-PIN fallback, in Settings) — separate from
