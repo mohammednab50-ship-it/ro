@@ -119,6 +119,76 @@ naturally needs it.
   and word of mouth from pilot hospitals. Paid ads rarely move the needle
   here.
 
+## 7. Path to becoming a real, certified EHR
+
+**Status: ⛔ not started — mostly 🚫 blocking, this is the section where "EHR"
+stops being marketing copy and becomes a load-bearing legal claim.**
+
+Right now Wards is explicitly positioned as a *personal charting aid* —
+the Terms/Privacy text says so, and the app tells users to always chart
+definitively in their institution's official record system. "EHR" isn't a
+feature you turn on; it's a regulated category, and calling Wards one
+without doing the work below would be a false claim the moment a hospital
+relies on it as their system of record. This section is the honest gap
+between where the app is today and where a *real* EHR has to be.
+
+**What "EHR" actually requires, depending on where your hospitals are:**
+- 🚫 US: ONC Health IT Certification under the 21st Century Cures Act
+  (the "Certified EHR Technology" / CEHRT label hospitals need for
+  Meaningful Use / MIPS), plus HIPAA/HITECH compliance.
+- 🚫 UK: clinical safety case under DCB0129 (manufacturer) / DCB0160
+  (deploying organisation) — a formal, documented risk-management process
+  specific to health IT, separate from general software QA.
+- 🚫 EU: likely classified as a medical device under the MDR if it's used
+  for clinical decision-making, which brings CE marking, a Quality
+  Management System (commonly ISO 13485), and a Notified Body review.
+- 🚫 All of the above: a lawyer determines which regime(s) actually apply
+  to your hospitals — same blocking item as section 1, not a separate one.
+
+**Technical/product gaps between Wards today and real EHR-grade behavior**
+— these are things I *can* help build, unlike the certification paperwork
+above:
+- ⛔ **Append-only clinical entries.** Vitals/notes can currently be edited
+  after the fact. Real medical-legal recordkeeping requires corrections as
+  addenda (new entry referencing the old one), never silently overwriting
+  what was charted — the corrected value and the original both need to
+  stay visible with who/when for each.
+- ⛔ **Fixed, jurisdiction-driven retention — not user-configurable
+  auto-purge.** The current "auto-purge archived patients after N days"
+  setting is the opposite of what a real record system needs: statutory
+  retention periods (often 7-10+ years, sometimes longer for minors) that
+  an individual user shouldn't be able to shorten.
+- ⛔ **Interoperability (HL7 FHIR).** A real EHR exchanges data with the
+  hospital's actual system of record, lab systems, etc. — not a closed
+  silo. This is a genuinely large build (a FHIR-conformant API layer).
+- ⛔ **Formal downtime/continuity procedure.** Certified EHRs document what
+  clinical staff do when the system is unavailable — paper fallback,
+  defined RPO/RTO for backups. Section 3's backup function is a start, not
+  this.
+- 🔨 **Audit trail** — partially there today (who added/removed a patient,
+  logged a reading, or logged an escalation, per `firestore.rules`), but
+  not yet append-only/tamper-evident in the way a certification review
+  would expect, and doesn't yet cover every field edit.
+- ⛔ **Independent security certification** (SOC 2 Type II or ISO 27001) —
+  hospitals evaluating a real EHR vendor typically require this
+  contractually; overlaps with section 2's "independent security review"
+  but is a formal, recurring audit, not a one-time pentest.
+
+**Suggested order, if you want to actually pursue this** (distinct from
+the main roadmap below, since this is a multi-year, capital-intensive
+track most software-first health startups only take on once they have
+paying hospital customers who are pushing for it):
+1. Talk to the healthcare/data-privacy lawyer from section 1 specifically
+   about which certification regime(s) apply and whether your hospitals
+   actually need certified status or just "good enough" compliance —
+   many pilot/informal deployments never need full certification.
+2. If yes: build the technical gaps above first (append-only entries,
+   retention policy, audit trail hardening) — these make the product
+   better regardless of certification, and de-risk the eventual audit.
+3. Budget for a Quality Management System and the certification/audit
+   process itself — this is typically a specialized consultant engagement,
+   not something either of us can do in this repo.
+
 ## Suggested order of operations
 
 1. Talk to a healthcare/data-privacy lawyer; get real Terms/Privacy and a
