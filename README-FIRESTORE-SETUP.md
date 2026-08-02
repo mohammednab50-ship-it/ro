@@ -114,6 +114,30 @@ is now denied outright on `hospitals`/`departments`/`wardGroups`/`invites`
 `list` rule now actually checks `resource.data.uid == request.auth.uid` to
 match its real query instead of a blanket `signedIn()`.
 
+## 4. Terms of Use / Privacy Policy acceptance gate
+
+Both apps now gate a new or version-mismatched sign-in on agreeing to the
+draft content in `TERMS_AND_PRIVACY_DRAFT.md` (an explicit checkbox +
+"Agree & continue", not a plain OK; declining signs the user back out).
+
+- **Wards** records this server-side, on `users/{uid}` (`agreedToTermsVersion`,
+  `agreedAt` — see the schema comment at the top of `firestore.rules`), so it
+  follows the account across devices. No rules change was needed for this —
+  the existing self-read/write rule already covers arbitrary new fields.
+- **Rounds** has no Firestore at all, so it records the same thing in
+  `localStorage` instead (`rounds_terms_agreed_v1_<uid>`), keyed by uid. This
+  is weaker than Wards' record: a Rounds user signing in from a different
+  device/browser will be re-prompted, since there's nowhere server-side to
+  check. That's a known limitation of Rounds' current architecture, not a
+  bug — fixing it for real would mean giving Rounds a Firestore user-profile
+  doc, which hasn't been built (see "what's still pending" below).
+- Both apps re-prompt automatically if the stored version doesn't match the
+  app's current version constant (`WARDS_TERMS_VERSION` in `wards.html`,
+  `TERMS_VERSION` in `index.html`) — bump that constant any time the terms
+  change materially.
+- Users can re-read the same content any time from Settings ("Terms &
+  Privacy" → View) without re-agreeing.
+
 **What's still pending:**
 - Rounds (`index.html`) has Firebase Auth but its own bookmarks are not
   yet synced to Firestore — that's a separate, not-yet-built piece of work
