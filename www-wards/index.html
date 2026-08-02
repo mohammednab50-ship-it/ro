@@ -472,7 +472,7 @@ nav.chapters .chapters-eyebrow{font-family:var(--ff-mono);font-size:10.5px;font-
 .chapter-btn .chapter-name{flex:1;line-height:1.3;}
 .chapter-btn:hover{color:var(--ink);}
 .chapter-btn:hover .chapter-num{color:var(--ink-soft);}
-.chapter-li.active .chapter-btn{color:var(--evidence-dark);font-weight:700;border-left-color:var(--evidence);padding-left:18px;}
+.chapter-li.active .chapter-btn{color:var(--ink);font-weight:700;border-left-color:var(--evidence);padding-left:18px;}
 .chapter-li.active .chapter-btn .chapter-num{color:var(--evidence);font-weight:700;}
 .chapter-li.bookmarks{border-top:1px solid var(--line);margin-top:6px;padding-top:6px;}
 .chapter-li.bookmarks .chapter-btn .chapter-num{color:var(--fresh);font-style:normal;font-family:var(--ff-sans);font-size:18px;}
@@ -1581,7 +1581,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-board-empty svg{width:28px;height:28px;color:var(--line);}
 
 .vitals-patient-head{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:var(--space-4);}
-.vitals-kicker{font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--evidence-dark);margin:0 0 6px;}
+.vitals-kicker{font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:0.05em;text-transform:uppercase;color:var(--ink-faint);margin:0 0 6px;}
 .vitals-patient-name{font-family:var(--ff-display);font-size:clamp(26px,3.2vw,36px);font-weight:800;letter-spacing:-0.02em;color:var(--ink);margin:0;}
 .vitals-patient-sub{font-family:var(--ff-sans);font-size:13px;color:var(--ink-faint);margin:4px 0 0;}
 .vitals-nickname-tag{display:inline-block;margin:4px 0 0;font-family:var(--ff-sans);font-size:12.5px;font-style:italic;color:var(--ink-soft);background:var(--surface-2,var(--surface));border:1px dashed var(--line);border-radius:var(--r-sm);padding:2px 8px;}
@@ -2709,7 +2709,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   padding:9px 18px; border-radius:var(--r-pill); transition:background .15s,color .15s,border-color .15s;
 }
 .wards-tab:hover{color:var(--ink); background:var(--evidence-bg);}
-.wards-tab[aria-selected="true"]{color:var(--evidence-dark); background:var(--evidence-bg); border-color:var(--evidence);}
+.wards-tab[aria-selected="true"]{color:var(--ink); font-weight:700; background:var(--evidence-bg); border-color:var(--evidence);}
 
 .wards-footer{
   display:flex; align-items:center; justify-content:center; gap:8px;
@@ -2926,6 +2926,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <p class="qh-note">Off by default. When a newly logged reading crosses the NEWS2 escalation threshold, plays a short synthesised alarm tone and/or a distinct double-pulse vibration &mdash; separate from the routine save feedback &mdash; so it can be felt/heard without looking at the screen. This tab needs to be open to fire; it's a convenience, not a monitor.</p>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-ambient-toggle"> Ambient vitals soundscape <span style="font-weight:500;">(experimental)</span></label>
         <p class="qh-note">Off by default. A very quiet, continuous synthesised tone whose pitch/tempo drifts with the sickest active patient's NEWS2 trend &mdash; a peripheral-awareness aid, not a monitor or an alarm. Separate from, and does not replace, the escalation alert sound above. Silent during quiet hours. This tab needs to stay open to play.</p>
+        <div class="ws-row">
+          <span class="ws-label">Tutorial<span class="ws-sub">Replay the first-run tour of Wards</span></span>
+          <button type="button" class="settings-btn" id="wards-view-tutorial-btn">Take the tour</button>
+        </div>
         <div class="ws-row">
           <span class="ws-label">Terms &amp; Privacy<span class="ws-sub">Re-read the Terms of Use and Privacy Policy</span></span>
           <button type="button" class="settings-btn" id="wards-view-terms-btn">View</button>
@@ -3902,6 +3906,87 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   </div>
 </div>
 
+<!-- ===== First-run tutorial -- reuses the .onb-* styles already shared
+     with Rounds' onboarding. Wards works fully local/offline with no
+     sign-in, so this shows on first boot() regardless of auth state,
+     not gated behind login the way the Terms modal above is. ===== -->
+<div class="onb-overlay" id="wards-onboarding" role="dialog" aria-modal="true" aria-labelledby="wards-onb-title" hidden>
+  <div class="onb-card" role="document">
+    <button type="button" class="onb-close" id="wards-onb-close" aria-label="Skip tutorial">&times;</button>
+
+    <div class="onb-slides" id="wards-onb-slides">
+
+      <section class="onb-slide" data-slide="0">
+        <div class="onb-art" aria-hidden="true">
+          <svg viewBox="0 0 220 150" fill="none">
+            <circle cx="110" cy="75" r="52" fill="rgba(91,156,255,0.08)"/>
+            <path d="M46 90h30l8-24 12 46 10-32 8 18h60" stroke="#5B9CFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="110" cy="59" r="5" fill="#5B9CFF"/>
+          </svg>
+        </div>
+        <p class="onb-eyebrow">WELCOME TO WARDS</p>
+        <h2 class="onb-title serif" id="wards-onb-title">Chart vitals at the bedside, faster</h2>
+        <p class="onb-text">One department-aware charting tool for General, ICU, Surgery, Pediatrics and Maternity patients. A 30-second tour of the essentials.</p>
+      </section>
+
+      <section class="onb-slide" data-slide="1" hidden>
+        <div class="onb-art" aria-hidden="true">
+          <svg viewBox="0 0 220 150" fill="none">
+            <rect x="66" y="34" width="88" height="82" rx="6" fill="rgba(91,156,255,0.08)" stroke="#5B9CFF" stroke-width="2.2"/>
+            <path d="M84 58h52M84 72h52M84 86h34" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
+            <circle cx="110" cy="75" r="46" stroke="#C4750A" stroke-width="2" stroke-dasharray="3 5" fill="none"/>
+            <path d="M96 103l8 8 18-18" stroke="#5B9CFF" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <p class="onb-eyebrow">PATIENTS</p>
+        <h2 class="onb-title serif">Add a patient, then log readings</h2>
+        <p class="onb-text">Tap <strong>+ Add patient</strong> on the left, pick a bed and department. Log vitals from the form as you go — <strong>NEWS2</strong> is calculated automatically from what you enter.</p>
+      </section>
+
+      <section class="onb-slide" data-slide="2" hidden>
+        <div class="onb-art" aria-hidden="true">
+          <svg viewBox="0 0 220 150" fill="none">
+            <rect x="36" y="38" width="46" height="34" rx="4" fill="rgba(91,156,255,0.10)" stroke="#5B9CFF" stroke-width="2"/>
+            <rect x="90" y="38" width="46" height="34" rx="4" fill="rgba(196,117,10,0.10)" stroke="#C4750A" stroke-width="2"/>
+            <rect x="144" y="38" width="40" height="34" rx="4" fill="rgba(91,156,255,0.06)" stroke="#5B9CFF" stroke-width="2"/>
+            <rect x="36" y="84" width="148" height="34" rx="4" fill="none" stroke="currentColor" stroke-width="1.6" opacity="0.4" stroke-dasharray="3 5"/>
+            <circle cx="59" cy="55" r="4" fill="#5B9CFF"/><circle cx="113" cy="55" r="4" fill="#C4750A"/>
+          </svg>
+        </div>
+        <p class="onb-eyebrow">BOARD &middot; BED MAP &middot; ARCHIVE &middot; CENSUS</p>
+        <h2 class="onb-title serif">See the whole ward at a glance</h2>
+        <p class="onb-text">Switch views from the tray above the patient list: <strong>Board view</strong> for everyone's latest vitals, <strong>Bed map</strong> for a floor-plan layout. Less-common tools (SBAR handover, CSV import, sort) live behind <strong>Shift tools&hellip;</strong> so the everyday view stays uncluttered.</p>
+      </section>
+
+      <section class="onb-slide" data-slide="3" hidden>
+        <div class="onb-art" aria-hidden="true">
+          <svg viewBox="0 0 220 150" fill="none">
+            <path d="M78 62a26 26 0 0 1 50-8 20 20 0 0 1-4 40H70a18 18 0 0 1-2-36 24 24 0 0 1 10 4Z" fill="rgba(91,156,255,0.10)" stroke="#5B9CFF" stroke-width="2.2" stroke-linejoin="round"/>
+            <rect x="98" y="86" width="24" height="20" rx="3" fill="none" stroke="#C4750A" stroke-width="2.2"/>
+            <path d="M102 86v-6a8 8 0 0 1 16 0v6" stroke="#C4750A" stroke-width="2.2"/>
+          </svg>
+        </div>
+        <p class="onb-eyebrow">YOUR DATA</p>
+        <h2 class="onb-title serif">Local by default, sync if you choose</h2>
+        <p class="onb-text">Everything you chart stays on this device unless you sign in and select a hospital and ward group — then it syncs in real time with your team. Nothing leaves your device otherwise.</p>
+        <ul class="onb-tips">
+          <li>Find <strong>Add patient</strong> on the left to get started right away.</li>
+          <li>Re-read this tour any time from <strong>Settings</strong>.</li>
+        </ul>
+      </section>
+
+    </div>
+
+    <div class="onb-foot">
+      <div class="onb-dots" id="wards-onb-dots" role="tablist" aria-label="Tutorial progress"></div>
+      <div class="onb-actions">
+        <button type="button" class="onb-btn onb-btn-ghost" id="wards-onb-back" hidden>Back</button>
+        <button type="button" class="onb-btn onb-btn-primary" id="wards-onb-next">Next</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <div class="wards-qr-modal" id="wards-quicknote-modal" hidden>
   <div class="wards-qr-card wards-quicknote-card" role="dialog" aria-modal="true" aria-labelledby="wards-quicknote-title">
     <button type="button" class="mat-lb-close" id="wards-quicknote-close" aria-label="Close">&times;</button>
@@ -4534,6 +4619,61 @@ function renderWellWall(){
     `<p>${escapeHtml(e.text)}</p>` +
     `<button type="button" class="ww-del" data-wellwall-del="${e.id}">Remove</button></div>`
   ).join('');
+}
+/* ============================================================
+   First-run tutorial -- same slide/dot/back/next pattern as Rounds'
+   onboarding (see maybeShowOnboarding() in index.html), reusing the
+   .onb-* CSS already shared between the two apps. Shown once per
+   device (localStorage flag), and replayable any time from Settings.
+   ============================================================ */
+const WARDS_ONBOARDING_KEY = 'wards_onboarded_v1';
+function showWardsOnboarding(force){
+  const modal = document.getElementById('wards-onboarding');
+  if(!modal) return;
+  if(!force){
+    let seen = false;
+    try{ seen = !!localStorage.getItem(WARDS_ONBOARDING_KEY); }catch(e){}
+    if(seen) return;
+  }
+
+  const slides = Array.from(modal.querySelectorAll('.onb-slide'));
+  const dotsWrap = document.getElementById('wards-onb-dots');
+  const backBtn = document.getElementById('wards-onb-back');
+  const nextBtn = document.getElementById('wards-onb-next');
+  const closeBtn = document.getElementById('wards-onb-close');
+  if(!dotsWrap || !backBtn || !nextBtn || !closeBtn) return;
+  let i = 0;
+
+  dotsWrap.innerHTML = slides.map((_, idx) =>
+    `<button type="button" class="onb-dot${idx===0?' active':''}" data-i="${idx}" aria-label="Go to step ${idx+1}"></button>`).join('');
+  const dots = Array.from(dotsWrap.querySelectorAll('.onb-dot'));
+
+  function render(){
+    slides.forEach((s, idx) => { s.hidden = idx !== i; });
+    dots.forEach((d, idx) => d.classList.toggle('active', idx === i));
+    backBtn.hidden = i === 0;
+    nextBtn.textContent = i === slides.length - 1 ? 'Get started' : 'Next';
+  }
+  function finish(){
+    try{ localStorage.setItem(WARDS_ONBOARDING_KEY, '1'); }catch(e){}
+    modal.hidden = true;
+    document.removeEventListener('keydown', onKey);
+  }
+  function onKey(e){
+    if(e.key === 'Escape') finish();
+    else if(e.key === 'ArrowRight' && i < slides.length - 1){ i++; render(); }
+    else if(e.key === 'ArrowLeft' && i > 0){ i--; render(); }
+  }
+
+  nextBtn.onclick = () => { haptic(i === slides.length - 1 ? 'Medium' : 'Light'); if(i < slides.length - 1){ i++; render(); } else finish(); };
+  backBtn.onclick = () => { haptic('Light'); if(i > 0){ i--; render(); } };
+  closeBtn.onclick = finish;
+  dots.forEach(d => d.onclick = () => { haptic('Light'); i = +d.dataset.i; render(); });
+
+  render();
+  modal.hidden = false;
+  document.addEventListener('keydown', onKey);
+  nextBtn.focus();
 }
 function setupWellWall(){
   const btn = document.getElementById('wards-wellwall-btn');
@@ -12012,6 +12152,9 @@ function boot(){
   wardsSwitchView('vitals');
   initWardsCloudSync();
   setupWardsAppLock();
+  const tutorialBtn = document.getElementById('wards-view-tutorial-btn');
+  if(tutorialBtn) tutorialBtn.addEventListener('click', () => { haptic('Light'); showWardsOnboarding(true); });
+  if(!wardsLockConfig()) showWardsOnboarding();
 }
 
 if(document.readyState === 'loading'){
