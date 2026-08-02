@@ -2665,6 +2665,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-login-links button{background:none;border:none;color:var(--evidence);font-family:var(--ff-sans);font-size:12.5px;cursor:pointer;padding:2px;}
 .wards-login-divider{display:flex;align-items:center;gap:10px;margin:14px 0;color:var(--ink-faint);font-family:var(--ff-sans);font-size:11.5px;text-transform:uppercase;letter-spacing:.04em;}
 .wards-login-divider::before,.wards-login-divider::after{content:'';flex:1;height:1px;background:var(--line);}
+.wards-login-remember{display:flex;align-items:center;gap:8px;margin:2px 0 4px;font-family:var(--ff-sans);font-size:13px;color:var(--ink-soft);cursor:pointer;user-select:none;text-align:left;}
+.wards-login-remember input{width:15px;height:15px;accent-color:var(--evidence);cursor:pointer;}
 
 .wards-demo-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
   padding:8px 20px;background:#664d03;color:#fff3cd;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
@@ -4214,6 +4216,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <p class="login-error" id="wards-login-error" role="alert" aria-live="assertive"></p>
     <p class="wards-login-sub" id="wards-login-status" aria-live="polite" style="margin:0;"></p>
 
+    <label class="wards-login-remember" for="wards-login-remember">
+      <input id="wards-login-remember" type="checkbox" checked>
+      Stay signed in on this device
+    </label>
+
     <div class="wards-login-actions">
       <button type="submit" class="settings-btn w-100" id="wards-login-submit-btn">Sign in</button>
     </div>
@@ -5430,15 +5437,21 @@ function updateWardsSyncIndicator(){
 }
 
 /* ---- auth ---- */
-async function wardsSignInEmail(email, pass, isSignup){
+async function wardsSetAuthPersistence(remember){
+  try{ await wfbAuth.setPersistence(remember ? firebase.auth.Auth.Persistence.LOCAL : firebase.auth.Auth.Persistence.SESSION); }
+  catch(e){ /* unsupported storage (e.g. private browsing) -- sign-in still works, just won't persist as requested */ }
+}
+async function wardsSignInEmail(email, pass, isSignup, remember){
   const ok = await initWardsFirebase();
   if(!ok) throw new Error('Could not reach the sign-in service — check your connection.');
+  await wardsSetAuthPersistence(remember !== false);
   if(isSignup) await wfbAuth.createUserWithEmailAndPassword(email, pass);
   else await wfbAuth.signInWithEmailAndPassword(email, pass);
 }
-async function wardsSignInGoogle(){
+async function wardsSignInGoogle(remember){
   const ok = await initWardsFirebase();
   if(!ok) throw new Error('Could not reach the sign-in service — check your connection.');
+  await wardsSetAuthPersistence(remember !== false);
   const provider = new firebase.auth.GoogleAuthProvider();
   await wfbAuth.signInWithPopup(provider);
 }
@@ -6943,9 +6956,11 @@ function setupWardsLoginGate(){
   const googleBtn = document.getElementById('wards-login-google-btn');
   const toggleBtn = document.getElementById('wards-login-toggle-mode');
   const forgotBtn = document.getElementById('wards-login-forgot');
+  const rememberInput = document.getElementById('wards-login-remember');
   let mode = 'signin';
   const setErr = m => { if(errEl) errEl.textContent = m || ''; };
   const setStatus = m => { if(statusEl) statusEl.textContent = m || ''; };
+  const remember = () => !rememberInput || rememberInput.checked;
 
   function applyMode(){
     const signup = mode === 'signup';
@@ -6963,7 +6978,7 @@ function setupWardsLoginGate(){
     const pass = passInput && passInput.value || '';
     if(!email || !pass){ setErr('Enter your email and password.'); return; }
     if(submitBtn) submitBtn.disabled = true;
-    try{ await wardsSignInEmail(email, pass, mode === 'signup'); } // onAuthStateChanged handles the rest
+    try{ await wardsSignInEmail(email, pass, mode === 'signup', remember()); } // onAuthStateChanged handles the rest
     catch(e){ setErr(wardsAuthErrorMessage(e)); }
     finally{ if(submitBtn) submitBtn.disabled = false; }
   });
@@ -6971,7 +6986,7 @@ function setupWardsLoginGate(){
   if(googleBtn) googleBtn.addEventListener('click', async () => {
     setErr(''); setStatus('');
     googleBtn.disabled = true;
-    try{ await wardsSignInGoogle(); }
+    try{ await wardsSignInGoogle(remember()); }
     catch(e){
       // Popups don't work inside a packaged Capacitor app -- same limitation
       // Rounds' login already flags explicitly rather than showing a raw
