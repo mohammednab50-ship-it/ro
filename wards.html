@@ -32,7 +32,7 @@
   --surface-raised: #FFFFFF;
   --ink:            #0A0D12;
   --ink-soft:       #4B525E;
-  --ink-faint:      #868D99;
+  --ink-faint:      #6B7280;
   --line:           #DEE3EC;
   --line-soft:      #E8ECF3;
 
@@ -2544,6 +2544,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   background:var(--cta-bg); color:var(--cta-ink);
   font-family:var(--ff-display); font-weight:800; font-size:18px;
 }
+.wards-mark svg{width:20px; height:20px;}
 .wards-brand-words h1{font-family:var(--ff-display); font-size:20px; font-weight:800; letter-spacing:-0.02em; margin:0; color:var(--ink);}
 .wards-brand-tagline{font-family:var(--ff-sans); font-size:11.5px; color:var(--ink-faint);}
 /* margin-left:auto keeps this row pinned to the right edge even when it
@@ -2747,7 +2748,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 
 <header class="wards-header">
   <a class="wards-brand" href="#" aria-label="Wards — home">
-    <span class="wards-mark" aria-hidden="true">W</span>
+    <span class="wards-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2 7 4-14 2 7h8"/></svg></span>
     <div class="wards-brand-words">
       <h1>Wards</h1>
       <p class="wards-brand-tagline">Ward-based patient charting</p>
@@ -3937,7 +3938,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       I have read and agree to the Terms of Use and Privacy Policy.
     </label>
     <div class="wards-terms-actions">
-      <button type="button" class="settings-btn" id="wards-terms-decline">Decline &amp; sign out</button>
+      <button type="button" class="settings-btn settings-btn-danger" id="wards-terms-decline">Decline &amp; sign out</button>
       <button type="button" class="settings-btn" id="wards-terms-agree" disabled>Agree &amp; continue</button>
       <button type="button" class="settings-btn" id="wards-terms-close" hidden>Close</button>
     </div>
@@ -4128,7 +4129,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 
     <div id="wards-chat-ward-pane">
       <div class="wards-chat-announcements" id="wards-chat-ward-context-note" style="display:none;"></div>
-      <div class="wards-chat-messages" id="wards-chat-ward-messages"></div>
+      <div class="wards-chat-messages" id="wards-chat-ward-messages" aria-live="polite"></div>
       <div class="wards-chat-composer">
         <input type="text" id="wards-chat-ward-input" maxlength="2000" placeholder="Message this ward…" autocomplete="off">
         <button type="button" class="settings-btn" id="wards-chat-ward-send-btn">Send</button>
@@ -4141,7 +4142,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <input type="text" id="wards-chat-announce-input" maxlength="2000" placeholder="Post an announcement to the whole department…" autocomplete="off">
         <button type="button" class="settings-btn" id="wards-chat-announce-btn">Post</button>
       </div>
-      <div class="wards-chat-messages" id="wards-chat-dept-messages"></div>
+      <div class="wards-chat-messages" id="wards-chat-dept-messages" aria-live="polite"></div>
       <div class="wards-chat-composer">
         <input type="text" id="wards-chat-dept-input" maxlength="2000" placeholder="Message the department…" autocomplete="off">
         <button type="button" class="settings-btn" id="wards-chat-dept-send-btn">Send</button>
@@ -6413,24 +6414,30 @@ function setupWardsChatUI(){
     const text = wardInput.value;
     if(!text.trim()) return;
     wardInput.value = '';
+    if(wardSendBtn) wardSendBtn.disabled = true;
     try{ await wardsSendGroupChatMessage(activeSyncGroupId, text); }
     catch(e){ wardInput.value = text; showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'error'); }
+    finally{ if(wardSendBtn) wardSendBtn.disabled = false; }
   }
   async function sendDept(){
     if(!deptInput || !activeDepartmentId) return;
     const text = deptInput.value;
     if(!text.trim()) return;
     deptInput.value = '';
+    if(deptSendBtn) deptSendBtn.disabled = true;
     try{ await wardsSendDeptChatMessage(activeDepartmentId, text); }
     catch(e){ deptInput.value = text; showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'error'); }
+    finally{ if(deptSendBtn) deptSendBtn.disabled = false; }
   }
   async function sendAnnouncement(){
     if(!announceInput || !activeDepartmentId) return;
     const text = announceInput.value;
     if(!text.trim()) return;
     announceInput.value = '';
+    if(announceBtn) announceBtn.disabled = true;
     try{ await wardsPostDeptAnnouncement(activeDepartmentId, text); }
     catch(e){ announceInput.value = text; showToast('Could not post — ' + ((e && e.message) || 'try again.'), 'error'); }
+    finally{ if(announceBtn) announceBtn.disabled = false; }
   }
 
   if(wardSendBtn) wardSendBtn.addEventListener('click', sendWard);
@@ -6452,7 +6459,7 @@ function renderWardsPendingInvites(){
       <span>${escapeHtml(inv.groupName || inv.groupId)}${inv.invitedByEmail ? ' &mdash; invited by ' + escapeHtml(inv.invitedByEmail) : ''}</span>
       <span class="wards-pi-actions">
         <button type="button" class="settings-btn" data-invite-accept="${escapeHtml(inv.id)}">Accept</button>
-        <button type="button" class="settings-btn" data-invite-decline="${escapeHtml(inv.id)}">Decline</button>
+        <button type="button" class="settings-btn settings-btn-danger" data-invite-decline="${escapeHtml(inv.id)}">Decline</button>
       </span>
     </div>
   `).join('');
@@ -12051,9 +12058,9 @@ const PEDS_IMMUNIZATIONS = ['BCG','OPV (Polio)','DPT','Hepatitis B','MMR','Varic
 // Reference-only per-dose figures (commonly cited single-dose mg/kg) —
 // deliberately not a full formulary; the disclaimer is load-bearing here.
 const PEDS_DOSING = [
-  { drug: 'Paracetamol (acetaminophen)', mgPerKg: 15, note: 'per dose, PO, typically q4&ndash;6h' },
-  { drug: 'Ibuprofen', mgPerKg: 10, note: 'per dose, PO, typically q6&ndash;8h' },
-  { drug: 'Amoxicillin', mgPerKg: 25, note: 'per dose, PO, typically q12h' }
+  { drug: 'Paracetamol (acetaminophen)', mgPerKg: 15, maxDoseMg: 1000, note: 'per dose, PO, typically q4&ndash;6h' },
+  { drug: 'Ibuprofen', mgPerKg: 10, maxDoseMg: 400, note: 'per dose, PO, typically q6&ndash;8h' },
+  { drug: 'Amoxicillin', mgPerKg: 25, maxDoseMg: 1000, note: 'per dose, PO, typically q12h' }
 ];
 
 function ensurePediatrics(p){
@@ -12071,9 +12078,13 @@ function renderPedsDosingNote(peds){
     el.innerHTML = 'Reference-only weight-based dosing aid — not a prescription. Enter weight above. Always verify against your institution&rsquo;s paediatric dosing formulary.';
     return;
   }
-  const lines = PEDS_DOSING.map(d =>
-    '<b>' + escapeHtml(d.drug) + ':</b> ~' + Math.round(wt * d.mgPerKg) + ' mg (' + d.mgPerKg + ' mg/kg, ' + d.note + ')'
-  );
+  const lines = PEDS_DOSING.map(d => {
+    const raw = wt * d.mgPerKg;
+    const capped = d.maxDoseMg && raw > d.maxDoseMg;
+    const dose = capped ? d.maxDoseMg : Math.round(raw);
+    return '<b>' + escapeHtml(d.drug) + ':</b> ~' + dose + ' mg (' + d.mgPerKg + ' mg/kg, ' + d.note + ')' +
+      (capped ? ' &mdash; capped at adult max single dose' : '');
+  });
   el.innerHTML = '<b>Reference only — not a prescription.</b> Always verify against your institution&rsquo;s paediatric dosing formulary before administering.<br>' + lines.join('<br>');
 }
 function renderPedsGrowthRows(peds){
