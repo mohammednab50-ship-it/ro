@@ -2545,7 +2545,18 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   font-family:var(--ff-display); font-weight:800; font-size:18px;
 }
 .wards-mark svg{width:20px; height:20px;}
-.wards-brand-words h1{font-family:var(--ff-display); font-size:20px; font-weight:800; letter-spacing:-0.02em; margin:0; color:var(--ink);}
+.wards-brand-words h1{
+  font-family:var(--ff-display); font-size:20px; font-weight:800; letter-spacing:-0.02em; margin:0;
+  background:linear-gradient(100deg, var(--ink) 0%, var(--ink) 38%, var(--evidence) 50%, var(--ink) 62%, var(--ink) 100%);
+  background-size:220% 100%;
+  -webkit-background-clip:text; background-clip:text;
+  -webkit-text-fill-color:transparent;
+  animation:wards-brand-sheen 6s var(--ease-in-out) infinite;
+}
+@keyframes wards-brand-sheen{0%{background-position:130% 0;}55%,100%{background-position:-30% 0;}}
+@media (prefers-reduced-motion: reduce){
+  .wards-brand-words h1{-webkit-text-fill-color:currentColor; background:none; color:var(--ink); animation:none;}
+}
 .wards-brand-tagline{font-family:var(--ff-sans); font-size:11.5px; color:var(--ink-faint);}
 /* margin-left:auto keeps this row pinned to the right edge even when it
    wraps onto its own line below the brand on narrow/phone widths --
