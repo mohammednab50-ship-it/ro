@@ -2794,6 +2794,29 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   #vitals-print-summary tr.vps-flag td{font-weight:700; color:#9a6b00}
   #vitals-print-summary .vps-note{font-size:11.5px; color:#555; margin-top:6px}
 
+  /* ---- gridded NEWS2 observation chart, printed -- readings as columns
+     (chronological, left to right) and vital-sign parameters as rows,
+     matching the paper NEWS chart layout nurses are already trained to
+     read (rather than the plain narrative table above, which is closer
+     to a discharge summary than an obs chart). Each cell is tinted by
+     that reading's OWN NEWS2 sub-score, using the same published colour
+     bands as the real NHS NEWS2 chart (white/yellow/amber/red for 0-3)
+     -- printers default to stripping background colours entirely, so
+     -webkit-print-color-adjust/print-color-adjust:exact is required for
+     these to actually show up on paper, not just on screen. ---- */
+  #vitals-print-summary table.vps-newschart{font-size:11px;}
+  #vitals-print-summary table.vps-newschart th,#vitals-print-summary table.vps-newschart td{
+    text-align:center; padding:3px 5px; -webkit-print-color-adjust:exact; print-color-adjust:exact;
+  }
+  #vitals-print-summary table.vps-newschart th:first-child,#vitals-print-summary table.vps-newschart td:first-child{
+    text-align:left; font-weight:700; white-space:nowrap;
+  }
+  #vitals-print-summary table.vps-newschart td.vps-n2-0{background:#fff;}
+  #vitals-print-summary table.vps-newschart td.vps-n2-1{background:#fff6cc;}
+  #vitals-print-summary table.vps-newschart td.vps-n2-2{background:#ffd9a0;}
+  #vitals-print-summary table.vps-newschart td.vps-n2-3{background:#ffb3b3;}
+  #vitals-print-summary table.vps-newschart tr.vps-newschart-total td{font-weight:800; border-top:2px solid #000;}
+
 
 /* =====================================================================
    Wards — app shell (header, tab switcher, footer, brand mark)
@@ -3638,6 +3661,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
               <button type="button" class="vitals-more-menu-btn" id="vitals-compare-btn" title="Compare this patient's latest vitals side-by-side with another active patient">Compare patients</button>
               <button type="button" class="vitals-more-menu-btn" id="vitals-timeline-btn" title="Chronological timeline merging readings, notes, escalations and problems">Timeline</button>
               <button type="button" class="vitals-more-menu-btn" id="vitals-print-btn" title="Print a one-page vitals summary">Print summary</button>
+              <button type="button" class="vitals-more-menu-btn" id="vitals-print-newschart-btn" title="Print a gridded NEWS2 observation chart -- readings as columns, vital signs as rows, matching the paper chart layout">Print obs chart</button>
               <button type="button" class="vitals-more-menu-btn" id="vitals-export-btn">Export CSV</button>
               <button type="button" class="vitals-more-menu-btn" id="vitals-history-btn" title="Audit trail — who changed what, and when (synced patients only)" hidden>History</button>
               <hr class="vitals-more-menu-sep">
@@ -8399,6 +8423,7 @@ function initVitals(){
   setupVitalsWakeLock();
   setupVitalsKeyboardShortcuts();
   setupVitalsPrintButton();
+  setupVitalsPrintNewsChartButton();
   setupVitalsNormalFillButton();
   setupGcsPartsUI();
   setupVitalsDeltaIndicators();
@@ -11397,6 +11422,78 @@ function printVitalsSummary(){
   window.addEventListener('afterprint', cleanup);
   window.print();
   setTimeout(cleanup, 1500);
+}
+
+/* ---- gridded NEWS2 observation chart, print-only -- see the CSS block
+   above for why this exists alongside printVitalsSummary(): that's a
+   narrative summary table, this is the actual chart format nurses are
+   trained to read (readings as columns, parameters as rows, each cell
+   colour-banded by its own NEWS2 sub-score). Reuses the exact same
+   print-swap mechanism (container -> body class -> window.print()). ---- */
+const NEWS2_CHART_ROWS = [
+  { key: 'rr', label: 'Resp. rate', field: 'rr', unit: '/min' },
+  { key: 'spo2', label: 'SpO₂', field: 'spo2', unit: '%' },
+  { key: 'o2', label: 'On O₂', field: null, unit: '' }, // rendered specially -- Y/N, not a number field
+  { key: 'sbp', label: 'BP systolic', field: 'sbp', unit: 'mmHg' },
+  { key: 'hr', label: 'Heart rate', field: 'hr', unit: 'bpm' },
+  { key: 'consciousness', label: 'Consciousness', field: 'gcs', unit: '' },
+  { key: 'temp', label: 'Temperature', field: 'temp', unit: '°C' }
+];
+const NEWS2_CHART_MAX_COLS = 12; // most recent N readings — a busy chart still needs to fit one printed page
+
+function printNews2ObservationChart(){
+  const p = activePatient();
+  const container = document.getElementById('vitals-print-summary');
+  if(!p || !container) return;
+  const log = activeLog().slice().sort((a, b) => new Date(a.ts) - new Date(b.ts)); // chronological, oldest first -- matches a real obs chart's left-to-right reading
+  const shown = log.slice(-NEWS2_CHART_MAX_COLS);
+
+  const headerCells = shown.map(e => `<th>${escapeHtml(fmtVitalsTime(e.ts))}</th>`).join('');
+  const rows = NEWS2_CHART_ROWS.map(rowDef => {
+    const cells = shown.map(e => {
+      const n2 = computeNews2(e, p);
+      const sub = n2.parts ? n2.parts[rowDef.key] : null;
+      const cls = (sub === null || sub === undefined) ? '' : `vps-n2-${sub}`;
+      let display;
+      // Matches computeNews2's own dependency: the O2 sub-score only
+      // exists when SpO2 was recorded (see news2's `o2` part), so "on
+      // supplemental O2" is only meaningful to show against a reading
+      // that actually has an SpO2 value.
+      if(rowDef.key === 'o2') display = (e.spo2 === '' || e.spo2 === undefined || e.spo2 === null) ? '—' : (e.o2sup ? 'Y' : 'N');
+      else if(rowDef.key === 'consciousness') display = fmtGcsWithParts(e);
+      else display = (e[rowDef.field] === '' || e[rowDef.field] === undefined || e[rowDef.field] === null) ? '—' : escapeHtml(String(e[rowDef.field]));
+      return `<td class="${cls}">${display}</td>`;
+    }).join('');
+    return `<tr><td>${escapeHtml(rowDef.label)}${rowDef.unit ? ` <span style="font-weight:400;color:#777;">(${rowDef.unit})</span>` : ''}</td>${cells}</tr>`;
+  }).join('');
+  const totalCells = shown.map(e => {
+    const n2 = computeNews2(e, p);
+    return `<td>${n2.dataPresent ? n2.score : '—'}</td>`;
+  }).join('');
+
+  const letterhead = `<div class="vps-letterhead"><svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2 7 4-14 2 7h8"/></svg><span>Wards</span></div>`;
+  const html =
+    letterhead +
+    `<h1>${escapeHtml(p.name || 'Patient')}</h1>` +
+    `<div class="vps-sub">NEWS2 observation chart &middot; Bed ${escapeHtml(p.bed || '—')}${p.mrn ? ', MRN ' + escapeHtml(p.mrn) : ''} &middot; generated ${fmtWardsDateTime(new Date())}</div>` +
+    (shown.length
+      ? `<div class="vps-sec"><table class="vps-newschart"><thead><tr><th></th>${headerCells}</tr></thead><tbody>${rows}<tr class="vps-newschart-total"><td>NEWS2 total</td>${totalCells}</tr></tbody></table></div>` +
+        `<p class="vps-note">Showing the most recent ${shown.length}${log.length > shown.length ? ' of ' + log.length : ''} reading(s). Cell shading follows the published NEWS2 score bands (white 0, yellow 1, amber 2, red 3) for that single parameter at that reading -- not the total.</p>`
+      : `<p class="vps-note">No readings logged yet.</p>`) +
+    `<div class="vps-foot">Generated by Wards &middot; personal charting aid only, not an official medical record &mdash; verify against the primary chart.</div>`;
+
+  container.innerHTML = html;
+  document.body.classList.add('vitals-print-summary');
+  const cleanup = () => { document.body.classList.remove('vitals-print-summary'); window.removeEventListener('afterprint', cleanup); };
+  window.addEventListener('afterprint', cleanup);
+  window.print();
+  setTimeout(cleanup, 1500);
+}
+function setupVitalsPrintNewsChartButton(){
+  const btn = document.getElementById('vitals-print-newschart-btn');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', printNews2ObservationChart);
 }
 
 function setupVitalsLogSearch(){
