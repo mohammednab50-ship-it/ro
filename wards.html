@@ -1905,6 +1905,34 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
   padding:13px 16px;border:1.5px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-md);margin-bottom:var(--space-5);}
 .vitals-escalation-banner .n2-badge{font-family:var(--ff-mono);font-size:13px;font-weight:800;background:var(--caution);color:var(--shell-ink);
   padding:2px 9px;border-radius:var(--r-pill);flex-shrink:0;}
+/* ---- latest-reading strip: the actual vitals, above the fold. Tinted
+   per-parameter by that parameter's own NEWS2 sub-score (0 neutral,
+   1-2 amber, 3 red) using the same --fresh/--caution scheme as every
+   other NEWS2 surface in the app, so "which value is driving the
+   score" reads at a glance. ---- */
+.vitals-latest-strip{display:grid;grid-template-columns:repeat(auto-fit,minmax(104px,1fr));gap:10px;margin-bottom:var(--space-5);}
+.vitals-latest-head{grid-column:1/-1;display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:-2px;}
+.vitals-latest-head .vlh-title{font-family:var(--ff-sans);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:var(--tracking-wide);color:var(--ink-faint);}
+.vitals-latest-head .vlh-age{font-family:var(--ff-sans);font-size:12px;color:var(--ink-faint);}
+.vitals-latest-head .vlh-age.is-stale{color:var(--caution);font-weight:700;}
+.vitals-latest-tile{border:1px solid var(--line);border-radius:var(--r-md);padding:10px 12px;background:var(--surface);
+  transition:border-color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
+.vitals-latest-tile .vlt-k{display:block;font-family:var(--ff-sans);font-size:10.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:var(--tracking-wide);color:var(--ink-faint);margin-bottom:3px;}
+.vitals-latest-tile .vlt-v{display:block;font-family:var(--ff-display);font-size:21px;font-weight:800;letter-spacing:-0.01em;
+  font-variant-numeric:tabular-nums;color:var(--ink);line-height:1.05;}
+.vitals-latest-tile .vlt-u{font-size:11px;font-weight:600;color:var(--ink-faint);margin-left:2px;}
+.vitals-latest-tile.n2-1,.vitals-latest-tile.n2-2{border-color:var(--fresh);background:var(--fresh-bg);}
+.vitals-latest-tile.n2-1 .vlt-v,.vitals-latest-tile.n2-2 .vlt-v{color:var(--fresh);}
+.vitals-latest-tile.n2-3{border-color:var(--caution);background:var(--caution-bg);}
+.vitals-latest-tile.n2-3 .vlt-v{color:var(--caution);}
+.vitals-latest-tile.is-missing .vlt-v{color:var(--ink-faint);font-weight:600;}
+/* Colour-blind-safe mode: same ▲/▲▲ redundancy the other NEWS2 surfaces use. */
+html.wards-cbsafe .vitals-latest-tile.n2-1 .vlt-k::before,
+html.wards-cbsafe .vitals-latest-tile.n2-2 .vlt-k::before{content:"\25b2 ";font-size:0.85em;}
+html.wards-cbsafe .vitals-latest-tile.n2-3 .vlt-k::before{content:"\25b2\25b2 ";font-size:0.85em;}
+@media (max-width:560px){ .vitals-latest-tile .vlt-v{font-size:18px;} }
+
 .vitals-escalation-trail{margin-bottom:var(--space-5);}
 .vitals-escalation-actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px;}
 .vitals-escalation-trail-label{font-family:var(--ff-sans);font-size:12.5px;font-weight:600;color:var(--ink-faint);}
@@ -1993,7 +2021,7 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
   padding:13px 16px;border:1.5px solid var(--caution-line);background:var(--caution-bg);border-radius:var(--r-md);margin-bottom:var(--space-5);}
 .vitals-allergy-banner .allergy-list{font-weight:500;color:var(--ink);}
 .vitals-allergy-banner[hidden]{display:none;}
-.vitals-add-form[hidden],.vitals-escalation-banner[hidden],.vitals-trend-row[hidden],.vitals-trend-alerts[hidden],.vitals-io-balance[hidden],.vitals-news2-preview[hidden],.vitals-field[hidden]{display:none;}
+.vitals-add-form[hidden],.vitals-escalation-banner[hidden],.vitals-trend-row[hidden],.vitals-trend-alerts[hidden],.vitals-io-balance[hidden],.vitals-news2-preview[hidden],.vitals-field[hidden],.vitals-latest-strip[hidden]{display:none;}
 .vitals-archived-banner{display:flex;align-items:flex-start;gap:10px;font-family:var(--ff-sans);font-size:13.5px;font-weight:700;color:var(--ink-soft);
   padding:13px 16px;border:1.5px solid var(--line);background:var(--surface-raised);border-radius:var(--r-md);margin-bottom:var(--space-5);}
 .vitals-archived-banner[hidden]{display:none;}
@@ -3565,6 +3593,13 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       </div>
 
       <div class="vitals-escalation-banner" id="vitals-escalation-banner" hidden></div>
+
+      <!-- Latest-reading summary: the actual numbers, above the fold.
+           Everything else on this screen (NEWS2 banner, trends, the log
+           table) describes the vitals; this shows them. Each tile is
+           tinted by that parameter's OWN NEWS2 sub-score, so "which
+           value is driving the score" is visible without arithmetic. -->
+      <div class="vitals-latest-strip" id="vitals-latest-strip" hidden></div>
 
       <div class="vitals-escalation-trail">
         <div class="vitals-escalation-actions">
@@ -10094,6 +10129,7 @@ function renderVitalsMain(){
   renderProblemList(p);
   renderMarSection(p);
   renderEscalationBanner(p);
+  renderVitalsLatestStrip(p);
   renderEscalationList(p);
   const contactInput = document.getElementById('vitals-escalation-contact');
   if(contactInput) contactInput.value = p.escalationContact || '';
@@ -11738,6 +11774,65 @@ function setupVitalsCensusToggle(){
       haptic('Light');
     });
   }
+}
+
+/* ---- latest-reading strip — the actual numbers from the most recently
+   logged reading, each tinted by its own NEWS2 sub-score. Same data
+   source as renderEscalationBanner below (latest logged entry, never
+   the mid-typed form), so the two can never disagree.
+
+   A parameter that wasn't recorded shows "—" rather than being hidden:
+   on a NEWS2 chart a missing observation is itself information (the
+   score is partial), and silently omitting the tile would read as
+   "normal" instead of "not taken". ---- */
+const VITALS_STRIP_FIELDS = [
+  { key: 'hr',   label: 'HR',    unit: 'bpm',  part: 'hr' },
+  { key: 'sbp',  label: 'BP',    unit: 'mmHg', part: 'sbp', combineWith: 'dbp' },
+  { key: 'rr',   label: 'RR',    unit: '/min', part: 'rr' },
+  { key: 'spo2', label: 'SpO₂', unit: '%', part: 'spo2' },
+  { key: 'temp', label: 'Temp',  unit: '°C', part: 'temp' },
+  { key: 'gcs',  label: 'GCS',   unit: '',     part: 'consciousness' }
+];
+// A reading older than this is called out in the header -- the strip
+// otherwise looks equally current whether it was taken 5 minutes or 9
+// hours ago, which is exactly the misread worth preventing.
+const VITALS_STRIP_STALE_MS = 6 * 60 * 60 * 1000;
+
+function renderVitalsLatestStrip(p){
+  const el = document.getElementById('vitals-latest-strip');
+  if(!el) return;
+  const log = (p && vitalsState.logs[p.id]) || [];
+  if(!log.length){ el.hidden = true; el.innerHTML = ''; return; }
+  const latest = log.slice().sort((a, b) => new Date(b.ts) - new Date(a.ts))[0];
+  const n2 = computeNews2(latest, p);
+  const ageMs = Date.now() - new Date(latest.ts).getTime();
+  const stale = ageMs > VITALS_STRIP_STALE_MS;
+
+  const tiles = VITALS_STRIP_FIELDS.map(f => {
+    let raw = latest[f.key];
+    const missing = (raw === '' || raw === null || raw === undefined);
+    let shown = missing ? '—' : String(raw);
+    // BP reads as a single clinical value; NEWS2 only scores the systolic.
+    if(f.combineWith && !missing){
+      const d = latest[f.combineWith];
+      if(d !== '' && d !== null && d !== undefined) shown = raw + '/' + d;
+    }
+    const sub = n2.parts ? n2.parts[f.part] : null;
+    const cls = missing ? 'is-missing' : (sub === null || sub === undefined ? '' : 'n2-' + sub);
+    const title = missing ? f.label + ' not recorded in this reading'
+      : (sub === null || sub === undefined ? f.label : f.label + ' — NEWS2 +' + sub);
+    return `<div class="vitals-latest-tile ${cls}" title="${escapeHtml(title)}">` +
+      `<span class="vlt-k">${f.label}</span>` +
+      `<span class="vlt-v">${escapeHtml(shown)}${(!missing && f.unit) ? `<span class="vlt-u">${f.unit}</span>` : ''}</span>` +
+      `</div>`;
+  }).join('');
+
+  el.hidden = false;
+  el.innerHTML =
+    `<div class="vitals-latest-head">` +
+      `<span class="vlh-title">Latest reading${latest.o2sup ? ' · on O₂' : ''}</span>` +
+      `<span class="vlh-age${stale ? ' is-stale' : ''}">${escapeHtml(fmtVitalsTime(latest.ts))} · ${escapeHtml(fmtElapsedMins(ageMs))} ago</span>` +
+    `</div>` + tiles;
 }
 
 /* ---- escalation banner — driven by the most recently *logged* reading's
