@@ -3362,6 +3362,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <label class="qh-row ws-row"><input type="checkbox" id="wards-critical-sound-toggle"> Escalation alert sound</label>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-critical-vibration-toggle"> Escalation alert vibration</label>
         <p class="qh-note">Off by default. When a newly logged reading crosses the NEWS2 escalation threshold, plays a short synthesised alarm tone and/or a distinct double-pulse vibration &mdash; separate from the routine save feedback &mdash; so it can be felt/heard without looking at the screen. This tab needs to be open to fire; it's a convenience, not a monitor.</p>
+        <label class="qh-row ws-row"><input type="checkbox" id="wards-overdue-notify-toggle"> Notify when a patient goes overdue</label>
+        <p class="qh-note" id="wards-overdue-notify-note">Off by default. The app already flags a patient "not seen recently" once their reading interval elapses (see each patient's own interval, or the department default) &mdash; this additionally asks your browser's permission to show a notification the moment that happens, checked every minute. This tab needs to be open (in the foreground or a background tab) to check; it's a convenience, not a monitor, and never fires for a patient you've already reviewed since going overdue.</p>
         <label class="qh-row ws-row"><input type="checkbox" id="wards-ambient-toggle"> Ambient vitals soundscape <span style="font-weight:500;">(experimental)</span></label>
         <p class="qh-note">Off by default. A very quiet, continuous synthesised tone whose pitch/tempo drifts with the sickest active patient's NEWS2 trend &mdash; a peripheral-awareness aid, not a monitor or an alarm. Separate from, and does not replace, the escalation alert sound above. Silent during quiet hours. This tab needs to stay open to play.</p>
         <div class="ws-row">
@@ -8342,6 +8344,7 @@ function initVitals(){
   setupAddPatientForm();
   setupVitalsEntryForm();
   setupVitalsAutosave();
+  setupVitalsWakeLock();
   setupVitalsPrintButton();
   setupVitalsNormalFillButton();
   setupGcsPartsUI();
@@ -8392,6 +8395,7 @@ function initVitals(){
   setupRetentionSettings();
   runRetentionSweep();
   setupCriticalAlertSettings();
+  setupOverdueNotifyToggle();
   setupAmbientSoundscape();
   setupWardsDigest();
   renderPatientList();
@@ -9260,6 +9264,60 @@ function fireCriticalAlertIfEnabled(){
   if(prefs.vibration) criticalAlertVibrate();
 }
 
+/* ---- overdue-patient notifications -- the app already computes exactly
+   who's overdue (isVitalsPatientOverdue, driven by each patient's own
+   reading interval or the department default) and shows it passively
+   (roster dot, banner, board tag) but never actively tells anyone. A
+   1-minute sweep checks the same active-patient set the overdue banner
+   already uses and fires a browser Notification the moment a patient
+   FIRST crosses their threshold -- not every minute after, and never
+   again for that same overdue episode once a new reading clears it (the
+   per-patient "already notified" flag resets the moment they're no
+   longer overdue, so a later overdue episode notifies again).
+   Deliberately off by default and gated on an explicit permission
+   prompt -- this is a convenience for a tab left open, not a monitor;
+   it cannot fire once the tab/browser is fully closed. ---- */
+const WARDS_OVERDUE_NOTIFY_KEY = 'wards_overdue_notify_v1';
+function getOverdueNotifyPref(){
+  try{ return localStorage.getItem(WARDS_OVERDUE_NOTIFY_KEY) === '1'; }catch(e){ return false; }
+}
+function setOverdueNotifyPref(on){
+  try{ localStorage.setItem(WARDS_OVERDUE_NOTIFY_KEY, on ? '1' : '0'); }catch(e){}
+}
+const wardsOverdueNotified = new Set(); // patient ids already notified for their CURRENT overdue episode
+let wardsOverdueSweepTimer = null;
+
+function wardsOverdueSweepTick(){
+  if(!getOverdueNotifyPref() || wardsDemoMode) return;
+  if(typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
+  const now = Date.now();
+  const activeIds = new Set();
+  vitalsState.patients.forEach(p => {
+    if(!isPatientActive(p)) return;
+    const overdue = isVitalsPatientOverdue(p, now);
+    if(overdue) activeIds.add(p.id);
+    if(!overdue && wardsOverdueNotified.has(p.id)) wardsOverdueNotified.delete(p.id); // episode cleared -- arm for next time
+    if(overdue && !wardsOverdueNotified.has(p.id)){
+      wardsOverdueNotified.add(p.id);
+      try{
+        const n = new Notification('Wards — patient overdue', {
+          body: `${p.name || 'Unnamed'} (bed ${p.bed || '—'}) hasn't had a reading in over ${effectiveUnseenThresholdHours(p)}h.`,
+          tag: 'wards-overdue-' + p.id, // replaces any stale notification for the same patient rather than stacking
+          silent: false
+        });
+        n.onclick = () => { try{ window.focus(); }catch(e){} };
+      }catch(e){ /* some browsers/OSes reject Notification construction outside a few contexts -- non-fatal */ }
+    }
+  });
+  // Drop bookkeeping for patients no longer active at all (discharged,
+  // deleted) so this Set can't grow across a long shift.
+  Array.from(wardsOverdueNotified).forEach(id => { if(!activeIds.has(id)) wardsOverdueNotified.delete(id); });
+}
+function setupOverdueNotifySweep(){
+  if(wardsOverdueSweepTimer) return;
+  wardsOverdueSweepTimer = setInterval(wardsOverdueSweepTick, 60000);
+}
+
 function setupCriticalAlertSettings(){
   const soundToggle = document.getElementById('wards-critical-sound-toggle');
   const vibrationToggle = document.getElementById('wards-critical-vibration-toggle');
@@ -9285,6 +9343,44 @@ function setupCriticalAlertSettings(){
       if(el === soundToggle && el.checked) playCriticalAlertTone();
       if(el === vibrationToggle && el.checked) criticalAlertVibrate();
     });
+  });
+}
+
+function setupOverdueNotifyToggle(){
+  const toggle = document.getElementById('wards-overdue-notify-toggle');
+  const note = document.getElementById('wards-overdue-notify-note');
+  if(!toggle) return;
+  const supported = typeof Notification !== 'undefined';
+  if(!supported){
+    toggle.disabled = true;
+    if(note) note.textContent = 'Not supported in this browser.';
+    return;
+  }
+  // Reflects the REAL current state, not just the saved preference — if
+  // the browser permission was revoked (or was never actually granted)
+  // since this was last turned on, the checkbox shouldn't silently claim
+  // to be active when nothing will actually fire.
+  toggle.checked = getOverdueNotifyPref() && Notification.permission === 'granted';
+  setupOverdueNotifySweep(); // the interval itself is cheap/inert whenever the pref or permission is off
+  if(toggle.dataset.wired) return;
+  toggle.dataset.wired = '1';
+  toggle.addEventListener('change', async () => {
+    if(!toggle.checked){
+      setOverdueNotifyPref(false);
+      return;
+    }
+    if(Notification.permission === 'denied'){
+      toggle.checked = false;
+      showToast('Notifications are blocked for this site in your browser settings.', 'err');
+      return;
+    }
+    const perm = Notification.permission === 'granted' ? 'granted' : await Notification.requestPermission();
+    if(perm !== 'granted'){
+      toggle.checked = false;
+      return;
+    }
+    setOverdueNotifyPref(true);
+    wardsOverdueSweepTick(); // catch anyone already overdue right now, instead of waiting up to a minute
   });
 }
 
@@ -10298,6 +10394,55 @@ function autosaveVitalsReadingIfNeeded(){
   const entry = readVitalsFormEntry();
   if(!vitalsEntryHasAnyVital(entry) && !entry.notes) return; // nothing typed, nothing to save
   finalizeVitalsEntrySave(p, entry);
+}
+
+/* ---- screen wake lock while actively charting ----
+   The obs form is exactly the "hold the phone, type several fields over
+   20-30 seconds" case screen-off timeouts are worst for -- gloved hands
+   fumbling to unlock mid-entry, repeated every reading, every patient,
+   every round. navigator.wakeLock ('screen' lock) keeps the display on
+   for as long as this tab is visible; the OS/browser can still revoke it
+   at any time (low battery, etc.) and it's always released the instant
+   the tab is hidden or the document loses visibility -- this only
+   re-acquires when a form field is genuinely focused again, never holds
+   the screen on in the background. Silently a no-op on any browser
+   without the API (older Safari, some WebViews) -- charting still works
+   exactly as before, just without this convenience. */
+let wardsWakeLockSentinel = null;
+async function wardsAcquireWakeLock(){
+  if(!('wakeLock' in navigator) || wardsWakeLockSentinel) return;
+  try{
+    wardsWakeLockSentinel = await navigator.wakeLock.request('screen');
+    wardsWakeLockSentinel.addEventListener('release', () => { wardsWakeLockSentinel = null; });
+  }catch(e){ /* denied, unsupported, or tab not visible -- charting is unaffected either way */ }
+}
+function wardsReleaseWakeLock(){
+  if(!wardsWakeLockSentinel) return;
+  const sentinel = wardsWakeLockSentinel;
+  wardsWakeLockSentinel = null;
+  sentinel.release().catch(() => {});
+}
+function setupVitalsWakeLock(){
+  const form = document.getElementById('vitals-entry-form');
+  if(!form || form.dataset.wakeLockWired) return;
+  form.dataset.wakeLockWired = '1';
+  form.addEventListener('focusin', wardsAcquireWakeLock);
+  form.addEventListener('focusout', e => {
+    // Only release once focus has actually left the form (not just moved
+    // from one field to another inside it) -- relatedTarget is where
+    // focus is GOING, so this checks that target isn't still inside.
+    if(e.relatedTarget && form.contains(e.relatedTarget)) return;
+    wardsReleaseWakeLock();
+  });
+  // A wake lock is auto-released by the browser the instant the tab is
+  // hidden (spec behaviour, not a bug) -- reacquire on return ONLY if a
+  // field in this form still has focus, so backgrounding the app never
+  // holds the screen on for a tab that isn't even being looked at.
+  document.addEventListener('visibilitychange', () => {
+    if(!document.hidden && document.activeElement && form.contains(document.activeElement)){
+      wardsAcquireWakeLock();
+    }
+  });
 }
 // Watches #view-vitals's own [hidden] attribute (toggled by the app's
 // shared switchView() whenever the user picks a different tab) and
