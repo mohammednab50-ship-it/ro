@@ -215,6 +215,38 @@ function groupDoc(groupId) {
   return /databases/$(database)/documents/wardGroups/$(groupId);
 }
 
+function userDoc(uid) {
+  return /databases/$(database)/documents/users/$(uid);
+}
+
+// ---- OPD (outpatient) access control ----
+// OPD deliberately does NOT reuse departmentMemberships/wardGroups: those
+// model "which ward group(s) is this person in" for INPATIENT charting,
+// where a patient's data lives inside one specific group. OPD's whole
+// point is the opposite -- one patient record shared hospital-wide, with
+// every department's visits visible together (see wards.html's OPD
+// module) -- so what OPD actually needs is a single per-user "which
+// hospital, which department" assignment, not group membership.
+//
+// That assignment lives directly on the user's own profile doc
+// (users/{uid}.opdHospitalId / .opdDepartment) specifically so it can be
+// admin-controlled: see the isValidOpdAssignmentUpdate branch on
+// `match /users/{uid}` below, which is the ONLY way those two fields can
+// ever change, and only a hospital admin can invoke it (never the user
+// themselves) -- "assigned by hospital admin," not user self-service.
+function isOpdMember(hospitalId) {
+  return signedIn() && hospitalId != null
+    && exists(userDoc(request.auth.uid))
+    && get(userDoc(request.auth.uid)).data.get('opdHospitalId', null) == hospitalId;
+}
+
+// The department a signed-in OPD member is currently assigned to (null
+// if they aren't an OPD member of any hospital at all). Only meaningful
+// after isOpdMember() has already confirmed the doc exists.
+function opdMemberDepartment() {
+  return get(userDoc(request.auth.uid)).data.get('opdDepartment', null);
+}
+
 // Whether the CALLER (never a client-supplied uid/email -- always the
 // requester's own verified auth token email) has a pending invite to
 // this group. Doc id is the lowercased email, enforced at invite-create
@@ -331,9 +363,35 @@ match /databases/{database}/documents {
     // senderRole in wards.html) -- validate them here rather than trust
     // the client's maxlength attribute, which is UI-only and doesn't
     // stop a modified client from writing anything.
-    allow create, update: if signedIn() && request.auth.uid == uid
+    allow create: if signedIn() && request.auth.uid == uid
       && (!('role' in request.resource.data) || request.resource.data.role in ['doctor', 'nurse', 'intern', 'student', 'student-nurse'])
-      && (!('displayName' in request.resource.data) || (request.resource.data.displayName is string && request.resource.data.displayName.size() <= 80));
+      && (!('displayName' in request.resource.data) || (request.resource.data.displayName is string && request.resource.data.displayName.size() <= 80))
+      && !('opdHospitalId' in request.resource.data) && !('opdDepartment' in request.resource.data);
+    // Two entirely separate ways this doc can be updated, never both at
+    // once in the same write:
+    //   (a) the user themselves, touching their own displayName/role --
+    //       same validation as create, and explicitly forbidden from
+    //       touching opdHospitalId/opdDepartment in this branch (self-
+    //       service can't grant/change its own OPD department access).
+    //   (b) a hospital admin, touching ONLY opdHospitalId/opdDepartment
+    //       on ANY user's doc -- this is the entire "assigned by hospital
+    //       admin" workflow made real: a user can never set their own OPD
+    //       department, only an admin of the hospital being assigned can.
+    allow update: if signedIn() && (
+      (
+        request.auth.uid == uid
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['displayName', 'role', 'email'])
+        && (!('role' in request.resource.data) || request.resource.data.role in ['doctor', 'nurse', 'intern', 'student', 'student-nurse'])
+        && (!('displayName' in request.resource.data) || (request.resource.data.displayName is string && request.resource.data.displayName.size() <= 80))
+        && (!('email' in request.resource.data) || request.resource.data.email is string)
+      )
+      || (
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['opdHospitalId', 'opdDepartment'])
+        && request.resource.data.opdHospitalId is string
+        && isHospitalAdmin(request.resource.data.opdHospitalId)
+        && (!('opdDepartment' in request.resource.data) || request.resource.data.opdDepartment == null || (request.resource.data.opdDepartment is string && request.resource.data.opdDepartment.size() <= 60))
+      )
+    );
     allow delete: if signedIn() && request.auth.uid == uid;
   }
 
@@ -667,6 +725,66 @@ match /databases/{database}/documents {
         && request.resource.data.text.size() > 0
         && request.resource.data.text.size() <= 2000;
       allow update, delete: if false;
+    }
+  }
+
+  // ---- OPD (outpatient) -- one patient record per hospital, shared
+  // across every department, with every department's visits visible
+  // together (see wards.html's OPD module and isOpdMember()/
+  // opdMemberDepartment() above for the full design rationale). Nested
+  // under hospitals/{hospitalId} (like wardGroups/{groupId}/patients) so
+  // hospital scoping is structural -- the path segment IS the hospital
+  // id -- rather than a query-time filter a `list` rule can't validate.
+  match /hospitals/{hospitalId}/opdPatients/{patientId} {
+    allow get, list: if isOpdMember(hospitalId) || isHospitalAdmin(hospitalId);
+    allow create: if (isOpdMember(hospitalId) || isHospitalAdmin(hospitalId))
+      && request.resource.data.createdBy == request.auth.uid
+      && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120
+      && (!('age' in request.resource.data) || request.resource.data.age == null || (request.resource.data.age is number && request.resource.data.age >= 0 && request.resource.data.age <= 130))
+      && (!('gender' in request.resource.data) || request.resource.data.gender is string)
+      && (!('mrn' in request.resource.data) || request.resource.data.mrn is string);
+    // Demographic corrections only -- createdBy/createdAt are permanent
+    // once set (never re-attributable to someone else after the fact),
+    // and only the original creator or this hospital's admin may correct
+    // a patient's own details at all.
+    allow update: if (resource.data.createdBy == request.auth.uid || isHospitalAdmin(hospitalId))
+      && request.resource.data.createdBy == resource.data.createdBy
+      && request.resource.data.createdAt == resource.data.createdAt
+      && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120;
+    // No client-side delete -- a hospital admin correcting a genuine
+    // duplicate/test entry is a rare enough case to handle by hand
+    // (console/support) rather than build a delete path for patient
+    // identity records this early.
+    allow delete: if false;
+
+    // Visits are the actual clinical content (diagnosis/plan/follow-up).
+    // Read is hospital-wide (isOpdMember of ANY department, or the
+    // hospital admin) -- this is what makes "an ENT doctor can see a
+    // patient's prior cardiology visit" true server-side, not just a
+    // client-side rendering choice. Create is scoped to the writer's OWN
+    // assigned department (opdMemberDepartment(), which only a hospital
+    // admin can ever set -- see users/{uid} above) unless they're the
+    // hospital admin, so a user assigned to ENT cannot file a Cardiology
+    // visit no matter what the client sends. Immutable once created (no
+    // update) -- a wrong entry needs a correction workflow (amendments
+    // with visible history), not a silent overwrite; that's a follow-up,
+    // not this pass. Hospital admin may delete for genuine corrections.
+    match /visits/{visitId} {
+      allow get, list: if isOpdMember(hospitalId) || isHospitalAdmin(hospitalId);
+      allow create: if signedIn()
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.department is string && request.resource.data.department.size() > 0 && request.resource.data.department.size() <= 60
+        && request.resource.data.date is string
+        && (!('chiefComplaint' in request.resource.data) || (request.resource.data.chiefComplaint is string && request.resource.data.chiefComplaint.size() <= 500))
+        && (!('diagnosis' in request.resource.data) || (request.resource.data.diagnosis is string && request.resource.data.diagnosis.size() <= 2000))
+        && (!('plan' in request.resource.data) || (request.resource.data.plan is string && request.resource.data.plan.size() <= 2000))
+        && (!('followUpDate' in request.resource.data) || request.resource.data.followUpDate is string)
+        && (
+          isHospitalAdmin(hospitalId)
+          || (isOpdMember(hospitalId) && request.resource.data.department == opdMemberDepartment())
+        );
+      allow update: if false;
+      allow delete: if isHospitalAdmin(hospitalId);
     }
   }
 

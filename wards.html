@@ -3099,6 +3099,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
           <div class="ws-row" style="gap:8px;margin-bottom:8px;">
             <button type="button" class="settings-btn" id="wards-sync-newhospital-btn">Create hospital…</button>
             <button type="button" class="settings-btn" id="wards-sync-hospitaladmins-btn" disabled>Admins…</button>
+            <button type="button" class="settings-btn" id="wards-sync-assignopd-btn" disabled>Assign OPD dept…</button>
           </div>
           <div class="wards-billing-card" id="wards-billing-row" hidden>
             <span class="wards-billing-plan-label">Plan</span>
@@ -4375,6 +4376,18 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   </div>
 </div>
 
+<div class="wards-qr-modal" id="wards-assignopd-modal" hidden>
+  <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-assignopd-title">
+    <button type="button" class="mat-lb-close" id="wards-assignopd-close" aria-label="Close">&times;</button>
+    <h3 id="wards-assignopd-title">Assign OPD department</h3>
+    <div class="ws-row"><input type="email" id="wards-assignopd-email" class="settings-select w-100" placeholder="Staff member's email" autocomplete="off"></div>
+    <select id="wards-assignopd-dept" class="settings-select w-100" style="margin-top:8px;"></select>
+    <p class="login-error" id="wards-assignopd-error" role="alert"></p>
+    <button type="button" class="settings-btn w-100" id="wards-assignopd-save-btn" style="margin-top:8px;">Assign</button>
+    <p class="wards-qr-disclaimer">Restricts that account's OPD view to this one department (or clear it to remove the restriction). They must already have a Wards account for this hospital's OPD assignment to take effect — only this hospital's admin can set it.</p>
+  </div>
+</div>
+
 <div class="wards-qr-modal" id="wards-newgroup-modal" hidden>
   <div class="wards-qr-card" role="dialog" aria-modal="true" aria-labelledby="wards-newgroup-title">
     <button type="button" class="mat-lb-close" id="wards-newgroup-close" aria-label="Close">&times;</button>
@@ -4452,9 +4465,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <option value="student-nurse">Student Nurse</option>
       </select>
     </div>
-    <div class="wards-login-field">
-      <label for="wards-profile-department">Your OPD department <span>(optional — set by your hospital admin)</span></label>
-      <select id="wards-profile-department"></select>
+    <div class="wards-login-field" id="wards-profile-opd-dept-row" hidden>
+      <label>Your OPD department</label>
+      <p class="wards-login-sub" id="wards-profile-opd-dept-value" style="margin:2px 0 0;">Not assigned</p>
     </div>
     <p class="login-error" id="wards-profile-error" role="alert"></p>
     <div class="wards-login-actions">
@@ -5982,13 +5995,17 @@ async function initWardsFirebase(){
 /* Shared with the OPD module further down the file (plain closure lookup,
    not window.*) -- placeholder list, swap for the real one whenever it's
    confirmed. Also doubles as the "assigned department" choices on the
-   profile modal below, since that's the only place today that can
-   plausibly stand in for a hospital admin's assignment. */
+   "Assign OPD department…" admin control (see wardsAssignOpdDepartment)
+   for the actual list of choices offered when assigning someone. */
 const OPD_DEPARTMENTS = ['General', 'Cardiology', 'ENT', 'Orthopedics', 'Pediatrics', 'Gynecology'];
 
 let currentWardsUser = null;
 let wardsCurrentUserRole = null;
+// Both admin-assigned only (users/{uid}.opdDepartment/.opdHospitalId,
+// see firestore.rules) -- never self-set. Populated from the user's own
+// profile doc in wardsApplyOpdAssignment(), and cleared on sign-out.
 let wardsCurrentUserDepartment = null;
+let wardsCurrentUserOpdHospitalId = null;
 let wardsMyGroups = [];
 let activeSyncGroupId = null;
 let wardsGroupsUnsub = null;
@@ -6274,10 +6291,14 @@ async function wardsGetProfile(uid){
     return snap.exists ? snap.data() : null;
   }catch(e){ return null; }
 }
-async function wardsSaveProfile(user, name, role, department){
+async function wardsSaveProfile(user, name, role){
   if(!wfdb) return;
+  // Deliberately no `department`/OPD field here -- OPD department
+  // assignment is admin-only now (see wardsAssignOpdDepartment and the
+  // users/{uid} update rule in firestore.rules), never something a user
+  // sets on their own profile.
   await wfdb.collection('users').doc(user.uid).set({
-    email: user.email || '', displayName: name, role, department: department || null
+    email: user.email || '', displayName: name, role
   }, { merge: true });
   // Keep Firebase Auth's own displayName in sync too -- wardsChatDisplayName()
   // (used for every chat message, announcement, and invite) reads
@@ -6298,34 +6319,44 @@ function wardsRenderWelcomeGreeting(name, role){
   void el.offsetWidth; // force reflow so the class removal registers before re-adding
   el.classList.add('wce-in');
 }
+// Reflects the admin-assigned OPD department (if any) into wardsCurrentUser*
+// globals and the read-only profile-modal row -- called from both
+// wardsGateOnProfile below and whenever the profile modal is shown, since
+// this value can never be set from here, only displayed.
+function wardsApplyOpdAssignment(profile){
+  wardsCurrentUserDepartment = (profile && profile.opdDepartment) || null;
+  wardsCurrentUserOpdHospitalId = (profile && profile.opdHospitalId) || null;
+  const row = document.getElementById('wards-profile-opd-dept-row');
+  const valueEl = document.getElementById('wards-profile-opd-dept-value');
+  if(row && valueEl){
+    if(wardsCurrentUserOpdHospitalId){
+      row.hidden = false;
+      valueEl.textContent = wardsCurrentUserDepartment || 'All departments (no restriction)';
+    }else{
+      row.hidden = true;
+    }
+  }
+  if(typeof window.refreshOpdAccess === 'function') window.refreshOpdAccess();
+}
 let wardsProfileGateWired = false;
 function wardsWireProfileGateOnce(){
   if(wardsProfileGateWired) return;
   wardsProfileGateWired = true;
   const nameInput = document.getElementById('wards-profile-name');
   const roleSelect = document.getElementById('wards-profile-role');
-  const deptSelect = document.getElementById('wards-profile-department');
   const errEl = document.getElementById('wards-profile-error');
   const saveBtn = document.getElementById('wards-profile-save-btn');
-  if(deptSelect && !deptSelect.dataset.populated){
-    deptSelect.innerHTML = '<option value="">— not assigned yet —</option>' +
-      OPD_DEPARTMENTS.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
-    deptSelect.dataset.populated = '1';
-  }
   saveBtn.addEventListener('click', async () => {
     errEl.textContent = '';
     const name = (nameInput.value || '').trim();
     const role = roleSelect.value;
-    const department = deptSelect ? deptSelect.value : '';
     if(!name){ errEl.textContent = 'Enter your name.'; return; }
     if(!role){ errEl.textContent = 'Select your role.'; return; }
     saveBtn.disabled = true;
     try{
       const user = saveBtn._pendingUser;
-      await wardsSaveProfile(user, name, role, department);
+      await wardsSaveProfile(user, name, role);
       wardsCurrentUserRole = role;
-      wardsCurrentUserDepartment = department || null;
-      if(typeof window.refreshOpdAccess === 'function') window.refreshOpdAccess();
       wardsRenderWelcomeGreeting(name, role);
       const modal = document.getElementById('wards-profile-modal');
       modal.hidden = true; modal.classList.remove('show');
@@ -6344,10 +6375,9 @@ function wardsWireProfileGateOnce(){
    of its own to hook into). */
 function wardsGateOnProfile(user){
   return wardsGetProfile(user.uid).then(profile => {
+    wardsApplyOpdAssignment(profile);
     if(profile && profile.displayName && profile.role){
       wardsCurrentUserRole = profile.role;
-      wardsCurrentUserDepartment = profile.department || null;
-      if(typeof window.refreshOpdAccess === 'function') window.refreshOpdAccess();
       wardsRenderWelcomeGreeting(profile.displayName, profile.role);
       return;
     }
@@ -6355,13 +6385,12 @@ function wardsGateOnProfile(user){
     return new Promise(resolve => {
       const nameInput = document.getElementById('wards-profile-name');
       const roleSelect = document.getElementById('wards-profile-role');
-      const deptSelect = document.getElementById('wards-profile-department');
       const errEl = document.getElementById('wards-profile-error');
       const saveBtn = document.getElementById('wards-profile-save-btn');
+      const modal = document.getElementById('wards-profile-modal'); // was missing entirely -- threw ReferenceError on every genuine first-time signup
       errEl.textContent = '';
       nameInput.value = (profile && profile.displayName) || user.displayName || '';
       roleSelect.value = (profile && profile.role) || '';
-      if(deptSelect) deptSelect.value = (profile && profile.department) || '';
       saveBtn._pendingUser = user;
       saveBtn._pendingOnDone = resolve;
       modal.hidden = false; modal.classList.add('show');
@@ -6531,6 +6560,21 @@ async function wardsAddCoAdmin(kind, docId, email){
   if(!uid) throw new Error('No account found for that email yet — ask them to sign up first, then try again.');
   const ref = wfdb.collection(wardsAdminsCollectionName(kind)).doc(docId);
   await ref.update({ [`admins.${uid}`]: { role: 'admin', email: wardsEmailKey(trimmed), joinedAt: new Date().toISOString() } });
+}
+
+// The entire "assigned by hospital admin" workflow made real: only this
+// hospital's admin can call this (enforced server-side by the
+// users/{uid} update rule's isHospitalAdmin(request.resource.data.
+// opdHospitalId) check -- a plain member calling this themselves would
+// get rejected by Firestore regardless of what the client shows).
+async function wardsAssignOpdDepartment(hospitalId, email, department){
+  const ok = await initWardsFirebase();
+  if(!ok || !currentWardsUser) throw new Error('Sign in first.');
+  const trimmed = (email || '').trim();
+  if(!trimmed) throw new Error('Enter an email address.');
+  const uid = await wardsFindUidByEmail(trimmed);
+  if(!uid) throw new Error('No account found for that email yet — ask them to sign up first, then try again.');
+  await wfdb.collection('users').doc(uid).set({ opdHospitalId: hospitalId, opdDepartment: department || null }, { merge: true });
 }
 
 async function wardsRemoveCoAdmin(kind, docId, uid){
@@ -6999,6 +7043,8 @@ function renderWardsGroupSelect(){
   if(newGroupBtn) newGroupBtn.disabled = !activeHospitalId;
   const hospAdminsBtn = document.getElementById('wards-sync-hospitaladmins-btn');
   if(hospAdminsBtn) hospAdminsBtn.disabled = !activeHospitalId;
+  const assignOpdBtn = document.getElementById('wards-sync-assignopd-btn');
+  if(assignOpdBtn) assignOpdBtn.disabled = !activeHospitalId;
   const deptAdminsBtn = document.getElementById('wards-sync-deptadmins-btn');
   if(deptAdminsBtn) deptAdminsBtn.disabled = !activeDepartmentId;
   const inviteBtn = document.getElementById('wards-sync-invite-btn');
@@ -7392,6 +7438,7 @@ async function wardsOnAuthChanged(user){
     wardsMyPendingInvites = [];
     wardsCurrentUserRole = null;
     wardsCurrentUserDepartment = null;
+    wardsCurrentUserOpdHospitalId = null;
     if(typeof window.refreshOpdAccess === 'function') window.refreshOpdAccess();
     wardsRenderWelcomeGreeting(null, null);
     wardsShowLoginGate();
@@ -7512,6 +7559,39 @@ function setupWardsSyncUI(){
 
   const deptSelect = document.getElementById('wards-sync-department-select');
   if(deptSelect) deptSelect.addEventListener('change', () => { selectWardsDepartment(deptSelect.value || null); });
+
+  const assignOpdBtn = document.getElementById('wards-sync-assignopd-btn');
+  const assignOpdModal = document.getElementById('wards-assignopd-modal');
+  const assignOpdClose = document.getElementById('wards-assignopd-close');
+  const assignOpdEmail = document.getElementById('wards-assignopd-email');
+  const assignOpdDept = document.getElementById('wards-assignopd-dept');
+  const assignOpdErr = document.getElementById('wards-assignopd-error');
+  const assignOpdSaveBtn = document.getElementById('wards-assignopd-save-btn');
+  if(assignOpdBtn && assignOpdModal){
+    assignOpdBtn.addEventListener('click', () => {
+      if(!activeHospitalId) return;
+      if(assignOpdErr) assignOpdErr.textContent = '';
+      if(assignOpdEmail) assignOpdEmail.value = '';
+      if(assignOpdDept) assignOpdDept.innerHTML = '<option value="">No restriction (sees every department)</option>' + OPD_DEPARTMENTS.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+      assignOpdModal.hidden = false; assignOpdModal.classList.add('show');
+      if(assignOpdEmail) assignOpdEmail.focus();
+    });
+  }
+  if(assignOpdClose) assignOpdClose.addEventListener('click', () => { assignOpdModal.hidden = true; assignOpdModal.classList.remove('show'); });
+  if(assignOpdSaveBtn) assignOpdSaveBtn.addEventListener('click', async () => {
+    if(assignOpdErr) assignOpdErr.textContent = '';
+    if(!activeHospitalId){ if(assignOpdErr) assignOpdErr.textContent = 'Select a hospital first.'; return; }
+    assignOpdSaveBtn.disabled = true;
+    try{
+      await wardsAssignOpdDepartment(activeHospitalId, assignOpdEmail.value, assignOpdDept.value);
+      assignOpdModal.hidden = true; assignOpdModal.classList.remove('show');
+      showToast('OPD department assigned.', 'ok');
+    }catch(e){
+      if(assignOpdErr) assignOpdErr.textContent = (e && e.message) || 'Could not assign — try again.';
+    }finally{
+      assignOpdSaveBtn.disabled = false;
+    }
+  });
 
   const newDeptBtn = document.getElementById('wards-sync-newdepartment-btn');
   const newDeptModal = document.getElementById('wards-newdepartment-modal');
@@ -13485,7 +13565,34 @@ function opdVisibleDepartments(){
   return opdIsRestricted() ? [wardsCurrentUserDepartment] : OPD_DEPARTMENTS;
 }
 
+// Cloud mode kicks in only once a hospital admin has actually assigned
+// this account an OPD hospital -- same "local by default, syncs once you
+// join something real" default as inpatient ward groups. Local/offline
+// OPD use (the common case: no hospital, or not yet assigned) keeps
+// working exactly as the original foundation pass did.
+function opdCloudMode(){
+  return !!(window.wardsCurrentUserOpdHospitalId && window.currentWardsUser && window.wfdb);
+}
+function opdPatientsCol(){
+  return window.wfdb.collection('hospitals').doc(window.wardsCurrentUserOpdHospitalId).collection('opdPatients');
+}
+let opdPatientsUnsub = null;
+let opdVisitsUnsub = null;
+function opdUnsubscribeAll(){
+  if(opdPatientsUnsub){ opdPatientsUnsub(); opdPatientsUnsub = null; }
+  if(opdVisitsUnsub){ opdVisitsUnsub(); opdVisitsUnsub = null; }
+}
+
+// Local-mode load is synchronous (unchanged from the original
+// foundation pass); cloud-mode load starts a live subscription instead
+// and re-renders whenever it fires -- see subscribeOpdCloudPatients().
 function loadOpdData(){
+  opdUnsubscribeAll();
+  if(opdCloudMode()){
+    opdState = { patients: [], visits: {}, activePatientId: opdState.activePatientId || null };
+    subscribeOpdCloudPatients();
+    return;
+  }
   try{
     const raw = localStorage.getItem(OPD_KEY);
     const parsed = raw ? JSON.parse(raw) : null;
@@ -13496,8 +13603,39 @@ function loadOpdData(){
     };
   }catch(e){ opdState = { patients: [], visits: {}, activePatientId: null }; }
 }
+// Local-mode-only persistence -- cloud mode's state is server-driven
+// (each write goes straight to Firestore; re-render happens from the
+// onSnapshot callback, not from calling this).
 function saveOpdData(){
+  if(opdCloudMode()) return;
   try{ localStorage.setItem(OPD_KEY, JSON.stringify(opdState)); }catch(e){}
+}
+
+function subscribeOpdCloudPatients(){
+  opdPatientsUnsub = opdPatientsCol().onSnapshot(snap => {
+    opdState.patients = snap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
+    if(opdState.activePatientId && !opdState.patients.some(p => p.id === opdState.activePatientId)){
+      opdState.activePatientId = null;
+    }
+    renderOpdPatientList();
+    renderOpdMain();
+  }, err => {
+    console.warn('Wards: OPD patient sync listener error', err);
+    showToast('OPD sync paused — could not reach the server.', 'err');
+  });
+}
+function subscribeOpdCloudVisits(patientId){
+  if(opdVisitsUnsub){ opdVisitsUnsub(); opdVisitsUnsub = null; }
+  if(!patientId) return;
+  opdVisitsUnsub = opdPatientsCol().doc(patientId).collection('visits').onSnapshot(snap => {
+    opdState.visits[patientId] = snap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
+    renderOpdVisitList();
+    renderOpdSidePanel(opdActivePatient());
+    renderOpdPatientList(); // department badge in the roster depends on visit data too
+  }, err => {
+    console.warn('Wards: OPD visit sync listener error', err);
+    showToast('OPD sync paused — could not reach the server.', 'err');
+  });
 }
 function genOpdId(prefix){
   return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
@@ -13804,6 +13942,7 @@ function renderOpdMain(){
 function selectOpdPatient(id){
   opdState.activePatientId = id;
   saveOpdData();
+  if(opdCloudMode()) subscribeOpdCloudVisits(id);
   renderOpdPatientList();
   renderOpdMain();
 }
@@ -13858,27 +13997,45 @@ function setupOpdUI(){
   const cancelPatientBtn = document.getElementById('opd-cancel-patient-btn');
   if(cancelPatientBtn) cancelPatientBtn.addEventListener('click', () => { addForm.hidden = true; });
   const savePatientBtn = document.getElementById('opd-save-patient-btn');
-  if(savePatientBtn) savePatientBtn.addEventListener('click', () => {
+  if(savePatientBtn) savePatientBtn.addEventListener('click', async () => {
     const name = document.getElementById('opd-new-name').value.trim();
     if(!name){ showToast('Enter a name.', 'err'); return; }
-    const p = {
-      id: genOpdId('opdpt'),
+    const base = {
       name,
       age: document.getElementById('opd-new-age').value ? Number(document.getElementById('opd-new-age').value) : null,
       gender: document.getElementById('opd-new-gender').value || '',
-      mrn: document.getElementById('opd-new-mrn').value.trim(),
-      createdAt: new Date().toISOString()
+      mrn: document.getElementById('opd-new-mrn').value.trim()
     };
-    opdState.patients.push(p);
-    document.getElementById('opd-new-name').value = '';
-    document.getElementById('opd-new-age').value = '';
-    document.getElementById('opd-new-gender').value = '';
-    document.getElementById('opd-new-mrn').value = '';
-    addForm.hidden = true;
-    saveOpdData();
-    selectOpdPatient(p.id);
-    haptic('Medium');
-    showToast('OPD patient added.', 'ok');
+    savePatientBtn.disabled = true;
+    try{
+      let newId;
+      if(opdCloudMode()){
+        const payload = Object.assign({}, base, {
+          createdBy: window.currentWardsUser.uid,
+          createdAt: new Date().toISOString()
+        });
+        const ref = await opdPatientsCol().add(payload);
+        newId = ref.id;
+      }else{
+        const p = Object.assign({ id: genOpdId('opdpt'), createdBy: null, createdAt: new Date().toISOString() }, base);
+        opdState.patients.push(p);
+        saveOpdData();
+        newId = p.id;
+      }
+      document.getElementById('opd-new-name').value = '';
+      document.getElementById('opd-new-age').value = '';
+      document.getElementById('opd-new-gender').value = '';
+      document.getElementById('opd-new-mrn').value = '';
+      addForm.hidden = true;
+      selectOpdPatient(newId);
+      haptic('Medium');
+      showToast('OPD patient added.', 'ok');
+    }catch(e){
+      console.warn('Wards: could not add OPD patient', e);
+      showToast('Could not add patient — try again.', 'err');
+    }finally{
+      savePatientBtn.disabled = false;
+    }
   });
 
   const addVisitBtn = document.getElementById('opd-add-visit-btn');
@@ -13893,32 +14050,57 @@ function setupOpdUI(){
   const cancelVisitBtn = document.getElementById('opd-cancel-visit-btn');
   if(cancelVisitBtn) cancelVisitBtn.addEventListener('click', () => { visitForm.hidden = true; });
   const saveVisitBtn = document.getElementById('opd-save-visit-btn');
-  if(saveVisitBtn) saveVisitBtn.addEventListener('click', () => {
+  if(saveVisitBtn) saveVisitBtn.addEventListener('click', async () => {
     const p = opdActivePatient();
     if(!p) return;
+    const department = document.getElementById('opd-visit-dept').value;
+    // Mirrors the server-side check in firestore.rules -- a restricted
+    // user's <select> is disabled to their one department already, but a
+    // client is never trusted for authorization, only for a clear error
+    // message before even attempting the write.
+    if(opdIsRestricted() && department !== wardsCurrentUserDepartment){
+      showToast('You can only file visits under your assigned department.', 'err');
+      return;
+    }
     const date = document.getElementById('opd-visit-date').value || new Date().toISOString().slice(0, 10);
-    const visit = {
-      id: genOpdId('opdvisit'),
-      department: document.getElementById('opd-visit-dept').value,
+    const base = {
+      department,
       date,
       chiefComplaint: document.getElementById('opd-visit-complaint').value.trim(),
       diagnosis: document.getElementById('opd-visit-diagnosis').value.trim(),
       plan: document.getElementById('opd-visit-plan').value.trim(),
-      followUpDate: document.getElementById('opd-visit-followup').value || '',
-      ts: new Date().toISOString()
+      followUpDate: document.getElementById('opd-visit-followup').value || ''
     };
-    if(!opdState.visits[p.id]) opdState.visits[p.id] = [];
-    opdState.visits[p.id].push(visit);
-    document.getElementById('opd-visit-complaint').value = '';
-    document.getElementById('opd-visit-diagnosis').value = '';
-    document.getElementById('opd-visit-plan').value = '';
-    document.getElementById('opd-visit-followup').value = '';
-    visitForm.hidden = true;
-    saveOpdData();
-    renderOpdPatientList();
-    renderOpdMain(); // refreshes the quick-stats row (visit count/last seen/depts) too, not just the visit list
-    haptic('Medium');
-    showToast('Visit saved.', 'ok');
+    saveVisitBtn.disabled = true;
+    try{
+      if(opdCloudMode()){
+        const payload = Object.assign({}, base, {
+          createdBy: window.currentWardsUser.uid,
+          createdAt: new Date().toISOString(),
+          ts: new Date().toISOString()
+        });
+        await opdPatientsCol().doc(p.id).collection('visits').add(payload);
+      }else{
+        const visit = Object.assign({ id: genOpdId('opdvisit'), createdBy: null, ts: new Date().toISOString() }, base);
+        if(!opdState.visits[p.id]) opdState.visits[p.id] = [];
+        opdState.visits[p.id].push(visit);
+        saveOpdData();
+      }
+      document.getElementById('opd-visit-complaint').value = '';
+      document.getElementById('opd-visit-diagnosis').value = '';
+      document.getElementById('opd-visit-plan').value = '';
+      document.getElementById('opd-visit-followup').value = '';
+      visitForm.hidden = true;
+      renderOpdPatientList();
+      renderOpdMain(); // refreshes the quick-stats row (visit count/last seen/depts) too, not just the visit list
+      haptic('Medium');
+      showToast('Visit saved.', 'ok');
+    }catch(e){
+      console.warn('Wards: could not save OPD visit', e);
+      showToast('Could not save visit — try again.', 'err');
+    }finally{
+      saveVisitBtn.disabled = false;
+    }
   });
 }
 
@@ -13927,12 +14109,19 @@ function initOpd(){
 }
 window.initOpd = initOpd;
 window.getOpdData = () => opdState;
-// Re-applies department access after sign-in/profile save if the OPD tab
+// Re-applies department access AND re-evaluates local-vs-cloud mode
+// after sign-in/sign-out/profile-save/admin-assignment, if the OPD tab
 // was already opened earlier in the session (setupOpdUI only runs once).
+// Switching a whole open session from local to cloud data (or back) is
+// exactly what happens the moment a hospital admin assigns this account
+// an OPD department while it's already sitting on the OPD tab.
 window.refreshOpdAccess = function(){
   if(!document.getElementById('opd-dept-chips')) return;
+  loadOpdData();
   renderOpdDeptChips();
   opdPopulateDeptSelect();
+  renderOpdPatientList();
+  renderOpdMain();
 };
 
 })();
@@ -13986,11 +14175,38 @@ function setupWardsTabs(){
    share that button with Rounds' saved-article bookmarks; now that both
    tabs live here on their own, this bundles just the two of them).
    ============================================================ */
-function exportAllWardsData(){
-  let vitals = null, maternity = [], opd = null;
+// OPD's own localStorage key is only ever written to in local mode (see
+// saveOpdData() in the OPD module) -- once a hospital admin assigns this
+// account an OPD department, that key goes stale and the real data lives
+// in Firestore instead. A plain localStorage read here would silently
+// drop OPD data from the backup for every cloud-synced OPD user, so this
+// does a fresh fetch across every patient + every patient's visits
+// instead whenever cloud mode is active.
+async function fetchOpdDataForExport(){
+  if(!window.wardsCurrentUserOpdHospitalId || !window.wfdb){
+    try{ const raw = localStorage.getItem('wards_opd_v1'); return raw ? JSON.parse(raw) : { patients: [], visits: {} }; }
+    catch(e){ return { patients: [], visits: {} }; }
+  }
+  try{
+    const col = window.wfdb.collection('hospitals').doc(window.wardsCurrentUserOpdHospitalId).collection('opdPatients');
+    const patientsSnap = await col.get();
+    const patients = patientsSnap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
+    const visits = {};
+    for(const p of patients){
+      const visitsSnap = await col.doc(p.id).collection('visits').get();
+      visits[p.id] = visitsSnap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
+    }
+    return { patients, visits };
+  }catch(e){
+    console.warn('Wards: could not fetch OPD data for export', e);
+    return { patients: [], visits: {} };
+  }
+}
+async function exportAllWardsData(){
+  let vitals = null, maternity = [];
   try{ const raw = localStorage.getItem('rounds_vitals_v1'); vitals = raw ? JSON.parse(raw) : null; }catch(e){}
   try{ const raw = localStorage.getItem('mat_portal_patients_v1'); maternity = raw ? JSON.parse(raw) : []; }catch(e){}
-  try{ const raw = localStorage.getItem('wards_opd_v1'); opd = raw ? JSON.parse(raw) : null; }catch(e){}
+  const opd = await fetchOpdDataForExport();
   const payload = {
     app: 'Wards', exportedAt: new Date().toISOString(), version: 1,
     vitals: vitals || { patients: [], logs: {} },
