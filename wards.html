@@ -370,6 +370,18 @@ html.mobile-shell .bnav-btn:active .bnav-icon{transform:scale(0.9);}
 
 /* Compact top app bar: collapse the oversized desktop header (flat, edge-to-edge — the floating pill is a desktop-only affordance). */
 html.mobile-shell header{position:sticky;top:0;z-index:1100;background:transparent;padding:0;}
+/* ...except .wards-header: this whole block was carried over from Rounds
+   wholesale, and most of it (.header-inner/.header-search/.header-actions/
+   .brand-name/.brand-mark/.brand-tagline) doesn't match anything in
+   Wards' markup at all -- but the bare `header` tag selector above DOES
+   match Wards' own <header class="wards-header">, re-imposing
+   position:sticky and stripping its padding even inside the packaged
+   app, overriding .wards-header's own position:static rule (higher
+   specificity wins regardless of source order) and squashing its
+   layout in the process. Restore Wards' own header treatment here
+   rather than editing the block above, since it's still legitimately
+   needed for whatever Rounds element it was written for. */
+html.mobile-shell .wards-header{position:static;padding:14px 28px;background:var(--header-bg,var(--paper));}
 html.mobile-shell .header-inner{
   padding:calc(10px + env(safe-area-inset-top,0px)) 14px 10px;
   gap:10px 12px;align-items:center;display:flex;flex-wrap:wrap;
@@ -1563,7 +1575,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
    delegation, so there's no overlap with the specialty list's own
    #chapter-list-scoped click handler). Everything else below is
    namespaced under a fresh "vitals-" prefix and reuses the shared
-   --paper/--ink/--evidence/--cta-bg/--r-*/--shadow-* tokens already
+   --paper/--ink/--evidence/--cta-bg/--r-*, --shadow-* tokens already
    defined at the top of this stylesheet.
    ===================================================================== */
 .vitals-add-patient-btn{width:100%;margin-top:14px;border:1px dashed var(--line);background:none;color:var(--ink-soft);
@@ -2528,7 +2540,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
    Wards — app shell (header, tab switcher, footer, brand mark)
    Extracted verbatim from Rounds' header/tabbar/footer visual language;
    only the class names below are new — everything they reference
-   (--paper/--ink/--evidence/--cta-bg/--r-*/--shadow-* tokens, .theme-toggle,
+   (--paper/--ink/--evidence/--cta-bg/--r-*, --shadow-* tokens, .theme-toggle,
    fonts) is the same shared design-system CSS pasted above from index.html.
    ===================================================================== */
 .wards-header{
