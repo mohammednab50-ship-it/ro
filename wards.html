@@ -1720,6 +1720,19 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 
 .opd-visit-card{border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;margin-bottom:10px;background:var(--surface);}
 .opd-visit-dept-pill{display:inline-block;font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#0d9488;background:rgba(13,148,136,0.12);padding:3px 10px;border-radius:var(--r-pill);}
+
+/* Patient avatar + quick-stat row atop the OPD detail view -- mirrors the
+   "Good Morning, William Johnson" greeting + stat row from the reference
+   mockup (avatar top-right, plain key/value stats beneath the name). */
+.opd-patient-avatar{flex-shrink:0;width:52px;height:52px;border-radius:50%;background:linear-gradient(135deg,#0d9488,#34d399);color:#fff;
+  display:flex;align-items:center;justify-content:center;font-family:var(--ff-display);font-weight:700;font-size:18px;box-shadow:var(--shadow-sm);}
+.opd-quickstats{display:flex;gap:28px;flex-wrap:wrap;margin:2px 0 var(--space-5);}
+.opd-quickstat-value{font-family:var(--ff-display);font-size:20px;font-weight:700;color:var(--ink);margin:0;line-height:1.2;}
+.opd-quickstat-label{font-family:var(--ff-sans);font-size:11px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:var(--tracking-wide);margin:2px 0 0;}
+
+.opd-stat-icon{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
+.opd-stat-card--outline .opd-stat-icon{background:var(--evidence-bg);}
+.opd-stat-icon svg{width:16px;height:16px;}
 .vitals-notes-field{margin-bottom:var(--space-5);}
 .vitals-submit-btn{width:100%;min-height:48px;}
 @media (min-width:560px){.vitals-submit-btn{width:auto;min-width:200px;}}
@@ -4080,14 +4093,17 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   <main>
     <div class="opd-stats-row" id="opd-stats-row">
       <div class="opd-stat-card opd-stat-card--teal">
+        <span class="opd-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="3.2"/><path d="M5 20c1.2-3.6 4-5.4 7-5.4s5.8 1.8 7 5.4"/></svg></span>
         <p class="opd-stat-label">OPD Patients</p>
         <p class="opd-stat-value" id="opd-stat-patients">0</p>
       </div>
       <div class="opd-stat-card opd-stat-card--mint">
+        <span class="opd-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l1 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h3Z"/><path d="M9 4a3 3 0 0 1 6 0" stroke-linecap="round"/></svg></span>
         <p class="opd-stat-label">Visits Logged</p>
         <p class="opd-stat-value" id="opd-stat-visits">0</p>
       </div>
       <div class="opd-stat-card opd-stat-card--outline">
+        <span class="opd-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--evidence)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="3" width="16" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h3"/></svg></span>
         <p class="opd-stat-label">Department</p>
         <p class="opd-stat-value opd-stat-value--sm" id="opd-stat-dept">All</p>
       </div>
@@ -4099,11 +4115,13 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <div id="opd-patient-view" hidden>
       <header class="vitals-patient-head">
         <div>
-          <p class="vitals-kicker" id="opd-patient-kicker">OPD</p>
+          <p class="vitals-kicker" id="opd-patient-kicker">Good day,</p>
           <h3 class="vitals-patient-name" id="opd-patient-name">—</h3>
           <p class="vitals-patient-sub" id="opd-patient-sub"></p>
         </div>
+        <span class="opd-patient-avatar" id="opd-patient-avatar" aria-hidden="true">—</span>
       </header>
+      <div class="opd-quickstats" id="opd-quickstats"></div>
       <div class="vitals-dept-block">
         <div class="wb-head">
           <p class="vitals-dept-subtitle">Visit history — every department</p>
@@ -13444,6 +13462,27 @@ function renderOpdMain(){
   if(p.gender) bits.push(p.gender.charAt(0).toUpperCase() + p.gender.slice(1));
   if(p.mrn) bits.push('MRN ' + p.mrn);
   if(subEl) subEl.textContent = bits.join(' · ');
+
+  const avatarEl = document.getElementById('opd-patient-avatar');
+  if(avatarEl){
+    const initials = (p.name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase();
+    avatarEl.textContent = initials || '?';
+  }
+
+  const visits = opdVisitsFor(p.id);
+  const depts = opdPatientDepartments(p.id);
+  const quickstats = [
+    { label: 'Age', value: (p.age != null && p.age !== '') ? p.age : '—' },
+    { label: 'Gender', value: p.gender ? p.gender.charAt(0).toUpperCase() + p.gender.slice(1) : '—' },
+    { label: 'Visits', value: visits.length },
+    { label: 'Last seen', value: visits.length ? fmtWardsDateTime(new Date(visits[0].date)) : '—' },
+    { label: 'Departments', value: depts.length ? depts.join(', ') : '—' }
+  ];
+  const qsEl = document.getElementById('opd-quickstats');
+  if(qsEl){
+    qsEl.innerHTML = quickstats.map(s => `<div><p class="opd-quickstat-value">${escapeHtml(String(s.value))}</p><p class="opd-quickstat-label">${escapeHtml(s.label)}</p></div>`).join('');
+  }
+
   document.getElementById('opd-add-visit-form').hidden = true; // avoid a stale form carrying over across patients
   renderOpdVisitList();
 }
@@ -13550,7 +13589,7 @@ function setupOpdUI(){
     visitForm.hidden = true;
     saveOpdData();
     renderOpdPatientList();
-    renderOpdVisitList();
+    renderOpdMain(); // refreshes the quick-stats row (visit count/last seen/depts) too, not just the visit list
     haptic('Medium');
     showToast('Visit saved.', 'ok');
   });
