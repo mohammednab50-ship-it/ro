@@ -8727,6 +8727,13 @@ function setupPatientList(){
       if(!btn || !list.contains(btn)) return;
       const id = btn.dataset.patientId;
       if(!id || id === vitalsState.activePatientId) return;
+      // Same silent-loss shape as switching tabs mid-entry (see
+      // setupVitalsAutosave/autosaveVitalsReadingIfNeeded) except this is
+      // the far more common trigger during an actual round: going bed to
+      // bed without an explicit "Log reading" tap in between. Must run
+      // BEFORE reassigning activePatientId so it saves against the
+      // patient being LEFT, not the one being switched to.
+      autosaveVitalsReadingIfNeeded();
       vitalsState.activePatientId = id;
       renderPatientList();
       renderVitalsMain();
@@ -8854,6 +8861,7 @@ function renderVitalsBoard(){
     grid.addEventListener('click', e => {
       const card = e.target.closest('.vitals-board-card');
       if(!card) return;
+      if(card.dataset.patientId !== vitalsState.activePatientId) autosaveVitalsReadingIfNeeded();
       vitalsState.activePatientId = card.dataset.patientId;
       setVitalsBoardActive(false);
       renderPatientList();
@@ -8969,6 +8977,7 @@ function renderVitalsArchive(){
     grid.addEventListener('click', e => {
       const card = e.target.closest('.vitals-board-card');
       if(!card) return;
+      if(card.dataset.patientId !== vitalsState.activePatientId) autosaveVitalsReadingIfNeeded();
       vitalsState.activePatientId = card.dataset.patientId;
       setVitalsArchiveActive(false);
       renderPatientList();
@@ -9071,6 +9080,7 @@ function renderVitalsMapView(){
     grid.addEventListener('click', e => {
       const tile = e.target.closest('.vitals-bed-tile');
       if(!tile) return;
+      if(tile.dataset.patientId !== vitalsState.activePatientId) autosaveVitalsReadingIfNeeded();
       vitalsState.activePatientId = tile.dataset.patientId;
       setVitalsMapViewActive(false);
       renderPatientList();
