@@ -491,6 +491,8 @@ nav.chapters .chapters-eyebrow{font-family:var(--ff-mono);font-size:10.5px;font-
 .chapter-acuity-dot.n2-low{background:var(--line);}
 .chapter-acuity-dot.n2-medium{background:var(--fresh);}
 .chapter-acuity-dot.n2-high{background:var(--caution);box-shadow:0 0 0 3px var(--caution-bg);}
+.chapter-roster-sub{font-size:10.5px;font-weight:500;color:var(--ink-faint);letter-spacing:0.01em;font-variant-numeric:tabular-nums;}
+.chapter-roster-sub.is-high{color:var(--caution);font-weight:700;}
 .chapter-btn .chapter-name{flex:1;line-height:1.3;}
 .chapter-btn:hover{color:var(--ink);}
 .chapter-btn:hover .chapter-num{color:var(--ink-soft);}
@@ -1619,6 +1621,22 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-patient-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start;}
 .vitals-patient-actions-primary{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
 .vitals-more-wrap{position:relative;}
+/* Isolation/Allergies/SBAR are frequent, low-stakes, same-session edits;
+   Discharge/Archive ends the active episode in one click (no confirm
+   dialog -- just an undo toast) and used to render at identical visual
+   weight right next to them. A thin separator plus a quieter, slightly
+   warm outline pulls it a half-step out of the routine cluster without
+   demoting it to the overflow "More..." menu, where an actually-common
+   end-of-shift action doesn't belong. */
+.vitals-actions-sep{width:1px;align-self:stretch;min-height:20px;background:var(--line);margin:0 2px;}
+/* .vitals-btn-outline.vitals-btn-episode-end (both classes) rather than
+   just .vitals-btn-episode-end -- same specificity trap as elsewhere in
+   this file: a single-class selector loses a same-specificity tie to
+   .vitals-btn-outline's own base/:hover rules, which are declared later
+   in the sheet, so the two-class form is what actually wins regardless
+   of source order. */
+.vitals-btn-outline.vitals-btn-episode-end{border-color:var(--caution-line);color:var(--ink-faint);background:none;}
+.vitals-btn-outline.vitals-btn-episode-end:hover{border-color:var(--caution);color:var(--caution);background:var(--caution-bg);}
 .vitals-more-btn[aria-expanded="true"]{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
 .vitals-more-menu{position:absolute;top:calc(100% + 8px);right:0;z-index:60;width:230px;display:flex;flex-direction:column;gap:2px;max-height:min(70vh,520px);overflow-y:auto;}
 .vitals-more-menu[hidden]{display:none;}
@@ -2057,8 +2075,25 @@ html.wards-cbsafe .vitals-latest-tile.n2-3 .vlt-k::before{content:"\25b2\25b2 ";
    census) into one visually contained control instead of 4 pills
    floating loose next to the weather badge -- same idea as a
    segmented control, tolerant of the labels' very different lengths. */
-.vitals-view-switcher{display:inline-flex;flex-wrap:wrap;gap:6px;padding:4px;background:var(--paper-deep);border:1px solid var(--line);border-radius:var(--r-md);}
-.vitals-view-switcher .vitals-board-toggle-btn{background:var(--surface);}
+.vitals-view-switcher{display:inline-flex;flex-wrap:wrap;gap:2px;padding:3px;background:var(--paper-deep);border:1px solid var(--line);border-radius:var(--r-md);}
+/* Each toggle used to render as its own bordered/backgrounded pill (the
+   base .vitals-btn-outline look), which read as 4 loose buttons sharing
+   a grey shelf rather than one control with 4 modes -- exactly the same
+   "which of these is ward navigation vs. a patient action" ambiguity as
+   the row below it. Flattening to background:none/border-color:transparent
+   at rest (background/border only appear on hover or the active,
+   aria-pressed state) turns it into a real segmented control, matching
+   the .seg/.seg-btn pattern already used for Settings' text-size picker. */
+.vitals-view-switcher .vitals-board-toggle-btn{background:none;border-color:transparent;}
+.vitals-view-switcher .vitals-board-toggle-btn:hover{background:var(--surface);border-color:transparent;color:var(--ink);}
+/* Without this, hovering the currently-ACTIVE segment would visually
+   un-highlight it: the hover rule above (3 class-level selectors) has
+   higher specificity than the plain [aria-pressed="true"] rule below it
+   (2 class-level selectors), so specificity -- which always beats
+   source order -- would let a stray hover make the active tab look
+   unselected. This tips the scale back the other way for that one
+   combination. */
+.vitals-view-switcher .vitals-board-toggle-btn[aria-pressed="true"]:hover{background:var(--evidence);border-color:var(--evidence);color:var(--shell-ink);}
 .wards-weather-badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--ink-faint);cursor:default;}
 .wards-weather-badge[hidden]{display:none;}
 .wards-weather-icon{font-size:15px;line-height:1;}
@@ -3533,7 +3568,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             </label>
             <button type="button" class="vitals-btn-outline" id="vitals-allergies-btn" title="Set this patient's known allergies">Allergies</button>
             <button type="button" class="vitals-btn-outline" id="vitals-sbar-btn" title="Generate a Situation-Background-Assessment-Recommendation handover summary">SBAR handover</button>
-            <button type="button" class="vitals-btn-outline" id="vitals-archive-patient-btn" title="Mark this patient discharged/transferred — moves them to the Archive, keeping their full record">Discharge / Archive</button>
+            <span class="vitals-actions-sep" aria-hidden="true"></span>
+            <button type="button" class="vitals-btn-outline vitals-btn-episode-end" id="vitals-archive-patient-btn" title="Mark this patient discharged/transferred — moves them to the Archive, keeping their full record">Discharge / Archive</button>
             <button type="button" class="vitals-btn-outline" id="vitals-reactivate-patient-btn" title="Move this patient back onto the active roster" hidden>Reactivate</button>
           </div>
           <div class="vitals-more-wrap">
@@ -8443,7 +8479,19 @@ function renderPatientList(){
     const acuityDot = acuityLevel
       ? `<span class="chapter-acuity-dot n2-${acuityLevel}" title="NEWS2 ${n2.score} -- ${acuityLevel === 'high' ? 'high' : acuityLevel === 'medium' ? 'medium' : 'low'} acuity"></span>`
       : '';
-    btn.innerHTML = `${acuityDot}<span class="chapter-num">${escapeHtml(p.bed || '—')}</span><span class="chapter-name">${isoBadge}${escapeHtml(p.name || 'Unnamed')}${overdueDot}</span>${badge}`;
+    // The dot alone said "something's off" in colour only; it never said
+    // WHAT the score was or HOW STALE it is -- both of which are exactly
+    // what you'd triage the roster on before opening any one patient.
+    // Mirrors the department-summary subtext line already used in the
+    // OPD roster for the same reason (secondary info, one size down,
+    // under the name rather than competing with it).
+    const rosterSubBits = [];
+    if(n2 && n2.dataPresent) rosterSubBits.push('NEWS2 ' + n2.score);
+    if(latest) rosterSubBits.push(fmtElapsedMins(now - new Date(latest.ts).getTime()) + ' ago');
+    const rosterSub = rosterSubBits.length
+      ? `<br><span class="chapter-roster-sub${acuityLevel === 'high' ? ' is-high' : ''}">${escapeHtml(rosterSubBits.join(' · '))}</span>`
+      : '';
+    btn.innerHTML = `${acuityDot}<span class="chapter-num">${escapeHtml(p.bed || '—')}</span><span class="chapter-name">${isoBadge}${escapeHtml(p.name || 'Unnamed')}${overdueDot}${rosterSub}</span>${badge}`;
     li.appendChild(btn);
     const mineBtn = document.createElement('button');
     mineBtn.type = 'button';
