@@ -2056,6 +2056,12 @@ html.wards-cbsafe .vitals-latest-tile.n2-3 .vlt-k::before{content:"\25b2\25b2 ";
 .vitals-sanity-msg{font-family:var(--ff-sans);font-size:13px;color:var(--ink);margin:0 0 10px;line-height:1.5;}
 .vitals-sanity-actions{display:flex;gap:8px;}
 .vitals-dup-warning{padding:10px 12px;border:1px solid var(--caution-line);border-radius:var(--r-sm);background:var(--caution-bg);}
+.vitals-gcs-row{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.vitals-gcs-row select{flex:1 1 auto;min-width:0;border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 6px;
+  font-family:var(--ff-sans);font-size:13px;background:var(--paper);color:var(--ink);min-height:46px;}
+.vitals-gcs-row select:focus{outline:none;border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
+.vitals-gcs-total{flex:0 0 auto;min-width:42px;text-align:center;font-family:var(--ff-display);font-size:19px;font-weight:800;
+  font-variant-numeric:tabular-nums;color:var(--ink);}
 .vitals-field-checkbox{flex-direction:row;align-items:center;gap:8px;justify-content:flex-start;}
 .vitals-field-checkbox label{order:1;}
 .vitals-field-checkbox input{width:auto;min-height:0;flex:none;order:0;}
@@ -3855,9 +3861,44 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <label for="v-temp">Temp <span>&deg;C</span> <span class="vitals-delta" id="v-temp-delta"></span></label>
             <input id="v-temp" type="number" inputmode="decimal" step="0.1" min="25" max="43">
           </div>
-          <div class="vitals-field">
-            <label for="v-gcs">GCS</label>
-            <input id="v-gcs" type="number" inputmode="numeric" min="3" max="15">
+          <!-- GCS is recorded as E/V/M, not a bare total -- the breakdown is
+               what gets handed over and what says WHICH domain is impaired.
+               The total (v-gcs) is still the stored/scored field so every
+               existing reading, NEWS2's consciousness score and the flowsheet
+               keep working unchanged; it's just computed from the three parts
+               here instead of typed. Leaving all three blank leaves the total
+               blank (a partial NEWS2, same as before), and a reading saved
+               before this existed still shows its total with no E/V/M. -->
+          <div class="vitals-field vitals-field-gcs">
+            <label for="v-gcs-e">GCS <span>E / V / M</span></label>
+            <div class="vitals-gcs-row">
+              <select id="v-gcs-e" aria-label="GCS eye opening">
+                <option value="">E—</option>
+                <option value="4">E4 spontaneous</option>
+                <option value="3">E3 to speech</option>
+                <option value="2">E2 to pain</option>
+                <option value="1">E1 none</option>
+              </select>
+              <select id="v-gcs-v" aria-label="GCS verbal response">
+                <option value="">V—</option>
+                <option value="5">V5 orientated</option>
+                <option value="4">V4 confused</option>
+                <option value="3">V3 words</option>
+                <option value="2">V2 sounds</option>
+                <option value="1">V1 none</option>
+              </select>
+              <select id="v-gcs-m" aria-label="GCS motor response">
+                <option value="">M—</option>
+                <option value="6">M6 obeys</option>
+                <option value="5">M5 localises</option>
+                <option value="4">M4 withdraws</option>
+                <option value="3">M3 flexion</option>
+                <option value="2">M2 extension</option>
+                <option value="1">M1 none</option>
+              </select>
+              <span class="vitals-gcs-total" id="v-gcs-total" aria-live="polite">—</span>
+            </div>
+            <input id="v-gcs" type="number" inputmode="numeric" min="3" max="15" hidden>
           </div>
           <div class="vitals-field">
             <label for="v-uop">Urine output <span>mL</span></label>
@@ -8303,6 +8344,7 @@ function initVitals(){
   setupVitalsAutosave();
   setupVitalsPrintButton();
   setupVitalsNormalFillButton();
+  setupGcsPartsUI();
   setupVitalsDeltaIndicators();
   setupVitalsBaselinesForm();
   setupVitalsLogSearch();
@@ -9709,17 +9751,83 @@ function readVitalsFormEntry(){
     ts: isNaN(ts.getTime()) ? new Date().toISOString() : ts.toISOString(),
     hr: val('v-hr'), sbp: val('v-sbp'), dbp: val('v-dbp'), rr: val('v-rr'),
     spo2: val('v-spo2'), temp: val('v-temp'), gcs: val('v-gcs'), uop: val('v-uop'),
+    gcsE: val('v-gcs-e'), gcsV: val('v-gcs-v'), gcsM: val('v-gcs-m'),
     intakeOral: val('v-intake-oral'), intakeIv: val('v-intake-iv'), outputOther: val('v-output-other'),
     o2sup: !!(o2El && o2El.checked),
     notes: val('v-notes')
   };
 }
 
+/* GCS: the three E/V/M selects drive the hidden v-gcs total, which stays
+   the single stored/scored field (NEWS2's consciousness score, the
+   flowsheet column, trends, CSV export all still read `gcs`). Only a
+   COMPLETE E+V+M gives a total -- a partial score isn't a GCS, and
+   silently summing two of three would understate consciousness exactly
+   when it matters. E/V/M are also stored alongside so the breakdown
+   survives into handover//export; readings saved before this existed
+   simply have no gcsE/V/M and still render their stored total. */
+function syncGcsTotalFromParts(){
+  const e = document.getElementById('v-gcs-e');
+  const v = document.getElementById('v-gcs-v');
+  const m = document.getElementById('v-gcs-m');
+  const totalEl = document.getElementById('v-gcs-total');
+  const hidden = document.getElementById('v-gcs');
+  if(!e || !v || !m || !hidden) return;
+  const complete = e.value && v.value && m.value;
+  const total = complete ? (Number(e.value) + Number(v.value) + Number(m.value)) : '';
+  hidden.value = total === '' ? '' : String(total);
+  if(totalEl) totalEl.textContent = total === '' ? '—' : String(total);
+}
+function setGcsPartsFromTotal(entry){
+  const e = document.getElementById('v-gcs-e');
+  const v = document.getElementById('v-gcs-v');
+  const m = document.getElementById('v-gcs-m');
+  if(!e || !v || !m) return;
+  e.value = (entry && entry.gcsE) || '';
+  v.value = (entry && entry.gcsV) || '';
+  m.value = (entry && entry.gcsM) || '';
+  syncGcsTotalFromParts();
+  // A pre-E/V/M reading (or a copy-last of one) has a total but no parts --
+  // keep showing that total rather than blanking it out.
+  if(!(e.value && v.value && m.value) && entry && entry.gcs){
+    const hidden = document.getElementById('v-gcs');
+    const totalEl = document.getElementById('v-gcs-total');
+    if(hidden) hidden.value = entry.gcs;
+    if(totalEl) totalEl.textContent = entry.gcs;
+  }
+}
+// "14 (E3V5M6)" when the breakdown was recorded, plain "14" for readings
+// logged before E/V/M existed, "—" for none. Used everywhere a reading's
+// GCS is shown to a human (flowsheet, SBAR, export).
+function fmtGcsWithParts(entry){
+  if(!entry || !entry.gcs) return '—';
+  if(entry.gcsE && entry.gcsV && entry.gcsM){
+    return `${entry.gcs} (E${entry.gcsE}V${entry.gcsV}M${entry.gcsM})`;
+  }
+  return String(entry.gcs);
+}
+
+function setupGcsPartsUI(){
+  ['v-gcs-e','v-gcs-v','v-gcs-m'].forEach(id => {
+    const el = document.getElementById(id);
+    if(!el || el.dataset.wired) return;
+    el.dataset.wired = '1';
+    el.addEventListener('change', () => {
+      syncGcsTotalFromParts();
+      // keep the live NEWS2 preview honest as the score is built up
+      const hidden = document.getElementById('v-gcs');
+      if(hidden) hidden.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  });
+}
+
 function clearVitalsEntryFormFields(){
-  ['v-hr','v-sbp','v-dbp','v-rr','v-spo2','v-temp','v-gcs','v-uop','v-intake-oral','v-intake-iv','v-output-other','v-notes'].forEach(id => {
+  ['v-hr','v-sbp','v-dbp','v-rr','v-spo2','v-temp','v-gcs','v-uop','v-intake-oral','v-intake-iv','v-output-other','v-notes','v-gcs-e','v-gcs-v','v-gcs-m'].forEach(id => {
     const el = document.getElementById(id);
     if(el) el.value = '';
   });
+  const gcsTotalEl = document.getElementById('v-gcs-total');
+  if(gcsTotalEl) gcsTotalEl.textContent = '—';
   const o2El = document.getElementById('v-o2sup');
   if(o2El) o2El.checked = false;
 }
@@ -10147,6 +10255,10 @@ function setupVitalsCopyLastButton(){
     });
     const o2El = document.getElementById('v-o2sup');
     if(o2El) o2El.checked = !!last.o2sup;
+    // COPY_LAST_FIELD_IDS filled the hidden v-gcs total above, but the
+    // three E/V/M selects are what the user actually sees -- restore those
+    // from the copied reading (or, for a pre-E/V/M reading, keep its total).
+    setGcsPartsFromTotal(last);
     if(wantsDrift) showToast(applyDrift ? 'Copied with a small realistic drift.' : 'Copied exactly — patient doesn\'t yet qualify as stable/long-stay for drift.');
     haptic('Light');
   });
@@ -10809,7 +10921,7 @@ function renderVitalsTable(){
       <td data-col="rr">${escapeHtml(entry.rr || '—')}</td>
       <td data-col="spo2" class="${flagClass.trim()}">${escapeHtml(entry.spo2 || '—')}</td>
       <td data-col="temp" class="${flagClass.trim()}">${escapeHtml(entry.temp || '—')}</td>
-      <td data-col="gcs">${escapeHtml(entry.gcs || '—')}</td>
+      <td data-col="gcs" title="${escapeHtml(fmtGcsWithParts(entry))}">${escapeHtml(entry.gcs || '—')}</td>
       <td data-col="uop">${escapeHtml(entry.uop || '—')}</td>
       ${n2Cell.replace('<td', '<td data-col="news2"')}
       <td data-col="notes" class="vitals-td-notes">${escapeHtml(entry.notes || '')}${entry.hasPhoto ? `<button type="button" class="note-photo-view-btn" data-view-note-photo="${entry.id}" title="View attached photo"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-1.6A1.5 1.5 0 0 1 9.8 4.6h4.4a1.5 1.5 0 0 1 1.3.8L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg></button>` : ''}</td>
@@ -10963,8 +11075,8 @@ function exportActivePatientCsv(){
   const p = activePatient();
   if(!p) return;
   const log = activeLog().slice().sort((a, b) => new Date(a.ts) - new Date(b.ts));
-  const header = ['Timestamp','HR (bpm)','BP systolic','BP diastolic','RR (/min)','SpO2 (%)','Temp (C)','GCS','Urine output (mL)','Oral intake (mL)','IV intake (mL)','Other losses (mL)','Notes'];
-  const rows = log.map(e => [e.ts, e.hr, e.sbp, e.dbp, e.rr, e.spo2, e.temp, e.gcs, e.uop, e.intakeOral, e.intakeIv, e.outputOther, e.notes]);
+  const header = ['Timestamp','HR (bpm)','BP systolic','BP diastolic','RR (/min)','SpO2 (%)','Temp (C)','GCS total','GCS E','GCS V','GCS M','Urine output (mL)','Oral intake (mL)','IV intake (mL)','Other losses (mL)','Notes'];
+  const rows = log.map(e => [e.ts, e.hr, e.sbp, e.dbp, e.rr, e.spo2, e.temp, e.gcs, e.gcsE || '', e.gcsV || '', e.gcsM || '', e.uop, e.intakeOral, e.intakeIv, e.outputOther, e.notes]);
   const csv = [header, ...rows].map(r => r.map(csvCell).join(',')).join('\r\n');
   const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
   const url = URL.createObjectURL(blob);
@@ -11127,7 +11239,7 @@ function generateSbarForPatient(p){
   lines.push('ASSESSMENT');
   if(latest){
     const bp = (latest.sbp || latest.dbp) ? `${latest.sbp || '—'}/${latest.dbp || '—'}` : '—';
-    lines.push(`  HR ${latest.hr || '—'} · BP ${bp} · RR ${latest.rr || '—'} · SpO2 ${latest.spo2 || '—'}% · Temp ${latest.temp || '—'}°C · GCS ${latest.gcs || '—'}`);
+    lines.push(`  HR ${latest.hr || '—'} · BP ${bp} · RR ${latest.rr || '—'} · SpO2 ${latest.spo2 || '—'}% · Temp ${latest.temp || '—'}°C · GCS ${fmtGcsWithParts(latest)}`);
   }else{
     lines.push('  No readings logged.');
   }
