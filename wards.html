@@ -1971,6 +1971,18 @@ html.wards-cbsafe .vitals-latest-tile.n2-3 .vlt-k::before{content:"\25b2\25b2 ";
 .vitals-import-invalid-tag{color:var(--ink-faint);font-weight:700;font-size:11px;}
 
 /* ---- problem list ---- */
+.wards-calc-card{max-width:440px;max-height:85vh;overflow-y:auto;}
+.vitals-calc-section{border-top:1px solid var(--line);padding-top:14px;margin-top:14px;}
+.vitals-calc-section:first-of-type{border-top:none;margin-top:6px;padding-top:0;}
+.vitals-calc-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px 10px;}
+.vitals-calc-grid label{display:flex;flex-direction:column;gap:3px;font-family:var(--ff-sans);font-size:11.5px;font-weight:600;color:var(--ink-faint);text-align:left;}
+.vitals-calc-grid input,.vitals-calc-grid select{border:1px solid var(--line);border-radius:var(--r-sm);padding:8px 9px;font-family:var(--ff-sans);font-size:13.5px;background:var(--paper);color:var(--ink);}
+.wards-calc-unit-row{display:flex;gap:6px;}
+.wards-calc-unit-row input{flex:1;min-width:0;}
+.wards-calc-unit-row select{flex:0 0 auto;}
+.vitals-calc-result{margin:10px 0 0;font-family:var(--ff-sans);font-size:13.5px;font-weight:700;color:var(--ink);text-align:left;padding:8px 10px;background:var(--evidence-bg);border-radius:var(--r-sm);}
+.vitals-calc-result.calc-empty{background:none;padding:8px 0 0;font-weight:500;color:var(--ink-faint);}
+
 .vitals-problem-list-panel{border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);
   padding:14px 16px;margin-bottom:var(--space-5);}
 .vitals-problem-list{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:6px;}
@@ -3466,6 +3478,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <button type="button" class="vitals-more-menu-btn" id="vitals-sbar-all-btn" title="Generate one combined SBAR handover for every patient marked as yours this shift"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 4.5h9.5L19 10v9.5H4z" stroke-linejoin="round"/><path d="M13 4.5V10h5.5" stroke-linejoin="round"/><path d="M8 14h6M8 17h4" stroke-linecap="round"/></svg> SBAR &mdash; my patients this shift</button>
         <button type="button" class="vitals-more-menu-btn" id="vitals-endshift-btn" title="Your shift recap plus an aggregate of what's due across your active patients"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg> End-of-shift summary</button>
         <button type="button" class="vitals-more-menu-btn" id="vitals-import-btn"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke-linecap="round" stroke-linejoin="round"/></svg> Import patients (CSV/JSON)</button>
+        <button type="button" class="vitals-more-menu-btn" id="vitals-calculators-btn"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M16 15h0M8 19h2M12 19h2M16 19h0" stroke-linecap="round"/></svg> Calculators</button>
         <label class="vitals-more-menu-select-row" id="vitals-roster-sort-wrap" title="How the patient list above is ordered">
           <span>Sort by</span>
           <select id="vitals-roster-sort">
@@ -4622,6 +4635,63 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <div class="vitals-baselines-actions">
       <button type="button" class="vitals-btn-primary" id="wards-share-consent-continue">Open share sheet</button>
       <button type="button" class="vitals-btn-ghost" id="wards-share-consent-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- Bedside calculators -- infusion rate conversion, weight-based dosing,
+     creatinine clearance, BSA. These are the calculations people
+     currently do on a separate app mid-round; keeping them in Wards
+     means the weight/context already on screen doesn't have to be
+     re-typed somewhere else. Every result carries the same "reference
+     aid, verify independently" framing as the rest of the app's
+     clinical-adjacent features (NEWS2, SBAR) -- nothing here is a
+     substitute for an institutional dosing reference or pharmacy check. -->
+<div class="wards-qr-modal" id="wards-calculators-modal" hidden>
+  <div class="wards-qr-card wards-qr-card--left wards-calc-card" role="dialog" aria-modal="true" aria-labelledby="wards-calc-title">
+    <button type="button" class="mat-lb-close" id="wards-calculators-close" aria-label="Close">&times;</button>
+    <h3 id="wards-calc-title">Bedside calculators</h3>
+    <p class="wards-qr-disclaimer">Reference aid only — cross-check against your institution's dosing reference or pharmacy before acting on any result here.</p>
+
+    <div class="vitals-calc-section">
+      <p class="vitals-dept-subtitle">Infusion rate ↔ dose</p>
+      <div class="vitals-calc-grid">
+        <label>Drug amount (mg)<input type="number" id="calc-inf-mg" min="0" step="any"></label>
+        <label>In volume (mL)<input type="number" id="calc-inf-vol" min="0" step="any"></label>
+        <label>Patient weight (kg)<input type="number" id="calc-inf-weight" min="0" step="any"></label>
+        <label>Rate (mL/hr)<input type="number" id="calc-inf-rate" min="0" step="any"></label>
+      </div>
+      <p class="vitals-calc-result" id="calc-inf-result">Enter drug amount, volume, weight and a rate.</p>
+    </div>
+
+    <div class="vitals-calc-section">
+      <p class="vitals-dept-subtitle">Weight-based dosing</p>
+      <div class="vitals-calc-grid">
+        <label>Weight (kg)<input type="number" id="calc-dose-weight" min="0" step="any"></label>
+        <label>Dose (mg/kg)<input type="number" id="calc-dose-perkg" min="0" step="any"></label>
+        <label>Doses per day<input type="number" id="calc-dose-freq" min="1" step="1" value="1"></label>
+      </div>
+      <p class="vitals-calc-result" id="calc-dose-result">Enter weight and dose per kg.</p>
+    </div>
+
+    <div class="vitals-calc-section">
+      <p class="vitals-dept-subtitle">Creatinine clearance <span style="font-weight:500;">(Cockcroft-Gault)</span></p>
+      <div class="vitals-calc-grid">
+        <label>Age (years)<input type="number" id="calc-crcl-age" min="0" step="1"></label>
+        <label>Weight (kg)<input type="number" id="calc-crcl-weight" min="0" step="any"></label>
+        <label>Sex<select id="calc-crcl-sex"><option value="male">Male</option><option value="female">Female</option></select></label>
+        <label>Serum creatinine<span class="wards-calc-unit-row"><input type="number" id="calc-crcl-scr" min="0" step="any"><select id="calc-crcl-scr-unit"><option value="mgdl">mg/dL</option><option value="umol">µmol/L</option></select></span></label>
+      </div>
+      <p class="vitals-calc-result" id="calc-crcl-result">Enter age, weight, sex and serum creatinine.</p>
+    </div>
+
+    <div class="vitals-calc-section">
+      <p class="vitals-dept-subtitle">Body surface area <span style="font-weight:500;">(Mosteller)</span></p>
+      <div class="vitals-calc-grid">
+        <label>Height (cm)<input type="number" id="calc-bsa-height" min="0" step="any"></label>
+        <label>Weight (kg)<input type="number" id="calc-bsa-weight" min="0" step="any"></label>
+      </div>
+      <p class="vitals-calc-result" id="calc-bsa-result">Enter height and weight.</p>
     </div>
   </div>
 </div>
@@ -8465,6 +8535,7 @@ function initVitals(){
   setupIoBalanceForm();
   setupMarSection();
   setupSbarButtons();
+  setupWardsCalculators();
   setupVoiceInputForNotesFields();
   setupNotePhotoInput('v-notes-photo', 'v-notes-photo-label', 'v-notes-photo-name');
   setupNotePhotoInput('mat-f-notes-photo', 'mat-f-notes-photo-label', 'mat-f-notes-photo-name');
@@ -11699,6 +11770,134 @@ async function shareSbarText(){
     await navigator.share({ title: 'SBAR handover — Wards', text: textarea.value });
   }catch(e){ /* user cancelled the OS share sheet, or the platform rejected it -- not an error worth surfacing */ }
 }
+/* ---- bedside calculators -- infusion rate<->dose, weight-based dosing,
+   Cockcroft-Gault creatinine clearance, Mosteller BSA. Each section
+   recomputes live on input, entirely independent of the others; a
+   missing/invalid field just shows the neutral placeholder message
+   rather than a stale or misleading number. Reference aid only -- see
+   the modal's own disclaimer. */
+function wardsCalcNum(id){
+  const el = document.getElementById(id);
+  if(!el) return NaN;
+  const v = parseFloat(el.value);
+  return el.value === '' ? NaN : v;
+}
+function wardsCalcSetResult(id, text, hasValue){
+  const el = document.getElementById(id);
+  if(!el) return;
+  el.textContent = text;
+  el.classList.toggle('calc-empty', !hasValue);
+}
+
+function recalcInfusionCalc(){
+  const mg = wardsCalcNum('calc-inf-mg');
+  const vol = wardsCalcNum('calc-inf-vol');
+  const weight = wardsCalcNum('calc-inf-weight');
+  const rate = wardsCalcNum('calc-inf-rate');
+  if(isNaN(mg) || isNaN(vol) || vol <= 0 || isNaN(weight) || weight <= 0 || isNaN(rate)){
+    wardsCalcSetResult('calc-inf-result', 'Enter drug amount, volume, weight and a rate.', false);
+    return;
+  }
+  const concMcgPerMl = (mg * 1000) / vol;
+  const doseMcgPerKgPerMin = (rate * concMcgPerMl) / (weight * 60);
+  wardsCalcSetResult('calc-inf-result',
+    `Concentration ${concMcgPerMl.toFixed(1)} mcg/mL — at ${rate} mL/hr, that's ${doseMcgPerKgPerMin.toFixed(2)} mcg/kg/min.`, true);
+}
+
+function recalcDosingCalc(){
+  const weight = wardsCalcNum('calc-dose-weight');
+  const perKg = wardsCalcNum('calc-dose-perkg');
+  const freq = wardsCalcNum('calc-dose-freq');
+  if(isNaN(weight) || weight <= 0 || isNaN(perKg) || perKg <= 0){
+    wardsCalcSetResult('calc-dose-result', 'Enter weight and dose per kg.', false);
+    return;
+  }
+  const perDose = weight * perKg;
+  const perDay = (!isNaN(freq) && freq > 0) ? perDose * freq : null;
+  wardsCalcSetResult('calc-dose-result',
+    `${perDose.toFixed(2)} mg per dose${perDay !== null ? ` — ${perDay.toFixed(2)} mg/day at ${freq}x daily` : ''}.`, true);
+}
+
+function recalcCrClCalc(){
+  const age = wardsCalcNum('calc-crcl-age');
+  const weight = wardsCalcNum('calc-crcl-weight');
+  const sex = document.getElementById('calc-crcl-sex') ? document.getElementById('calc-crcl-sex').value : 'male';
+  const scrRaw = wardsCalcNum('calc-crcl-scr');
+  const scrUnit = document.getElementById('calc-crcl-scr-unit') ? document.getElementById('calc-crcl-scr-unit').value : 'mgdl';
+  if(isNaN(age) || age <= 0 || isNaN(weight) || weight <= 0 || isNaN(scrRaw) || scrRaw <= 0){
+    wardsCalcSetResult('calc-crcl-result', 'Enter age, weight, sex and serum creatinine.', false);
+    return;
+  }
+  const scrMgDl = scrUnit === 'umol' ? scrRaw / 88.4 : scrRaw;
+  const crcl = ((140 - age) * weight * (sex === 'female' ? 0.85 : 1)) / (72 * scrMgDl);
+  wardsCalcSetResult('calc-crcl-result', `Estimated CrCl: ${crcl.toFixed(1)} mL/min.`, true);
+}
+
+function recalcBsaCalc(){
+  const height = wardsCalcNum('calc-bsa-height');
+  const weight = wardsCalcNum('calc-bsa-weight');
+  if(isNaN(height) || height <= 0 || isNaN(weight) || weight <= 0){
+    wardsCalcSetResult('calc-bsa-result', 'Enter height and weight.', false);
+    return;
+  }
+  const bsa = Math.sqrt((height * weight) / 3600);
+  wardsCalcSetResult('calc-bsa-result', `BSA: ${bsa.toFixed(2)} m².`, true);
+}
+
+function setupWardsCalculators(){
+  const openBtn = document.getElementById('vitals-calculators-btn');
+  const modal = document.getElementById('wards-calculators-modal');
+  const closeBtn = document.getElementById('wards-calculators-close');
+  if(!openBtn || !modal) return;
+  if(!openBtn.dataset.wired){
+    openBtn.dataset.wired = '1';
+    openBtn.addEventListener('click', () => {
+      // A nice-to-have, not a requirement: prefill weight from the active
+      // patient's own recorded weight (pediatrics' weightKg field is the
+      // only place this app tracks weight today) so it doesn't have to
+      // be retyped for a patient already open.
+      const p = activePatient();
+      const knownWeight = p && p.pediatrics && p.pediatrics.weightKg ? p.pediatrics.weightKg : '';
+      if(knownWeight){
+        ['calc-inf-weight', 'calc-dose-weight', 'calc-crcl-weight', 'calc-bsa-weight'].forEach(id => {
+          const el = document.getElementById(id);
+          if(el && !el.value) el.value = knownWeight;
+        });
+      }
+      modal.hidden = false; modal.classList.add('show');
+      recalcInfusionCalc(); recalcDosingCalc(); recalcCrClCalc(); recalcBsaCalc();
+    });
+  }
+  if(closeBtn && !closeBtn.dataset.wired){
+    closeBtn.dataset.wired = '1';
+    closeBtn.addEventListener('click', () => { modal.hidden = true; modal.classList.remove('show'); });
+  }
+  if(!modal.dataset.wired){
+    modal.dataset.wired = '1';
+    modal.addEventListener('click', e => { if(e.target === modal){ modal.hidden = true; modal.classList.remove('show'); } });
+    ['calc-inf-mg', 'calc-inf-vol', 'calc-inf-weight', 'calc-inf-rate'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('input', recalcInfusionCalc);
+    });
+    ['calc-dose-weight', 'calc-dose-perkg', 'calc-dose-freq'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('input', recalcDosingCalc);
+    });
+    ['calc-crcl-age', 'calc-crcl-weight', 'calc-crcl-scr'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('input', recalcCrClCalc);
+    });
+    ['calc-crcl-sex', 'calc-crcl-scr-unit'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('change', recalcCrClCalc);
+    });
+    ['calc-bsa-height', 'calc-bsa-weight'].forEach(id => {
+      const el = document.getElementById(id);
+      if(el) el.addEventListener('input', recalcBsaCalc);
+    });
+  }
+}
+
 function setupSbarShareButton(){
   const btn = document.getElementById('vitals-sbar-share-btn');
   if(!btn) return;
