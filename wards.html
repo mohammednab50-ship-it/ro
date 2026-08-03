@@ -3424,7 +3424,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       </label>
     </div>
 
-    <ol class="chapter-list" id="patient-list"></ol>
+    <ol class="chapter-list" id="patient-list" title="Keyboard: j/k to move between patients, / to search this patient's log, n to jump into a new reading"></ol>
 
     <button type="button" class="vitals-btn-primary vitals-add-patient-cta" id="vitals-add-patient-btn">+ Add patient</button>
     <button type="button" class="vitals-add-patient-btn vitals-btn-outline" id="vitals-scan-patient-btn" hidden><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-1.6A1.5 1.5 0 0 1 9.8 4.6h4.4a1.5 1.5 0 0 1 1.3.8L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg> Scan patient ID</button>
@@ -8345,6 +8345,7 @@ function initVitals(){
   setupVitalsEntryForm();
   setupVitalsAutosave();
   setupVitalsWakeLock();
+  setupVitalsKeyboardShortcuts();
   setupVitalsPrintButton();
   setupVitalsNormalFillButton();
   setupGcsPartsUI();
@@ -10444,6 +10445,54 @@ function setupVitalsWakeLock(){
     }
   });
 }
+
+/* ---- single-key roster shortcuts (/, j, k, n) -- ward-computer/desktop
+   convenience, never active while typing anywhere, while a modal is
+   open (Escape already owns that layer -- see wardsOpenModalEl), or
+   with a modifier held (never hijacks a browser/OS shortcut). Scoped to
+   whenever the Patients tab itself is the visible one; does nothing on
+   OPD or any other tab. ---- */
+function vitalsRosterButtons(){
+  return Array.from(document.querySelectorAll('#patient-list .chapter-btn[data-patient-id]'));
+}
+function moveVitalsRosterSelection(delta){
+  const buttons = vitalsRosterButtons();
+  if(!buttons.length) return;
+  const currentIndex = buttons.findIndex(b => b.dataset.patientId === vitalsState.activePatientId);
+  const nextIndex = Math.max(0, Math.min(buttons.length - 1, (currentIndex === -1 ? 0 : currentIndex) + delta));
+  const nextBtn = buttons[nextIndex];
+  if(!nextBtn || nextBtn.dataset.patientId === vitalsState.activePatientId) return;
+  nextBtn.click(); // the existing click handler already does the autosave-before-switch + render
+  nextBtn.scrollIntoView({ block: 'nearest' });
+}
+function setupVitalsKeyboardShortcuts(){
+  if(document.body.dataset.vitalsShortcutsWired) return;
+  document.body.dataset.vitalsShortcutsWired = '1';
+  document.addEventListener('keydown', e => {
+    if(e.ctrlKey || e.metaKey || e.altKey) return;
+    const vitalsView = document.getElementById('view-vitals');
+    if(!vitalsView || vitalsView.hidden || vitalsBoardActive) return; // roster-list view only, not board/bed-map/archive
+    if(wardsOpenModalEl()) return;
+    const active = document.activeElement;
+    const tag = active && active.tagName ? active.tagName.toLowerCase() : '';
+    const isTyping = tag === 'input' || tag === 'textarea' || tag === 'select' || (active && active.isContentEditable);
+    if(isTyping) return;
+
+    if(e.key === '/'){
+      const searchInput = document.getElementById('vitals-log-search');
+      if(searchInput && searchInput.offsetParent !== null){ e.preventDefault(); searchInput.focus(); }
+      return;
+    }
+    if(e.key === 'j'){ e.preventDefault(); moveVitalsRosterSelection(1); return; }
+    if(e.key === 'k'){ e.preventDefault(); moveVitalsRosterSelection(-1); return; }
+    if(e.key === 'n'){
+      const hrInput = document.getElementById('v-hr');
+      if(hrInput && hrInput.offsetParent !== null){ e.preventDefault(); hrInput.focus(); }
+      return;
+    }
+  });
+}
+
 // Watches #view-vitals's own [hidden] attribute (toggled by the app's
 // shared switchView() whenever the user picks a different tab) and
 // autosaves the instant this tab becomes hidden.
