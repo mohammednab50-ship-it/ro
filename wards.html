@@ -323,14 +323,23 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .scroll-top-btn:active{transform:scale(0.94);}
 
 /* ---- toast ---- */
-.app-toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(16px);z-index:1400;
+.app-toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(16px) scale(0.96);z-index:1400;
   background:var(--shell-raised,#16181A);color:var(--shell-ink,#F4F1EA);border:1px solid var(--shell-line,rgba(244,241,234,0.12));
-  font-family:var(--ff-sans);font-size:13.5px;font-weight:500;padding:12px 20px;border-radius:var(--r-pill);
+  font-family:var(--ff-sans);font-size:13.5px;font-weight:500;padding:11px 20px 11px 16px;border-radius:var(--r-pill);
   box-shadow:0 12px 34px rgba(0,0,0,0.4);opacity:0;pointer-events:none;max-width:88vw;text-align:center;
-  display:inline-flex;align-items:center;gap:8px;transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
-.app-toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
-.app-toast::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--evidence-bright,#5B9CFF);flex-shrink:0;}
-.app-toast.toast-err::before{background:var(--caution,#E0794F);}
+  display:inline-flex;align-items:center;gap:9px;transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
+.app-toast.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto;}
+.app-toast::before{
+  content:''; width:18px; height:18px; flex:0 0 auto; border-radius:50%;
+  background:var(--evidence-bright,#5B9CFF); position:relative;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E") center/12px no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E") center/12px no-repeat;
+}
+.app-toast.toast-err::before{
+  background:var(--caution,#E0794F);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z'/%3E%3C/svg%3E") center/13px no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z'/%3E%3C/svg%3E") center/13px no-repeat;
+}
 .app-toast-undo{flex-shrink:0;border:1px solid var(--shell-line,rgba(244,241,234,0.28));background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;padding:3px 10px;border-radius:var(--r-pill);margin-left:2px;}
 .app-toast-undo:hover{background:rgba(244,241,234,0.14);}
 /* quiet hours: skip the slide/fade animation flourish — text still shows instantly */
@@ -1586,10 +1595,18 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-add-form .vitals-field label span{font-weight:400;color:var(--ink-faint);}
 .vitals-add-actions{display:flex;gap:8px;flex-wrap:wrap;}
 
-.vitals-empty{padding:var(--space-9) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:14.5px;line-height:1.6;}
-.vitals-empty-icon{width:40px;height:40px;color:var(--line);margin-bottom:14px;}
-.vitals-empty p strong{color:var(--ink-soft);font-size:16px;}
-.vitals-board-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:var(--space-8) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:13.5px;}
+.vitals-empty{
+  padding:var(--space-9) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:14.5px;line-height:1.6;
+  border-radius:var(--r-md);
+  background:radial-gradient(420px 220px at 50% 0%,var(--evidence-bg) 0%,transparent 70%);
+  animation:wards-empty-fade-in .5s var(--ease-out) both;
+}
+.vitals-empty-icon{width:44px;height:44px;color:var(--evidence);opacity:0.55;margin-bottom:16px;}
+.vitals-empty p strong{color:var(--ink);font-size:17px;font-family:var(--ff-display);font-weight:800;}
+@keyframes wards-empty-fade-in{0%{opacity:0;transform:translateY(6px);}100%{opacity:1;transform:translateY(0);}}
+.vitals-board-empty{display:flex;flex-direction:column;align-items:center;gap:10px;padding:var(--space-8) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:13.5px;
+  border-radius:var(--r-md);background:radial-gradient(360px 180px at 50% 0%,var(--evidence-bg) 0%,transparent 70%);animation:wards-empty-fade-in .5s var(--ease-out) both;}
+@media (prefers-reduced-motion: reduce){ .vitals-empty,.vitals-board-empty{animation:none;} }
 .vitals-board-empty[hidden]{display:none;}
 .vitals-board-empty svg{width:28px;height:28px;color:var(--line);}
 
@@ -2519,6 +2536,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     body.vitals-print-summary #vitals-print-summary{display:block !important}
   }
   #vitals-print-summary{color:#000; font-family:var(--ff-sans); max-width:800px; margin:0 auto; padding:0 4px}
+  #vitals-print-summary .vps-letterhead{display:flex; align-items:center; gap:8px; margin:0 0 14px; padding-bottom:8px; border-bottom:2px solid #000;}
+  #vitals-print-summary .vps-letterhead svg{width:22px; height:22px;}
+  #vitals-print-summary .vps-letterhead span{font-family:var(--ff-display); font-size:15px; font-weight:800;}
+  #vitals-print-summary .vps-foot{margin-top:20px; padding-top:8px; border-top:1px solid #bbb; font-size:10.5px; color:#666; text-align:center;}
   #vitals-print-summary h1{font-family:var(--ff-display); font-size:22px; margin:0 0 2px}
   #vitals-print-summary .vps-sub{font-size:12.5px; color:#444; margin-bottom:14px}
   #vitals-print-summary .vps-sec{margin:0 0 14px; break-inside:avoid}
@@ -2595,6 +2616,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
    wraps onto its own line below the brand on narrow/phone widths --
    without it, a wrapped flex item falls back to the left edge. */
 .wards-header-actions{display:flex; align-items:center; gap:10px; justify-content:flex-end; margin-left:auto; max-width:100%;}
+.wards-header-icon-divider{width:1px; height:22px; background:var(--line); flex:0 0 auto; margin:0 2px;}
+@media (max-width:480px){ .wards-header-icon-divider{display:none;} }
 @media (max-width:480px){ .wards-header-actions{gap:4px;} }
 @media (max-width:360px){ .wards-header-actions{gap:2px;} .wards-header{padding-left:16px; padding-right:16px;} }
 
@@ -2656,6 +2679,15 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-settings-panel .ws-row > button:not(.seg-btn),
 .wards-settings-panel .ws-row > input{align-self:stretch;}
 .wards-settings-panel .qh-note{margin-bottom:12px;}
+.wards-billing-card{
+  display:flex; flex-direction:column; gap:4px; margin-bottom:14px; padding:14px 16px; border-radius:var(--r-md);
+  background:radial-gradient(220px 120px at 100% 0%,var(--evidence-bg) 0%,transparent 75%),var(--paper);
+  border:1px solid var(--line);
+}
+.wards-billing-plan-label{font-family:var(--ff-sans); font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.04em; color:var(--ink-faint);}
+.wards-billing-status{font-family:var(--ff-sans); font-size:13.5px; font-weight:600; color:var(--ink);}
+.wards-billing-actions{display:flex; flex-direction:column; gap:8px; margin-top:10px;}
+.wards-billing-actions[hidden]{display:none;}
 .wards-settings-panel .qh-note:last-child{margin-bottom:0;}
 .ws-shift-presets{display:flex;flex-direction:column;gap:6px;margin-bottom:8px;}
 .ws-shift-preset-row{display:flex;align-items:center;gap:8px;font-size:12.5px;}
@@ -2789,7 +2821,13 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-chat-tab{flex:1;border:none;background:none;padding:7px 10px;border-radius:var(--r-pill);font-family:var(--ff-sans);font-size:12.5px;font-weight:700;color:var(--ink-faint);cursor:pointer;}
 .wards-chat-tab[aria-selected="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow-sm);}
 .wards-chat-messages{flex:1;min-height:180px;max-height:38vh;overflow-y:auto;text-align:left;margin:10px 0;padding:4px 2px;display:flex;flex-direction:column;gap:8px;}
-.wards-chat-msg{max-width:85%;padding:7px 11px;border-radius:14px;background:var(--surface-raised);align-self:flex-start;}
+.wards-avatar{
+  flex:0 0 auto; width:24px; height:24px; border-radius:50%; color:#fff;
+  display:grid; place-items:center; font-family:var(--ff-sans); font-size:11px; font-weight:800;
+  margin-top:1px;
+}
+.wcm-body{min-width:0; flex:1;}
+.wards-chat-msg{max-width:85%;padding:7px 11px;border-radius:14px;background:var(--surface-raised);align-self:flex-start;display:flex;gap:7px;align-items:flex-start;}
 .wards-chat-msg.mine{align-self:flex-end;background:var(--evidence-bg);}
 .wards-chat-msg .wcm-meta{display:block;font-family:var(--ff-sans);font-size:10.5px;font-weight:700;color:var(--ink-faint);margin-bottom:2px;}
 .wards-chat-msg .wcm-text{font-family:var(--ff-sans);font-size:13px;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
@@ -2798,7 +2836,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-chat-composer input{flex:1;padding:9px 12px;border:1px solid var(--line);border-radius:var(--r-pill);background:var(--surface);color:var(--ink);font-family:var(--ff-sans);font-size:13px;}
 .wards-chat-announcements{display:flex;flex-direction:column;gap:6px;max-height:26vh;overflow-y:auto;margin-bottom:8px;}
 .wards-chat-announcements[style*="display: none"]{display:none;}
-.wards-chat-announce-item{padding:8px 11px;border-radius:var(--r-sm);background:var(--fresh-bg);border-left:2px solid var(--fresh);text-align:left;}
+.wards-chat-announce-item{padding:8px 11px;border-radius:var(--r-sm);background:var(--fresh-bg);border-left:2px solid var(--fresh);text-align:left;display:flex;gap:7px;align-items:flex-start;}
 .wards-chat-announce-item .wcm-meta{display:block;font-family:var(--ff-sans);font-size:10.5px;font-weight:700;color:var(--fresh);margin-bottom:2px;}
 .wards-chat-announce-item .wcm-text{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink);white-space:pre-wrap;word-break:break-word;}
 .wb-head{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:12px;}
@@ -2910,12 +2948,13 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
             <button type="button" class="settings-btn" id="wards-sync-newhospital-btn">Create hospital…</button>
             <button type="button" class="settings-btn" id="wards-sync-hospitaladmins-btn" disabled>Admins…</button>
           </div>
-          <div class="ws-row" id="wards-billing-row" hidden>
-            <span class="ws-label">Plan<span class="ws-sub" id="wards-billing-status">Free — one ward group, no departments</span></span>
-          </div>
-          <div class="ws-row" id="wards-billing-actions" style="gap:8px;margin-bottom:8px;" hidden>
-            <button type="button" class="settings-btn" id="wards-billing-upgrade-btn" hidden>Upgrade hospital…</button>
-            <button type="button" class="settings-btn" id="wards-billing-portal-btn" hidden>Manage billing</button>
+          <div class="wards-billing-card" id="wards-billing-row" hidden>
+            <span class="wards-billing-plan-label">Plan</span>
+            <span class="wards-billing-status" id="wards-billing-status">Free — one ward group, no departments</span>
+            <div class="wards-billing-actions" id="wards-billing-actions" hidden>
+              <button type="button" class="wards-login-btn-primary" id="wards-billing-upgrade-btn" hidden>Upgrade hospital…</button>
+              <button type="button" class="settings-btn" id="wards-billing-portal-btn" hidden>Manage billing</button>
+            </div>
           </div>
           <p class="login-error" id="wards-billing-error" role="alert" style="margin:2px 0 6px;"></p>
           <div class="ws-row">
@@ -2971,6 +3010,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <button id="wards-export-all" class="theme-toggle" type="button" aria-label="Export all Wards data" title="Export all Wards data (Vitals + Maternity backup)">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 3v12M7 10l5 5 5-5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 18v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" stroke-linecap="round" stroke-linejoin="round"/></svg>
     </button>
+    <span class="wards-header-icon-divider" aria-hidden="true"></span>
     <button id="theme-toggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" title="Switch to dark mode" aria-pressed="false">
       <svg class="icon-moon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z"/></svg>
       <svg class="icon-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M4.2 4.2l2.1 2.1M17.7 17.7l2.1 2.1M2 12h3M19 12h3M4.2 19.8l2.1-2.1M17.7 6.3l2.1-2.1"/></svg>
@@ -2991,6 +3031,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <p class="qh-note">Suppresses haptic buzz and toast animation flourish during this window (toast text still shows). Default 22:00&ndash;06:00.</p>
       </div>
     </div>
+    <span class="wards-header-icon-divider" aria-hidden="true"></span>
     <div class="wards-settings-wrap">
       <button id="wards-settings-toggle" class="theme-toggle" type="button" aria-label="Display settings" title="Text size, colour-blind-safe palette, battery saver" aria-expanded="false" aria-pressed="false">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1.04 1.56V21a2 2 0 0 1-4 0v-.09A1.7 1.7 0 0 0 8.96 19.4a1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.7 1.7 0 0 0 .34-1.87 1.7 1.7 0 0 0-1.56-1.04H3a2 2 0 0 1 0-4h.09A1.7 1.7 0 0 0 4.6 8.96a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.7 1.7 0 0 0 1.87.34H9a1.7 1.7 0 0 0 1.04-1.56V3a2 2 0 0 1 4 0v.09a1.7 1.7 0 0 0 1.04 1.56 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.7 1.7 0 0 0-.34 1.87V9a1.7 1.7 0 0 0 1.56 1.04H21a2 2 0 0 1 0 4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
@@ -5524,6 +5565,7 @@ async function initWardsFirebase(){
 }
 
 let currentWardsUser = null;
+let wardsCurrentUserRole = null;
 let wardsMyGroups = [];
 let activeSyncGroupId = null;
 let wardsGroupsUnsub = null;
@@ -5814,6 +5856,13 @@ async function wardsSaveProfile(user, name, role){
   await wfdb.collection('users').doc(user.uid).set({
     email: user.email || '', displayName: name, role
   }, { merge: true });
+  // Keep Firebase Auth's own displayName in sync too -- wardsChatDisplayName()
+  // (used for every chat message, announcement, and invite) reads
+  // currentWardsUser.displayName, not the Firestore profile doc. Without
+  // this, an email/password signup (no Google-provided displayName) would
+  // show their email prefix in chat forever, even after setting a real
+  // name here.
+  try{ await user.updateProfile({ displayName: name }); }catch(e){}
 }
 function wardsRenderWelcomeGreeting(name, role){
   const el = document.getElementById('wards-welcome-greeting');
@@ -5844,6 +5893,7 @@ function wardsWireProfileGateOnce(){
     try{
       const user = saveBtn._pendingUser;
       await wardsSaveProfile(user, name, role);
+      wardsCurrentUserRole = role;
       wardsRenderWelcomeGreeting(name, role);
       const modal = document.getElementById('wards-profile-modal');
       modal.hidden = true; modal.classList.remove('show');
@@ -5863,6 +5913,7 @@ function wardsWireProfileGateOnce(){
 function wardsGateOnProfile(user){
   return wardsGetProfile(user.uid).then(profile => {
     if(profile && profile.displayName && profile.role){
+      wardsCurrentUserRole = profile.role;
       wardsRenderWelcomeGreeting(profile.displayName, profile.role);
       return;
     }
@@ -6260,6 +6311,7 @@ async function wardsSendGroupChatMessage(groupId, text){
     text: trimmed.slice(0, 2000),
     senderUid: currentWardsUser.uid,
     senderName: wardsChatDisplayName(),
+    senderRole: wardsCurrentUserRole || null,
     sentAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 }
@@ -6283,6 +6335,7 @@ async function wardsSendDeptChatMessage(deptId, text){
     text: trimmed.slice(0, 2000),
     senderUid: currentWardsUser.uid,
     senderName: wardsChatDisplayName(),
+    senderRole: wardsCurrentUserRole || null,
     sentAt: firebase.firestore.FieldValue.serverTimestamp()
   });
 }
@@ -6306,6 +6359,7 @@ async function wardsPostDeptAnnouncement(deptId, text){
     text: trimmed.slice(0, 2000),
     postedBy: currentWardsUser.uid,
     postedByName: wardsChatDisplayName(),
+    postedByRole: wardsCurrentUserRole || null,
     postedAt: firebase.firestore.FieldValue.serverTimestamp(),
     readBy: {}
   });
@@ -6632,6 +6686,15 @@ function setupWardsBillingUI(){
    ============================================================ */
 let wardsDeptIsAdminCache = null; // {uid, deptId, isAdmin} -- avoid re-checking every render
 
+const WARDS_ROLE_AVATAR_COLOR = {
+  doctor: '#2F6FEE', nurse: '#2E7D32', intern: '#8E5FD9', student: '#C4750A', 'student-nurse': '#0E8F87'
+};
+function wardsAvatarHtml(name, role){
+  const initial = (name || '?').trim().charAt(0).toUpperCase() || '?';
+  const color = WARDS_ROLE_AVATAR_COLOR[role] || 'var(--ink-faint)';
+  return `<span class="wards-avatar" style="background:${color};" aria-hidden="true">${escapeHtml(initial)}</span>`;
+}
+
 function wardsRenderChatMessages(containerId, messages, emptyText){
   const el = document.getElementById(containerId);
   if(!el) return;
@@ -6644,8 +6707,9 @@ function wardsRenderChatMessages(containerId, messages, emptyText){
     const mine = m.senderUid === myUid;
     const when = m.sentAt && m.sentAt.toDate ? fmtWardsDateTime(m.sentAt.toDate()) : '';
     return `<div class="wards-chat-msg${mine ? ' mine' : ''}">` +
-      `<span class="wcm-meta">${escapeHtml(m.senderName || 'Unknown')}${when ? ' &middot; ' + escapeHtml(when) : ''}</span>` +
-      `<span class="wcm-text">${escapeHtml(m.text || '')}</span></div>`;
+      (mine ? '' : wardsAvatarHtml(m.senderName, m.senderRole)) +
+      `<div class="wcm-body"><span class="wcm-meta">${escapeHtml(m.senderName || 'Unknown')}${when ? ' &middot; ' + escapeHtml(when) : ''}</span>` +
+      `<span class="wcm-text">${escapeHtml(m.text || '')}</span></div></div>`;
   }).join('');
   el.scrollTop = el.scrollHeight;
 }
@@ -6660,8 +6724,9 @@ function wardsRenderAnnouncements(list, deptId){
     const seenCount = a.readBy ? Object.keys(a.readBy).length : 0;
     const seenLabel = seenCount > 0 ? ` &middot; Seen by ${seenCount}` : '';
     return `<div class="wards-chat-announce-item">` +
-      `<span class="wcm-meta">&#128226; ${escapeHtml(a.postedByName || 'Admin')}${when ? ' &middot; ' + escapeHtml(when) : ''}${seenLabel}</span>` +
-      `<span class="wcm-text">${escapeHtml(a.text || '')}</span></div>`;
+      wardsAvatarHtml(a.postedByName, a.postedByRole) +
+      `<div class="wcm-body"><span class="wcm-meta">&#128226; ${escapeHtml(a.postedByName || 'Admin')}${when ? ' &middot; ' + escapeHtml(when) : ''}${seenLabel}</span>` +
+      `<span class="wcm-text">${escapeHtml(a.text || '')}</span></div></div>`;
   }).join('');
   if(deptId && myUid){
     list.forEach(a => { if(!a.readBy || !a.readBy[myUid]) wardsMarkAnnouncementRead(deptId, a.id); });
@@ -6801,7 +6866,7 @@ function setupWardsChatUI(){
     wardInput.value = '';
     if(wardSendBtn) wardSendBtn.disabled = true;
     try{ await wardsSendGroupChatMessage(activeSyncGroupId, text); }
-    catch(e){ wardInput.value = text; showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'error'); }
+    catch(e){ wardInput.value = text; showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'err'); }
     finally{ if(wardSendBtn) wardSendBtn.disabled = false; }
   }
   async function sendDept(){
@@ -6811,7 +6876,7 @@ function setupWardsChatUI(){
     deptInput.value = '';
     if(deptSendBtn) deptSendBtn.disabled = true;
     try{ await wardsSendDeptChatMessage(activeDepartmentId, text); }
-    catch(e){ deptInput.value = text; showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'error'); }
+    catch(e){ deptInput.value = text; showToast('Could not send — ' + ((e && e.message) || 'try again.'), 'err'); }
     finally{ if(deptSendBtn) deptSendBtn.disabled = false; }
   }
   async function sendAnnouncement(){
@@ -6821,7 +6886,7 @@ function setupWardsChatUI(){
     announceInput.value = '';
     if(announceBtn) announceBtn.disabled = true;
     try{ await wardsPostDeptAnnouncement(activeDepartmentId, text); }
-    catch(e){ announceInput.value = text; showToast('Could not post — ' + ((e && e.message) || 'try again.'), 'error'); }
+    catch(e){ announceInput.value = text; showToast('Could not post — ' + ((e && e.message) || 'try again.'), 'err'); }
     finally{ if(announceBtn) announceBtn.disabled = false; }
   }
 
@@ -6889,6 +6954,7 @@ async function wardsOnAuthChanged(user){
     wardsMyDepartments = [];
     activeDepartmentId = null;
     wardsMyPendingInvites = [];
+    wardsCurrentUserRole = null;
     wardsRenderWelcomeGreeting(null, null);
     wardsShowLoginGate();
   }
@@ -10177,7 +10243,9 @@ function printVitalsSummary(){
     </tr>`;
   }).join('');
 
+  const letterhead = `<div class="vps-letterhead"><svg viewBox="0 0 24 24" fill="none" stroke="#000" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h4l2 7 4-14 2 7h8"/></svg><span>Wards</span></div>`;
   const html =
+    letterhead +
     `<h1>${escapeHtml(p.name || 'Patient')}</h1>` +
     `<div class="vps-sub">Vitals summary &middot; generated ${fmtWardsDateTime(new Date())}</div>` +
     `<div class="vps-sec"><h2>Identity</h2><div class="vps-grid">` +
@@ -10188,7 +10256,8 @@ function printVitalsSummary(){
       ? `<table><thead><tr><th>Time</th><th>HR</th><th>BP</th><th>RR</th><th>SpO&#8322;</th><th>Temp</th><th>Notes</th></tr></thead><tbody>${rows}</tbody></table>`
       : `<p class="vps-note">No readings logged yet.</p>`) +
     (flaggedCount ? `<p class="vps-note">${flaggedCount} reading(s) in the full log were flagged as outside typical range.</p>` : '') +
-    `</div>`;
+    `</div>` +
+    `<div class="vps-foot">Generated by Wards &middot; personal charting aid only, not an official medical record</div>`;
 
   container.innerHTML = html;
   document.body.classList.add('vitals-print-summary');
