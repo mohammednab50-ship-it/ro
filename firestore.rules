@@ -742,7 +742,13 @@ match /databases/{database}/documents {
       && request.resource.data.name is string && request.resource.data.name.size() > 0 && request.resource.data.name.size() <= 120
       && (!('age' in request.resource.data) || request.resource.data.age == null || (request.resource.data.age is number && request.resource.data.age >= 0 && request.resource.data.age <= 130))
       && (!('gender' in request.resource.data) || request.resource.data.gender is string)
-      && (!('mrn' in request.resource.data) || request.resource.data.mrn is string);
+      && (!('mrn' in request.resource.data) || request.resource.data.mrn is string)
+      // mrnKey is a normalized (trimmed+uppercased) copy of mrn, written
+      // by the client so it can query for exact-MRN duplicates before
+      // creating a new patient (see opdFindDuplicates in wards.html) --
+      // just type-validated here, not re-derived server-side, since it's
+      // a lookup convenience, not a security boundary.
+      && (!('mrnKey' in request.resource.data) || request.resource.data.mrnKey is string);
     // Demographic corrections only -- createdBy/createdAt are permanent
     // once set (never re-attributable to someone else after the fact),
     // and only the original creator or this hospital's admin may correct
@@ -785,6 +791,38 @@ match /databases/{database}/documents {
         );
       allow update: if false;
       allow delete: if isHospitalAdmin(hospitalId);
+
+      // The correction workflow promised above: a visit itself never
+      // changes, but an amendment can be attached recording what should
+      // have been written and why. Read side renders original + every
+      // amendment in order rather than silently merging them, so nothing
+      // is ever hidden -- see opdVisitCardsHtml() in wards.html. Create
+      // is gated by the SAME department-match rule as the parent visit
+      // (re-derived from the parent visit's own stored `department`,
+      // never client-supplied) -- an ENT-assigned user can't amend a
+      // Cardiology visit any more than they could have created one.
+      // Amendments are themselves immutable (a wrong amendment gets its
+      // own further amendment, never a silent edit).
+      match /amendments/{amendmentId} {
+        allow get, list: if isOpdMember(hospitalId) || isHospitalAdmin(hospitalId);
+        allow create: if signedIn()
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.reason is string && request.resource.data.reason.size() > 0 && request.resource.data.reason.size() <= 500
+          && (!('chiefComplaint' in request.resource.data) || (request.resource.data.chiefComplaint is string && request.resource.data.chiefComplaint.size() <= 500))
+          && (!('diagnosis' in request.resource.data) || (request.resource.data.diagnosis is string && request.resource.data.diagnosis.size() <= 2000))
+          && (!('plan' in request.resource.data) || (request.resource.data.plan is string && request.resource.data.plan.size() <= 2000))
+          && (!('followUpDate' in request.resource.data) || request.resource.data.followUpDate is string)
+          && (
+            isHospitalAdmin(hospitalId)
+            || (
+              isOpdMember(hospitalId)
+              && exists(/databases/$(database)/documents/hospitals/$(hospitalId)/opdPatients/$(patientId)/visits/$(visitId))
+              && opdMemberDepartment() == get(/databases/$(database)/documents/hospitals/$(hospitalId)/opdPatients/$(patientId)/visits/$(visitId)).data.department
+            )
+          );
+        allow update: if false;
+        allow delete: if isHospitalAdmin(hospitalId);
+      }
     }
   }
 

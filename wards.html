@@ -1704,6 +1704,13 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
   font-family:var(--ff-sans);font-size:13.5px;background:var(--surface);color:var(--ink);}
 .opd-search-input:focus{outline:none;border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
 
+.opd-dup-warning{background:var(--caution-bg);border:1px solid var(--caution-line);border-radius:var(--r-md);padding:12px 14px;margin-bottom:14px;}
+.opd-dup-warning-title{font-family:var(--ff-display);font-size:12.5px;font-weight:700;color:var(--caution-ink,#8a5a00);margin:0 0 8px;}
+.opd-dup-match-row{font-family:var(--ff-sans);font-size:12.5px;color:var(--ink);padding:6px 8px;border-radius:var(--r-sm);background:var(--paper);margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer;}
+.opd-dup-match-row:hover{background:var(--line-soft);}
+.opd-dup-match-row span:last-child{color:var(--ink-faint);font-size:11px;}
+.opd-dup-warning-note{font-family:var(--ff-sans);font-size:11.5px;color:var(--ink-faint);line-height:1.4;margin:2px 0 8px;}
+
 /* Quick-glance stat cards atop the OPD main panel -- gradient cards echo the
    "Alutem" mockup's vitals tiles (teal/mint, rounded, white text) without
    pulling in a chart library; these are just a live patient/visit count. */
@@ -1741,6 +1748,9 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .opd-visit-card:hover{transform:translateY(-2px);box-shadow:var(--shadow-sm);border-color:rgba(13,148,136,0.35);}
 :root[data-theme="dark"] .opd-visit-card,.wards-dark .opd-visit-card{background:rgba(255,255,255,0.04);}
 .opd-visit-dept-pill{display:inline-block;font-family:var(--ff-display);font-size:11px;font-weight:700;letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#0d9488;background:rgba(13,148,136,0.12);padding:3px 10px;border-radius:var(--r-pill);}
+.opd-amendment-row{border-left:2px solid var(--fresh);padding:6px 0 6px 12px;margin-top:8px;background:var(--fresh-bg);border-radius:0 var(--r-sm) var(--r-sm) 0;}
+.opd-amendment-meta{font-family:var(--ff-sans);font-size:11px;color:var(--fresh);margin:0 0 4px;}
+.opd-amend-btn{margin-top:10px;font-size:11.5px;padding:4px 10px;}
 
 /* Patient avatar + quick-stat row atop the OPD detail view -- mirrors the
    "Good Morning, William Johnson" greeting + stat row from the reference
@@ -4201,6 +4211,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <label for="opd-new-mrn">MRN <span>(optional)</span></label>
         <input id="opd-new-mrn" type="text" maxlength="40" placeholder="optional">
       </div>
+      <div class="opd-dup-warning" id="opd-dup-warning" hidden>
+        <p class="opd-dup-warning-title">Possible existing patient</p>
+        <div id="opd-dup-warning-list"></div>
+        <p class="opd-dup-warning-note">Visits combine per patient record — if this is the same person, open their existing record instead of creating a new one, or their history will split in two.</p>
+        <div class="vitals-add-actions">
+          <button type="button" class="vitals-btn-ghost" id="opd-dup-create-anyway-btn">Create new anyway</button>
+        </div>
+      </div>
       <div class="vitals-add-actions">
         <button type="button" class="vitals-btn-primary" id="opd-save-patient-btn">Add patient</button>
         <button type="button" class="vitals-btn-ghost" id="opd-cancel-patient-btn">Cancel</button>
@@ -4284,6 +4302,33 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div class="vitals-add-actions">
           <button type="button" class="vitals-btn-primary" id="opd-save-visit-btn">Save visit</button>
           <button type="button" class="vitals-btn-ghost" id="opd-cancel-visit-btn">Cancel</button>
+        </div>
+      </div>
+      <div class="vitals-add-form" id="opd-amend-form" hidden>
+        <p class="vitals-dept-subtitle">Amend visit</p>
+        <div class="vitals-field">
+          <label for="opd-amend-complaint">Chief complaint</label>
+          <input id="opd-amend-complaint" type="text" maxlength="200">
+        </div>
+        <div class="vitals-field">
+          <label for="opd-amend-diagnosis">Diagnosis</label>
+          <textarea id="opd-amend-diagnosis" rows="2" maxlength="500"></textarea>
+        </div>
+        <div class="vitals-field">
+          <label for="opd-amend-plan">Plan / prescription</label>
+          <textarea id="opd-amend-plan" rows="2" maxlength="500"></textarea>
+        </div>
+        <div class="vitals-field">
+          <label for="opd-amend-followup">Follow-up date <span>(optional)</span></label>
+          <input id="opd-amend-followup" type="date">
+        </div>
+        <div class="vitals-field">
+          <label for="opd-amend-reason">Reason for correction <span>(required)</span></label>
+          <input id="opd-amend-reason" type="text" maxlength="500" placeholder="e.g. Typo — should read otitis externa, not media">
+        </div>
+        <div class="vitals-add-actions">
+          <button type="button" class="vitals-btn-primary" id="opd-amend-save-btn">Save amendment</button>
+          <button type="button" class="vitals-btn-ghost" id="opd-amend-cancel-btn">Cancel</button>
         </div>
       </div>
     </div>
@@ -13545,7 +13590,7 @@ window.handleScannedValue = handleScannedValue;
 // shared with the profile modal so "your OPD department" has something to
 // pick from.
 const OPD_KEY = 'wards_opd_v1';
-let opdState = { patients: [], visits: {}, activePatientId: null };
+let opdState = { patients: [], visits: {}, amendments: {}, activePatientId: null };
 let opdDeptFilter = null; // null = all departments (only meaningful when unrestricted -- see opdVisibleDepartments)
 let opdSearch = '';
 
@@ -13589,7 +13634,7 @@ function opdUnsubscribeAll(){
 function loadOpdData(){
   opdUnsubscribeAll();
   if(opdCloudMode()){
-    opdState = { patients: [], visits: {}, activePatientId: opdState.activePatientId || null };
+    opdState = { patients: [], visits: {}, amendments: {}, activePatientId: opdState.activePatientId || null };
     subscribeOpdCloudPatients();
     return;
   }
@@ -13599,9 +13644,10 @@ function loadOpdData(){
     opdState = {
       patients: (parsed && Array.isArray(parsed.patients)) ? parsed.patients : [],
       visits: (parsed && parsed.visits && typeof parsed.visits === 'object') ? parsed.visits : {},
+      amendments: (parsed && parsed.amendments && typeof parsed.amendments === 'object') ? parsed.amendments : {},
       activePatientId: (parsed && parsed.activePatientId) || null
     };
-  }catch(e){ opdState = { patients: [], visits: {}, activePatientId: null }; }
+  }catch(e){ opdState = { patients: [], visits: {}, amendments: {}, activePatientId: null }; }
 }
 // Local-mode-only persistence -- cloud mode's state is server-driven
 // (each write goes straight to Firestore; re-render happens from the
@@ -13624,6 +13670,19 @@ function subscribeOpdCloudPatients(){
     showToast('OPD sync paused — could not reach the server.', 'err');
   });
 }
+// Amendments are fetched once per visit (not a live subscription -- a
+// correction is rare enough that a one-shot fetch whenever the visit
+// list changes is plenty, and avoids stacking one onSnapshot listener
+// per visit for a patient with a long history).
+async function opdFetchAmendmentsForVisits(patientId, visits){
+  await Promise.all(visits.map(async v => {
+    try{
+      const snap = await opdPatientsCol().doc(patientId).collection('visits').doc(v.id).collection('amendments').get();
+      opdState.amendments[v.id] = snap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
+    }catch(e){ /* leave whatever was already cached */ }
+  }));
+  renderOpdVisitList();
+}
 function subscribeOpdCloudVisits(patientId){
   if(opdVisitsUnsub){ opdVisitsUnsub(); opdVisitsUnsub = null; }
   if(!patientId) return;
@@ -13632,6 +13691,7 @@ function subscribeOpdCloudVisits(patientId){
     renderOpdVisitList();
     renderOpdSidePanel(opdActivePatient());
     renderOpdPatientList(); // department badge in the roster depends on visit data too
+    opdFetchAmendmentsForVisits(patientId, opdState.visits[patientId]);
   }, err => {
     console.warn('Wards: OPD visit sync listener error', err);
     showToast('OPD sync paused — could not reach the server.', 'err');
@@ -13656,6 +13716,26 @@ function opdPatientDepartments(patientId){
     if(v.department && !seen.has(v.department)){ seen.add(v.department); out.push(v.department); }
   });
   return out;
+}
+
+/* ---- patient identity: a real MRN match is treated as decisive; a
+   name+age match without an MRN is treated as "worth a second look,"
+   not blocked outright (a shared name+age isn't impossible) -- both are
+   surfaced to the person adding the patient, who makes the final call.
+   Matched entirely against the already-loaded roster in opdState
+   (whole-hospital in cloud mode via the live subscription, whole-device
+   in local mode), so this never needs its own network round-trip. ---- */
+function opdNormalizeMrn(mrn){
+  return (mrn || '').trim().toUpperCase();
+}
+function opdFindDuplicates(name, age, mrn){
+  const normMrn = opdNormalizeMrn(mrn);
+  const normName = (name || '').trim().toLowerCase();
+  return opdState.patients.filter(p => {
+    if(normMrn && p.mrn && opdNormalizeMrn(p.mrn) === normMrn) return true;
+    if(normName && (p.name || '').trim().toLowerCase() === normName && age != null && p.age === age) return true;
+    return false;
+  });
 }
 
 const OPD_NAV_ICON_ALL = '<svg class="opd-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
@@ -13720,8 +13800,20 @@ function renderOpdPatientList(){
   renderOpdStats();
 }
 
-function opdVisitCardsHtml(visits){
-  return visits.map(v => `
+// Amendments are never merged into "the current value" -- original visit
+// plus every amendment is shown in order, each clearly timestamped, so a
+// correction is always visible as a correction, not a silent edit (see
+// firestore.rules: visits and amendments are both create-only, no
+// update). opts.showAmend=false hides the Amend control (used in the
+// read-only report modal's visit history).
+function opdVisitAmendments(visitId){
+  return (opdState.amendments[visitId] || []).slice().sort((a, b) => new Date(a.createdAt) - new Date(b.createdAt));
+}
+function opdVisitCardsHtml(visits, opts){
+  const showAmend = !opts || opts.showAmend !== false;
+  return visits.map(v => {
+    const amendments = opdVisitAmendments(v.id);
+    return `
     <div class="opd-visit-card">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
         <span class="opd-visit-dept-pill">${escapeHtml(v.department || 'General')}</span>
@@ -13731,8 +13823,19 @@ function opdVisitCardsHtml(visits){
       ${v.diagnosis ? `<div><b>Diagnosis:</b> ${escapeHtml(v.diagnosis)}</div>` : ''}
       ${v.plan ? `<div><b>Plan:</b> ${escapeHtml(v.plan)}</div>` : ''}
       ${v.followUpDate ? `<div><b>Follow-up:</b> ${escapeHtml(v.followUpDate)}</div>` : ''}
+      ${amendments.map(a => `
+        <div class="opd-amendment-row">
+          <p class="opd-amendment-meta">Amended ${escapeHtml(fmtWardsDateTime(new Date(a.createdAt)))} — <em>${escapeHtml(a.reason)}</em></p>
+          ${a.chiefComplaint ? `<div><b>Complaint →</b> ${escapeHtml(a.chiefComplaint)}</div>` : ''}
+          ${a.diagnosis ? `<div><b>Diagnosis →</b> ${escapeHtml(a.diagnosis)}</div>` : ''}
+          ${a.plan ? `<div><b>Plan →</b> ${escapeHtml(a.plan)}</div>` : ''}
+          ${a.followUpDate ? `<div><b>Follow-up →</b> ${escapeHtml(a.followUpDate)}</div>` : ''}
+        </div>
+      `).join('')}
+      ${showAmend ? `<button type="button" class="vitals-btn-ghost opd-amend-btn" data-amend-visit="${escapeHtml(v.id)}">Amend…</button>` : ''}
     </div>
-  `).join('');
+  `;
+  }).join('');
 }
 
 function renderOpdVisitList(){
@@ -13828,7 +13931,7 @@ function renderOpdReport(){
   }
 
   const historyEl = document.getElementById('opd-report-visit-list');
-  if(historyEl) historyEl.innerHTML = visits.length ? opdVisitCardsHtml(visits) : '<p class="vitals-dept-empty">No visits logged yet.</p>';
+  if(historyEl) historyEl.innerHTML = visits.length ? opdVisitCardsHtml(visits, { showAmend: false }) : '<p class="vitals-dept-empty">No visits logged yet.</p>';
 
   modal.hidden = false;
   modal.classList.add('show'); // .wards-qr-modal is display:none by default -- only .show flips it to display:grid
@@ -13995,9 +14098,73 @@ function setupOpdUI(){
     if(!addForm.hidden) document.getElementById('opd-new-name').focus();
   });
   const cancelPatientBtn = document.getElementById('opd-cancel-patient-btn');
-  if(cancelPatientBtn) cancelPatientBtn.addEventListener('click', () => { addForm.hidden = true; });
+  const dupWarning = document.getElementById('opd-dup-warning');
+  const dupList = document.getElementById('opd-dup-warning-list');
+  const dupCreateAnywayBtn = document.getElementById('opd-dup-create-anyway-btn');
+  if(cancelPatientBtn) cancelPatientBtn.addEventListener('click', () => { addForm.hidden = true; if(dupWarning) dupWarning.hidden = true; });
+
+  async function opdCreatePatientNow(base){
+    let newId;
+    if(opdCloudMode()){
+      const payload = Object.assign({}, base, {
+        mrnKey: base.mrn ? opdNormalizeMrn(base.mrn) : '',
+        createdBy: window.currentWardsUser.uid,
+        createdAt: new Date().toISOString()
+      });
+      const ref = await opdPatientsCol().add(payload);
+      newId = ref.id;
+    }else{
+      const p = Object.assign({ id: genOpdId('opdpt'), createdBy: null, createdAt: new Date().toISOString() }, base);
+      opdState.patients.push(p);
+      saveOpdData();
+      newId = p.id;
+    }
+    document.getElementById('opd-new-name').value = '';
+    document.getElementById('opd-new-age').value = '';
+    document.getElementById('opd-new-gender').value = '';
+    document.getElementById('opd-new-mrn').value = '';
+    addForm.hidden = true;
+    if(dupWarning) dupWarning.hidden = true;
+    selectOpdPatient(newId);
+    haptic('Medium');
+    showToast('OPD patient added.', 'ok');
+  }
+
   const savePatientBtn = document.getElementById('opd-save-patient-btn');
   if(savePatientBtn) savePatientBtn.addEventListener('click', async () => {
+    const name = document.getElementById('opd-new-name').value.trim();
+    if(!name){ showToast('Enter a name.', 'err'); return; }
+    const age = document.getElementById('opd-new-age').value ? Number(document.getElementById('opd-new-age').value) : null;
+    const base = {
+      name,
+      age,
+      gender: document.getElementById('opd-new-gender').value || '',
+      mrn: document.getElementById('opd-new-mrn').value.trim()
+    };
+    const dupes = opdFindDuplicates(name, age, base.mrn);
+    if(dupes.length && dupWarning && dupList){
+      dupList.innerHTML = dupes.map(p => `<div class="opd-dup-match-row" data-open-existing="${escapeHtml(p.id)}"><span>${escapeHtml(p.name)}${p.age != null ? ', ' + escapeHtml(String(p.age)) + 'y' : ''}${p.mrn ? ' · MRN ' + escapeHtml(p.mrn) : ''}</span><span>Open →</span></div>`).join('');
+      dupWarning.hidden = false;
+      return;
+    }
+    savePatientBtn.disabled = true;
+    try{ await opdCreatePatientNow(base); }
+    catch(e){
+      console.warn('Wards: could not add OPD patient', e);
+      showToast('Could not add patient — try again.', 'err');
+    }finally{
+      savePatientBtn.disabled = false;
+    }
+  });
+  if(dupList) dupList.addEventListener('click', e => {
+    const row = e.target.closest('[data-open-existing]');
+    if(!row) return;
+    addForm.hidden = true;
+    dupWarning.hidden = true;
+    haptic('Light');
+    selectOpdPatient(row.dataset.openExisting);
+  });
+  if(dupCreateAnywayBtn) dupCreateAnywayBtn.addEventListener('click', async () => {
     const name = document.getElementById('opd-new-name').value.trim();
     if(!name){ showToast('Enter a name.', 'err'); return; }
     const base = {
@@ -14006,35 +14173,13 @@ function setupOpdUI(){
       gender: document.getElementById('opd-new-gender').value || '',
       mrn: document.getElementById('opd-new-mrn').value.trim()
     };
-    savePatientBtn.disabled = true;
-    try{
-      let newId;
-      if(opdCloudMode()){
-        const payload = Object.assign({}, base, {
-          createdBy: window.currentWardsUser.uid,
-          createdAt: new Date().toISOString()
-        });
-        const ref = await opdPatientsCol().add(payload);
-        newId = ref.id;
-      }else{
-        const p = Object.assign({ id: genOpdId('opdpt'), createdBy: null, createdAt: new Date().toISOString() }, base);
-        opdState.patients.push(p);
-        saveOpdData();
-        newId = p.id;
-      }
-      document.getElementById('opd-new-name').value = '';
-      document.getElementById('opd-new-age').value = '';
-      document.getElementById('opd-new-gender').value = '';
-      document.getElementById('opd-new-mrn').value = '';
-      addForm.hidden = true;
-      selectOpdPatient(newId);
-      haptic('Medium');
-      showToast('OPD patient added.', 'ok');
-    }catch(e){
+    dupCreateAnywayBtn.disabled = true;
+    try{ await opdCreatePatientNow(base); }
+    catch(e){
       console.warn('Wards: could not add OPD patient', e);
       showToast('Could not add patient — try again.', 'err');
     }finally{
-      savePatientBtn.disabled = false;
+      dupCreateAnywayBtn.disabled = false;
     }
   });
 
@@ -14100,6 +14245,81 @@ function setupOpdUI(){
       showToast('Could not save visit — try again.', 'err');
     }finally{
       saveVisitBtn.disabled = false;
+    }
+  });
+
+  // Amendments: one shared form, repositioned/prefilled per visit rather
+  // than one form per card (avoids id collisions across a long history).
+  let opdAmendingVisitId = null;
+  const amendForm = document.getElementById('opd-amend-form');
+  const amendVisitListEl = document.getElementById('opd-visit-list');
+  if(amendVisitListEl && amendForm) amendVisitListEl.addEventListener('click', e => {
+    const btn = e.target.closest('.opd-amend-btn');
+    if(!btn) return;
+    const visitId = btn.dataset.amendVisit;
+    const p = opdActivePatient();
+    if(!p) return;
+    const visit = opdVisitsFor(p.id).find(v => v.id === visitId);
+    if(!visit) return;
+    // Server rejects an amendment from anyone whose assigned department
+    // doesn't match the visit's own department (see firestore.rules) --
+    // same client-side pre-check as filing a new visit, for a clear
+    // error instead of a bounced write.
+    if(opdIsRestricted() && visit.department !== wardsCurrentUserDepartment){
+      showToast('You can only amend visits under your assigned department.', 'err');
+      return;
+    }
+    opdAmendingVisitId = visitId;
+    const priorAmendments = opdVisitAmendments(visitId);
+    const latest = priorAmendments.length ? priorAmendments[priorAmendments.length - 1] : visit;
+    document.getElementById('opd-amend-complaint').value = latest.chiefComplaint || '';
+    document.getElementById('opd-amend-diagnosis').value = latest.diagnosis || '';
+    document.getElementById('opd-amend-plan').value = latest.plan || '';
+    document.getElementById('opd-amend-followup').value = latest.followUpDate || '';
+    document.getElementById('opd-amend-reason').value = '';
+    amendForm.hidden = false;
+    amendForm.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  });
+  const amendCancelBtn = document.getElementById('opd-amend-cancel-btn');
+  if(amendCancelBtn) amendCancelBtn.addEventListener('click', () => { amendForm.hidden = true; opdAmendingVisitId = null; });
+  const amendSaveBtn = document.getElementById('opd-amend-save-btn');
+  if(amendSaveBtn) amendSaveBtn.addEventListener('click', async () => {
+    const p = opdActivePatient();
+    if(!p || !opdAmendingVisitId) return;
+    const reason = document.getElementById('opd-amend-reason').value.trim();
+    if(!reason){ showToast('Explain what this correction changes and why.', 'err'); return; }
+    const base = {
+      chiefComplaint: document.getElementById('opd-amend-complaint').value.trim(),
+      diagnosis: document.getElementById('opd-amend-diagnosis').value.trim(),
+      plan: document.getElementById('opd-amend-plan').value.trim(),
+      followUpDate: document.getElementById('opd-amend-followup').value || '',
+      reason
+    };
+    amendSaveBtn.disabled = true;
+    try{
+      if(opdCloudMode()){
+        const payload = Object.assign({}, base, {
+          createdBy: window.currentWardsUser.uid,
+          createdAt: new Date().toISOString()
+        });
+        await opdPatientsCol().doc(p.id).collection('visits').doc(opdAmendingVisitId).collection('amendments').add(payload);
+        await opdFetchAmendmentsForVisits(p.id, opdState.visits[p.id] || []);
+      }else{
+        const amendment = Object.assign({ id: genOpdId('opdamend'), createdBy: null, createdAt: new Date().toISOString() }, base);
+        if(!opdState.amendments[opdAmendingVisitId]) opdState.amendments[opdAmendingVisitId] = [];
+        opdState.amendments[opdAmendingVisitId].push(amendment);
+        saveOpdData();
+        renderOpdVisitList();
+      }
+      amendForm.hidden = true;
+      opdAmendingVisitId = null;
+      haptic('Medium');
+      showToast('Amendment saved.', 'ok');
+    }catch(e){
+      console.warn('Wards: could not save OPD amendment', e);
+      showToast('Could not save amendment — try again.', 'err');
+    }finally{
+      amendSaveBtn.disabled = false;
     }
   });
 }
@@ -14184,22 +14404,27 @@ function setupWardsTabs(){
 // instead whenever cloud mode is active.
 async function fetchOpdDataForExport(){
   if(!window.wardsCurrentUserOpdHospitalId || !window.wfdb){
-    try{ const raw = localStorage.getItem('wards_opd_v1'); return raw ? JSON.parse(raw) : { patients: [], visits: {} }; }
-    catch(e){ return { patients: [], visits: {} }; }
+    try{ const raw = localStorage.getItem('wards_opd_v1'); return raw ? JSON.parse(raw) : { patients: [], visits: {}, amendments: {} }; }
+    catch(e){ return { patients: [], visits: {}, amendments: {} }; }
   }
   try{
     const col = window.wfdb.collection('hospitals').doc(window.wardsCurrentUserOpdHospitalId).collection('opdPatients');
     const patientsSnap = await col.get();
     const patients = patientsSnap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
     const visits = {};
+    const amendments = {};
     for(const p of patients){
       const visitsSnap = await col.doc(p.id).collection('visits').get();
       visits[p.id] = visitsSnap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
+      for(const v of visits[p.id]){
+        const amendSnap = await col.doc(p.id).collection('visits').doc(v.id).collection('amendments').get();
+        amendments[v.id] = amendSnap.docs.map(doc => Object.assign({ id: doc.id }, doc.data()));
+      }
     }
-    return { patients, visits };
+    return { patients, visits, amendments };
   }catch(e){
     console.warn('Wards: could not fetch OPD data for export', e);
-    return { patients: [], visits: {} };
+    return { patients: [], visits: {}, amendments: {} };
   }
 }
 async function exportAllWardsData(){
