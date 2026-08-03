@@ -3685,6 +3685,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div class="vitals-baselines-actions">
           <button type="button" class="vitals-btn-primary" id="vitals-sbar-copy-btn">Copy</button>
           <button type="button" class="vitals-btn-outline" id="vitals-sbar-print-btn">Print</button>
+          <button type="button" class="vitals-btn-outline" id="vitals-sbar-share-btn" hidden>Share&hellip;</button>
           <button type="button" class="vitals-btn-outline" id="vitals-sbar-ack-btn">Mark handover received</button>
           <span class="vitals-sbar-baton" id="vitals-sbar-baton" aria-hidden="true">&#129309;</span>
           <button type="button" class="vitals-btn-ghost" id="vitals-sbar-close-btn">Close</button>
@@ -4548,6 +4549,31 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <p class="login-error" id="wards-newdepartment-error" role="alert"></p>
     <button type="button" class="settings-btn w-100" id="wards-newdepartment-create-btn">Create</button>
     <p class="wards-qr-disclaimer">Belongs to the hospital currently selected above. You'll be this department's admin — able to manage every ward group tagged with it.</p>
+  </div>
+</div>
+
+<!-- One-time confirmation before the FIRST use of the native share sheet
+     for an SBAR. Everything else in this app either stays on-device or
+     goes to a ward group under firestore.rules; the OS share sheet is the
+     one place a user can hand identifiable clinical text to an arbitrary
+     third-party app (WhatsApp, email, notes) that has none of those
+     controls. That's a legitimate thing to want -- it's how handover
+     actually happens in a lot of hospitals -- but it should be a
+     deliberate, informed choice rather than a button that quietly does it. -->
+<div class="wards-qr-modal" id="wards-share-consent-modal" hidden>
+  <div class="wards-qr-card wards-qr-card--left" role="dialog" aria-modal="true" aria-labelledby="wards-share-consent-title">
+    <button type="button" class="mat-lb-close" id="wards-share-consent-close" aria-label="Close">&times;</button>
+    <h3 id="wards-share-consent-title">Share this handover outside Wards?</h3>
+    <p class="wards-qr-disclaimer">This opens your device's share sheet, which can send the SBAR text to any app on your phone &mdash; messaging apps, email, notes. Those apps are outside Wards entirely: none of this app's access controls, ward-group scoping or audit trail apply once the text leaves here, and most consumer messengers are not an approved channel for identifiable patient information.</p>
+    <p class="wards-qr-disclaimer"><strong>Check your hospital's information-governance policy before sending patient-identifiable text this way.</strong> Consider removing the patient's name/MRN first &mdash; bed number and initials are usually enough for a verbal handover.</p>
+    <label class="wards-terms-checkbox" style="margin:10px 0;">
+      <input type="checkbox" id="wards-share-consent-dontask">
+      Don't ask again on this device
+    </label>
+    <div class="vitals-baselines-actions">
+      <button type="button" class="vitals-btn-primary" id="wards-share-consent-continue">Open share sheet</button>
+      <button type="button" class="vitals-btn-ghost" id="wards-share-consent-cancel">Cancel</button>
+    </div>
   </div>
 </div>
 
@@ -6407,6 +6433,7 @@ const WARDS_TERMS_AND_PRIVACY_HTML = `
 <li><strong>Account data:</strong> same as above — email (and display name via Google sign-in), via Firebase Authentication. Wards also asks for your name and role (Doctor/Nurse/Intern/Student/Student Nurse) once, right after sign-up, shown as your greeting in the app and visible to anyone you chart or chat with through a shared ward group or department.</li>
 <li><strong>Signing in is required to use Wards.</strong> By default, though, your patient data stays 100% local-only after you sign in — no data leaves your device, patient data lives only in local browser/device storage, until you take the separate, explicit step below of joining a ward group.</li>
 <li><strong>If you sign in and select or create a "hospital" and a "ward group"</strong> (an explicit, opt-in action), patient data you enter for that ward group syncs to a shared cloud database (Google Firebase/Firestore) so your care team can see the same records in real time. This includes: patient identifiers you enter (name, bed, MRN if provided), vitals readings, clinical notes, and department-specific fields. <strong>A private, personal "nickname" field and a personal "something that went well" reflection note are deliberately excluded from sync and from every export/print/SBAR feature</strong> — those stay local-only by design.</li>
+<li><strong>Sharing an SBAR handover outside the app:</strong> the SBAR summary screen has an optional "Share&hellip;" button (only shown where your browser/device supports it) that opens your operating system's own share sheet, letting you send the handover text to any other app on your device — messaging, email, notes. Unlike everything else described here, once text leaves through that share sheet <strong>it is no longer governed by this app or these controls at all</strong> — no ward-group scoping, no audit trail. A one-time confirmation appears before this feature's first use, noting that most consumer messaging apps aren't an approved channel for identifiable patient information — but what you send and where is entirely your own choice, every time. [NEEDS INPUT: confirm whether this feature is permitted under your institution's data-governance policy, or should be disabled for your deployment.]</li>
 <li><strong>Data isolation:</strong> each "hospital" in this system is a fully separate, isolated tenant — hospital admins can only see and manage their own hospital's data, never another hospital's, enforced by server-side security rules, not just app behavior.</li>
 <li><strong>Who can see synced data:</strong> members of the specific ward group a patient belongs to, that group's department admin (if any), and that hospital's admin(s). [NEEDS INPUT: confirm this matches your institution's actual data-governance expectations — e.g. does your hospital require broader or narrower visibility than "ward group members + department/hospital admins"?]</li>
 <li><strong>Audit trail:</strong> for synced ward groups, Wards writes a lightweight log of who added/removed a patient, logged a reading, or logged an escalation, readable by that group's admin and above, for oversight purposes.</li>
@@ -11529,6 +11556,56 @@ function copySbarText(){
   }
 }
 
+/* ---- share the SBAR text via the OS share sheet -- see the modal's own
+   comment for why this is gated behind an explicit one-time
+   acknowledgment rather than a bare navigator.share() call. Feature-
+   detected: the button itself stays hidden entirely (not just disabled)
+   on any browser without navigator.share. ---- */
+const WARDS_SHARE_CONSENT_KEY = 'wards_sbar_share_consent_v1';
+function wardsShareConsentGiven(){
+  try{ return localStorage.getItem(WARDS_SHARE_CONSENT_KEY) === '1'; }catch(e){ return false; }
+}
+function wardsSetShareConsentGiven(){
+  try{ localStorage.setItem(WARDS_SHARE_CONSENT_KEY, '1'); }catch(e){}
+}
+async function shareSbarText(){
+  const textarea = document.getElementById('vitals-sbar-text');
+  if(!textarea || !navigator.share) return;
+  try{
+    await navigator.share({ title: 'SBAR handover — Wards', text: textarea.value });
+  }catch(e){ /* user cancelled the OS share sheet, or the platform rejected it -- not an error worth surfacing */ }
+}
+function setupSbarShareButton(){
+  const btn = document.getElementById('vitals-sbar-share-btn');
+  if(!btn) return;
+  if(!navigator.share){ btn.hidden = true; return; }
+  btn.hidden = false;
+  if(btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+
+  const modal = document.getElementById('wards-share-consent-modal');
+  const closeBtn = document.getElementById('wards-share-consent-close');
+  const cancelBtn = document.getElementById('wards-share-consent-cancel');
+  const continueBtn = document.getElementById('wards-share-consent-continue');
+  const dontAsk = document.getElementById('wards-share-consent-dontask');
+  const closeModal = () => { if(modal){ modal.hidden = true; modal.classList.remove('show'); } };
+
+  btn.addEventListener('click', () => {
+    if(wardsShareConsentGiven()){ shareSbarText(); return; }
+    if(!modal) return;
+    if(dontAsk) dontAsk.checked = false;
+    modal.hidden = false; modal.classList.add('show');
+  });
+  if(closeBtn) closeBtn.addEventListener('click', closeModal);
+  if(cancelBtn) cancelBtn.addEventListener('click', closeModal);
+  if(continueBtn) continueBtn.addEventListener('click', () => {
+    if(dontAsk && dontAsk.checked) wardsSetShareConsentGiven();
+    closeModal();
+    shareSbarText();
+  });
+  if(modal) modal.addEventListener('click', e => { if(e.target === modal) closeModal(); });
+}
+
 function setupSbarButtons(){
   const btn = document.getElementById('vitals-sbar-btn');
   const allBtn = document.getElementById('vitals-sbar-all-btn');
@@ -11536,6 +11613,7 @@ function setupSbarButtons(){
   const copyBtn = document.getElementById('vitals-sbar-copy-btn');
   const printBtn = document.getElementById('vitals-sbar-print-btn');
   const panel = document.getElementById('vitals-sbar-panel');
+  setupSbarShareButton();
 
   if(btn && !btn.dataset.wired){
     btn.dataset.wired = '1';

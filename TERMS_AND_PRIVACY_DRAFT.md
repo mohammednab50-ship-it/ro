@@ -115,6 +115,21 @@ goes, as accurately as the current app code supports.
   field and a private "something that went well" reflection note are
   deliberately excluded from sync and from every export/print/SBAR
   feature** — those stay local-only by design.
+- **Sharing an SBAR handover outside the app:** the SBAR summary screen has
+  an optional "Share…" button (only shown on devices/browsers that support
+  it) that opens your operating system's own share sheet, letting you send
+  the handover text to any other app installed on your device — a
+  messaging app, email, notes, etc. Unlike everything else described in
+  this document, once text leaves through that share sheet it is **no
+  longer governed by this app or these controls at all** — no ward-group
+  scoping, no audit trail, no data-residency guarantee. The app shows a
+  one-time confirmation before this feature's first use warning that most
+  consumer messaging apps are not an approved channel for identifiable
+  patient information, and suggesting the patient's name/MRN be removed
+  first — but the choice of what to send and where is entirely the user's,
+  each time. [NEEDS INPUT: confirm whether your institution's data-
+  governance policy permits this feature at all, or whether it should be
+  disabled for your deployment.]
 - **Data isolation:** each "hospital" in this system is a fully separate,
   isolated tenant — hospital admins can only see and manage their own
   hospital's data, never another hospital's, enforced by server-side
