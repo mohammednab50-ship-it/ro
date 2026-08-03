@@ -3018,6 +3018,12 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:700;cursor:pointer;}
 .wards-covering-banner button:hover{background:rgba(255,255,255,.22);}
 .wards-covering-banner[hidden]{display:none;}
+.wards-storage-full-banner{display:flex;align-items:center;justify-content:center;gap:14px;flex-wrap:wrap;
+  padding:8px 20px;background:var(--caution);color:#fff;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;text-align:center;}
+.wards-storage-full-banner button{border:1px solid rgba(255,255,255,.5);background:rgba(255,255,255,.12);color:inherit;
+  border-radius:var(--r-pill);padding:4px 12px;font:inherit;font-weight:700;cursor:pointer;}
+.wards-storage-full-banner button:hover{background:rgba(255,255,255,.22);}
+.wards-storage-full-banner[hidden]{display:none;}
 
 /* ---- QR display / scan modals — plain fixed overlay, same visual
    weight as the CTG lightbox but its own simple markup since the
@@ -3377,6 +3383,16 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 <div class="wards-covering-banner" id="wards-covering-banner" hidden>
   <span><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="8" r="3.6"/><path d="M4.5 20c1.2-4 4-6 7.5-6s6.3 2 7.5 6" stroke-linecap="round"/></svg> <strong id="wards-covering-name"></strong> is currently covering these patients &mdash; check with them before acting on anything urgent.</span>
   <button type="button" id="wards-covering-clear-btn">Back now</button>
+</div>
+
+<!-- On-device storage is genuinely full: the last write (a reading, a
+     new patient, an OPD visit) was silently DROPPED, not just delayed --
+     see wardsSafeLocalStorageSet. Persistent (not a toast) since this is
+     an ongoing condition until something is freed, not a one-off event;
+     stays visible across every tab/patient until a write succeeds again. -->
+<div class="wards-storage-full-banner" id="wards-storage-full-banner" role="alert" hidden>
+  <span><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 4 2.5 20.5h19L12 4Z" stroke-linejoin="round"/><path d="M12 10.2v4.3" stroke-linecap="round"/><circle cx="12" cy="17.6" r="0.9" fill="currentColor" stroke="none"/></svg> Device storage is full &mdash; your last change was <strong>not saved</strong>. Export a backup, then archive or delete old patients to free space.</span>
+  <button type="button" id="wards-storage-full-export-btn">Export backup</button>
 </div>
 
 <nav class="wards-tabbar" id="wards-tabbar" aria-label="Sections">
@@ -5684,6 +5700,55 @@ function showToast(msg, kind, action){
   toastTimer = setTimeout(() => { el.className = el.className.replace(' show', ''); }, action ? 7000 : 2200);
 }
 
+// ---- storage-quota-safe localStorage writes for the two clinical
+// record stores (inpatient vitals, OPD local-mode) -- a plain
+// `try{ localStorage.setItem(...) }catch(e){}` here used to swallow
+// QuotaExceededError completely: the write silently failed, no toast,
+// no banner, and the in-memory UI kept showing whatever was just
+// charted, so it LOOKED saved right up until the next reload. Verified
+// this directly: a realistic ward's worth of data (30 patients x 300
+// readings, ~1.3MB) already exceeds a filled-up localStorage quota, and
+// the exact call this wraps throws QuotaExceededError while swallowing
+// it silently. This surfaces it instead -- both a toast for the
+// immediate attempt and a persistent banner (not a toast) for as long as
+// the underlying condition remains true, since "storage is full" is an
+// ongoing state, not a one-off event.
+let wardsStorageFull = false;
+function wardsSafeLocalStorageSet(key, value){
+  try{
+    localStorage.setItem(key, value);
+    if(wardsStorageFull){ wardsStorageFull = false; updateWardsStorageFullBanner(); }
+    return true;
+  }catch(e){
+    const isQuotaError = e && (
+      e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' ||
+      e.code === 22 || e.code === 1014
+    );
+    if(isQuotaError){
+      console.error('Wards: localStorage quota exceeded -- write dropped for key', key, e);
+      wardsStorageFull = true;
+      updateWardsStorageFullBanner();
+      showToast('Device storage is full — this change was not saved.', 'err');
+    }else{
+      console.warn('Wards: localStorage write failed', key, e);
+    }
+    return false;
+  }
+}
+function updateWardsStorageFullBanner(){
+  const banner = document.getElementById('wards-storage-full-banner');
+  if(banner) banner.hidden = !wardsStorageFull;
+}
+function setupWardsStorageFullBanner(){
+  const btn = document.getElementById('wards-storage-full-export-btn');
+  if(!btn || btn.dataset.wired) return;
+  btn.dataset.wired = '1';
+  btn.addEventListener('click', () => {
+    haptic('Light');
+    exportAllWardsData();
+  });
+}
+
 function escapeHtml(s){
   if(s == null) return '';
   return String(s)
@@ -6131,6 +6196,35 @@ let wardsMyDepartments = [];
 let activeDepartmentId = null;
 let wardsPatientsUnsub = null;
 let wardsLastPushedIds = new Set();
+// ---- fixes a reproduced data-loss race: pushWardsGroupPatients pushes
+// this device's readings on a 700ms debounce, but if a remote snapshot
+// (e.g. a colleague's own push) arrives before that commits,
+// applyRemoteWardsPatients used to blindly REPLACE vitalsState.logs[id]
+// with whatever the server had -- silently discarding the reading this
+// device just charted, with no error and no trace. Confirmed via a
+// direct repro through both real entry points before this fix: a
+// just-added reading did not survive a remote snapshot landing inside
+// the debounce window.
+//
+// The fix merges remote ∪ local-only-not-yet-seen by reading id instead
+// of replacing outright. wardsRecentLocalReadingIds is what lets that
+// merge tell "genuinely not-yet-synced" apart from "was deleted
+// elsewhere, and my local cache just hasn't heard about it yet" -- an
+// in-memory-only, deliberately time-bounded map (never persisted, never
+// synced) of reading ids this device itself just added, with the
+// wall-clock moment it did so. Past WARDS_RECENT_LOCAL_READING_MS, a
+// local reading missing from a remote snapshot is trusted as removed
+// rather than protected forever.
+const wardsRecentLocalReadingIds = new Map(); // readingId -> Date.now() when added locally
+const WARDS_RECENT_LOCAL_READING_MS = 2 * 60 * 1000; // generous vs. the 700ms push debounce + real network round-trips
+function wardsMarkReadingAddedLocally(readingId){
+  if(!readingId) return;
+  wardsRecentLocalReadingIds.set(readingId, Date.now());
+  if(wardsRecentLocalReadingIds.size > 500){ // opportunistic cleanup across a long shift
+    const cutoff = Date.now() - WARDS_RECENT_LOCAL_READING_MS;
+    for(const [id, t] of wardsRecentLocalReadingIds){ if(t < cutoff) wardsRecentLocalReadingIds.delete(id); }
+  }
+}
 let wardsSyncPushTimer = null;
 let wardsPatientsPendingWrites = false;
 let wardsBatchInFlight = false;
@@ -8022,12 +8116,10 @@ function loadVitalsData(){
 
 function saveVitalsDataQuiet(){
   if(wardsDemoMode) return; // demo session is in-memory only — never touches real storage
-  try{
-    localStorage.setItem(VITALS_KEY, JSON.stringify({
-      patients: vitalsState.patients, logs: vitalsState.logs,
-      migratedMaternityV1: !!vitalsState.migratedMaternityV1
-    }));
-  }catch(e){}
+  wardsSafeLocalStorageSet(VITALS_KEY, JSON.stringify({
+    patients: vitalsState.patients, logs: vitalsState.logs,
+    migratedMaternityV1: !!vitalsState.migratedMaternityV1
+  }));
 }
 
 function saveVitalsData(){
@@ -8043,7 +8135,29 @@ window.applyRemoteWardsPatients = function(groupId, remotePatients, remoteLogs){
   if(typeof window.getWardsActiveSyncGroupId !== 'function' || groupId !== window.getWardsActiveSyncGroupId()) return;
   const keepLocal = vitalsState.patients.filter(p => p.groupId !== groupId);
   vitalsState.patients = keepLocal.concat(remotePatients);
-  remotePatients.forEach(p => { vitalsState.logs[p.id] = remoteLogs[p.id] || []; });
+  // Merge by reading id (remote ∪ recently-added-locally-but-not-yet-seen
+  // remotely) instead of replacing outright -- a plain
+  // `vitalsState.logs[p.id] = remoteLogs[p.id] || []` here is the exact
+  // data-loss race described where wardsMarkReadingAddedLocally is
+  // declared: a reading charted on this device seconds ago, still inside
+  // pushWardsGroupPatients's 700ms debounce, would be silently wiped out
+  // the instant ANY remote snapshot (e.g. a colleague's own push) landed
+  // first. wardsRecentLocalReadingIds' time bound is what still lets a
+  // reading genuinely deleted elsewhere disappear here too, instead of
+  // being protected forever.
+  const readingAgeCutoff = Date.now() - WARDS_RECENT_LOCAL_READING_MS;
+  remotePatients.forEach(p => {
+    const remote = remoteLogs[p.id] || [];
+    const localExisting = vitalsState.logs[p.id] || [];
+    const merged = new Map();
+    remote.forEach(r => { if(r && r.id) merged.set(r.id, r); });
+    localExisting.forEach(r => {
+      if(!r || !r.id || merged.has(r.id)) return;
+      const addedAt = wardsRecentLocalReadingIds.get(r.id);
+      if(addedAt && addedAt >= readingAgeCutoff) merged.set(r.id, r);
+    });
+    vitalsState.logs[p.id] = Array.from(merged.values());
+  });
   if(!vitalsState.activePatientId && vitalsState.patients.length) vitalsState.activePatientId = vitalsState.patients[0].id;
   saveVitalsDataQuiet();
   renderPatientList();
@@ -9782,6 +9896,7 @@ function finalizeVitalsEntrySave(p, entry){
   const photoInput = document.getElementById('v-notes-photo');
   const photoFile = photoInput && photoInput.files && photoInput.files[0];
   vitalsState.logs[p.id].push(entry);
+  wardsMarkReadingAddedLocally(entry.id);
   saveVitalsData();
   if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('reading_added', p, `HR ${entry.hr||'—'} SpO2 ${entry.spo2||'—'} RR ${entry.rr||'—'}`);
   haptic('Light');
@@ -13537,12 +13652,14 @@ function triageQuickNote(noteId, patientId){
   const p = vitalsState.patients.find(pt => pt.id === patientId);
   if(!note || !p) return;
   if(!vitalsState.logs[p.id]) vitalsState.logs[p.id] = [];
+  const quickNoteReadingId = genVitalsId('vr');
   vitalsState.logs[p.id].push({
-    id: genVitalsId('vr'), ts: new Date().toISOString(),
+    id: quickNoteReadingId, ts: new Date().toISOString(),
     hr: '', sbp: '', dbp: '', rr: '', spo2: '', temp: '', gcs: '', uop: '',
     intakeOral: '', intakeIv: '', outputOther: '', o2sup: false,
     notes: note.text
   });
+  wardsMarkReadingAddedLocally(quickNoteReadingId);
   saveVitalsData();
   if(typeof window.wardsAuditLog === 'function') window.wardsAuditLog('quicknote_triaged', p, note.text.slice(0, 120));
   saveQuickNotes(notes.filter(n => n.id !== noteId));
@@ -13797,7 +13914,7 @@ function loadOpdData(){
 // onSnapshot callback, not from calling this).
 function saveOpdData(){
   if(opdCloudMode()) return;
-  try{ localStorage.setItem(OPD_KEY, JSON.stringify(opdState)); }catch(e){}
+  wardsSafeLocalStorageSet(OPD_KEY, JSON.stringify(opdState));
 }
 
 function subscribeOpdCloudPatients(){
@@ -13847,7 +13964,7 @@ function opdActivePatient(){
   return opdState.patients.find(p => p.id === opdState.activePatientId) || null;
 }
 function opdVisitsFor(patientId){
-  return (opdState.visits[patientId] || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+  return (opdState.visits[patientId] || []).slice().sort((a, b) => opdParseLocalDate(b.date) - opdParseLocalDate(a.date));
 }
 /* Every department a patient has actually been seen in, most recent first --
    used for the roster badge so "which department(s)" is visible at a glance
@@ -13868,6 +13985,21 @@ function opdPatientDepartments(patientId){
    Matched entirely against the already-loaded roster in opdState
    (whole-hospital in cloud mode via the live subscription, whole-device
    in local mode), so this never needs its own network round-trip. ---- */
+// A visit's `date` field is a plain YYYY-MM-DD string from a <input
+// type="date">, always meant as a LOCAL calendar day. new Date(str) on a
+// bare date-only string parses it as UTC midnight per the ES spec, which
+// then renders/buckets a day earlier than charted for anyone west of
+// UTC (US time zones, for example) -- invisible from India (UTC+5:30,
+// which shifts forward within the same local day) but wrong everywhere
+// west of Greenwich. This parses the same string as local midnight
+// instead. Every display/bucketing use of a visit date should go
+// through this, never a bare `new Date(v.date)`.
+function opdParseLocalDate(dateStr){
+  if(!dateStr) return new Date(NaN);
+  const parts = String(dateStr).split('-').map(Number);
+  if(parts.length !== 3 || parts.some(isNaN)) return new Date(dateStr); // defensive fallback, not expected in practice
+  return new Date(parts[0], parts[1] - 1, parts[2]);
+}
 function opdNormalizeMrn(mrn){
   return (mrn || '').trim().toUpperCase();
 }
@@ -13960,7 +14092,7 @@ function opdVisitCardsHtml(visits, opts){
     <div class="opd-visit-card">
       <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
         <span class="opd-visit-dept-pill">${escapeHtml(v.department || 'General')}</span>
-        <span style="font-size:12px;color:var(--ink-faint);">${escapeHtml(fmtWardsDateTime(new Date(v.date)))}</span>
+        <span style="font-size:12px;color:var(--ink-faint);">${escapeHtml(fmtWardsDateTime(opdParseLocalDate(v.date)))}</span>
       </div>
       ${v.chiefComplaint ? `<div><b>Complaint:</b> ${escapeHtml(v.chiefComplaint)}</div>` : ''}
       ${v.diagnosis ? `<div><b>Diagnosis:</b> ${escapeHtml(v.diagnosis)}</div>` : ''}
@@ -14039,7 +14171,7 @@ function renderOpdReport(){
       <div class="opd-stat-card opd-stat-card--mint">
         <span class="opd-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6M9 6h6"/><circle cx="12" cy="15" r="6"/></svg></span>
         <p class="opd-stat-label">Latest Visit</p>
-        <p class="opd-stat-value opd-stat-value--sm">${latest ? escapeHtml(latest.department || 'General') + ' · ' + escapeHtml(fmtWardsDateTime(new Date(latest.date))) : '—'}</p>
+        <p class="opd-stat-value opd-stat-value--sm">${latest ? escapeHtml(latest.department || 'General') + ' · ' + escapeHtml(fmtWardsDateTime(opdParseLocalDate(latest.date))) : '—'}</p>
       </div>
       <div class="opd-stat-card opd-stat-card--outline">
         <span class="opd-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--evidence)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/></svg></span>
@@ -14058,7 +14190,7 @@ function renderOpdReport(){
       months.push({ key: d.getFullYear() + '-' + d.getMonth(), label: d.toLocaleDateString(undefined, { month: 'short' }), count: 0 });
     }
     visits.forEach(v => {
-      const vd = new Date(v.date);
+      const vd = opdParseLocalDate(v.date);
       if(isNaN(vd)) return;
       const key = vd.getFullYear() + '-' + vd.getMonth();
       const m = months.find(m => m.key === key);
@@ -14172,7 +14304,7 @@ function renderOpdMain(){
     { label: 'Age', value: (p.age != null && p.age !== '') ? p.age : '—' },
     { label: 'Gender', value: p.gender ? p.gender.charAt(0).toUpperCase() + p.gender.slice(1) : '—' },
     { label: 'Visits', value: visits.length },
-    { label: 'Last seen', value: visits.length ? fmtWardsDateTime(new Date(visits[0].date)) : '—' },
+    { label: 'Last seen', value: visits.length ? fmtWardsDateTime(opdParseLocalDate(visits[0].date)) : '—' },
     { label: 'Departments', value: depts.length ? depts.join(', ') : '—' }
   ];
   const qsEl = document.getElementById('opd-quickstats');
@@ -14778,6 +14910,7 @@ function boot(){
   applyWardsFontSize(getInitialWardsFontSize());
   applyCbSafe(getInitialCbSafe());
   setupConnectivityIndicator();
+  setupWardsStorageFullBanner();
   setupQuietHoursUI();
   setupWardsSettingsUI();
   setupVitalsMoreMenu();

@@ -397,10 +397,24 @@ match /databases/{database}/documents {
 
   // Invite-by-email lookup (email -> uid). Not sensitive beyond the
   // mapping itself; a user may only write their own mapping (done once
-  // at sign-up), and any signed-in user may read it (needed so a group
-  // admin can resolve "invite this email" client-side).
+  // at sign-up), and any signed-in user may look up a SPECIFIC email
+  // they already know (needed so a group admin can resolve "invite this
+  // email" client-side, via wardsFindUidByEmail's single .doc(key).get()
+  // -- see wards.html).
+  //
+  // `allow read` used to cover this, but read = get + list, and an
+  // unconstrained list on a collection keyed by lowercased email is a
+  // straight PII dump: any signed-in account, any hospital or none, could
+  // run `.collection('usersByEmail').get()` and receive every registered
+  // user's email + uid across this whole shared multi-tenant project.
+  // Every OTHER collection in this file that's ever looked up by a
+  // specific known key (hospitals, wardGroups, departments, ...) already
+  // has this exact split with the same reasoning in its own comments --
+  // this collection was the one that got missed. The app never lists
+  // this collection in bulk, so list is simply denied, same as those.
   match /usersByEmail/{emailKey} {
-    allow read: if signedIn();
+    allow get: if signedIn();
+    allow list: if false;
     allow write: if signedIn() && request.resource.data.uid == request.auth.uid;
   }
 
