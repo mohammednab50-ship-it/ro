@@ -2552,11 +2552,25 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-brand{display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit; flex:0 0 auto;}
 .wards-welcome-greeting{
   flex:1 1 auto; text-align:center; margin:0; min-width:120px;
-  font-family:var(--ff-sans); font-size:14px; font-weight:600; color:var(--ink-soft);
+  font-family:var(--ff-sans); font-size:15.5px; font-weight:600; color:var(--ink-soft);
 }
 .wards-welcome-greeting[hidden]{display:none;}
-.wards-welcome-greeting strong{color:var(--ink); font-weight:800;}
-@media (max-width:760px){ .wards-welcome-greeting{order:3; flex:1 1 100%; text-align:left; font-size:13px;} }
+.wards-welcome-greeting strong{color:var(--ink); font-weight:800; display:inline-block;}
+.wards-welcome-greeting.wce-in{animation:wards-welcome-fade-in .55s var(--ease-out) both;}
+.wards-welcome-greeting.wce-in strong{animation:wards-welcome-pop .55s var(--ease-out) .1s both;}
+@keyframes wards-welcome-fade-in{
+  0%{opacity:0; transform:translateY(-8px);}
+  100%{opacity:1; transform:translateY(0);}
+}
+@keyframes wards-welcome-pop{
+  0%{transform:scale(0.85);}
+  60%{transform:scale(1.06);}
+  100%{transform:scale(1);}
+}
+@media (prefers-reduced-motion: reduce){
+  .wards-welcome-greeting.wce-in,.wards-welcome-greeting.wce-in strong{animation:none;}
+}
+@media (max-width:760px){ .wards-welcome-greeting{order:3; flex:1 1 100%; text-align:left; font-size:14px;} }
 .wards-mark{
   width:38px; height:38px; border-radius:11px; flex:0 0 auto;
   display:grid; place-items:center;
@@ -2690,46 +2704,47 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   background:radial-gradient(720px 480px at 50% -8%,var(--evidence-bg) 0%,transparent 62%),var(--paper);
 }
 .wards-login-gate[hidden]{display:none;}
-.wards-login-card{max-width:380px;width:100%;background:var(--surface);border-radius:20px;padding:36px 30px 30px;text-align:center;box-shadow:var(--shadow-lift,0 20px 50px -12px rgba(10,20,40,.25));border:1px solid var(--line);}
-.wards-login-brand{display:flex;flex-direction:column;align-items:center;gap:12px;margin-bottom:6px;text-align:center;}
-.wards-login-brand .wards-mark{width:56px;height:56px;border-radius:16px;}
-.wards-login-brand .wards-mark svg{width:28px;height:28px;}
+.wards-login-card{max-width:420px;width:100%;background:var(--surface);border-radius:22px;padding:40px 34px 34px;text-align:center;box-shadow:var(--shadow-lift,0 20px 50px -12px rgba(10,20,40,.25));border:1px solid var(--line);}
+.wards-login-brand{display:flex;flex-direction:column;align-items:center;gap:14px;margin-bottom:6px;text-align:center;}
+.wards-login-brand .wards-mark{width:60px;height:60px;border-radius:17px;}
+.wards-login-brand .wards-mark svg{width:30px;height:30px;}
 .wards-login-card h2{
-  margin:0;font-family:var(--ff-display);font-size:26px;font-weight:800;letter-spacing:-0.02em;
+  margin:0;font-family:var(--ff-display);font-size:30px;font-weight:800;letter-spacing:-0.02em;
   background:linear-gradient(100deg,var(--ink) 0%,var(--ink) 38%,var(--evidence) 50%,var(--ink) 62%,var(--ink) 100%);
   background-size:220% 100%;-webkit-background-clip:text;background-clip:text;-webkit-text-fill-color:transparent;
   animation:wards-brand-sheen 6s var(--ease-in-out) infinite;
 }
-.wards-login-card p.wards-login-sub{margin:2px 0 0;font-family:var(--ff-sans);font-size:13.5px;color:var(--ink-faint);}
-#wards-login-status-note{margin:14px 0 20px;font-size:12px;line-height:1.5;padding:10px 12px;background:var(--paper);border-radius:var(--r-sm);border:1px solid var(--line);}
-.wards-login-field{text-align:left;margin-bottom:12px;}
-.wards-login-field label{display:block;font-family:var(--ff-sans);font-size:12px;font-weight:600;color:var(--ink-soft);margin-bottom:5px;}
-.wards-login-field input{width:100%;padding:12px 14px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--ink);font-family:var(--ff-sans);font-size:14.5px;box-sizing:border-box;transition:border-color .15s ease,box-shadow .15s ease;}
-.wards-login-field input:focus{outline:none;border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
-.wards-login-actions{display:flex;flex-direction:column;gap:8px;margin-top:16px;}
+.wards-login-card p.wards-login-sub{margin:4px 0 0;font-family:var(--ff-sans);font-size:15.5px;color:var(--ink-faint);}
+#wards-login-status-note{margin:16px 0 22px;font-size:13.5px;line-height:1.55;padding:12px 14px;background:var(--paper);border-radius:var(--r-sm);border:1px solid var(--line);}
+.wards-login-field{text-align:left;margin-bottom:14px;}
+.wards-login-field label{display:block;font-family:var(--ff-sans);font-size:13.5px;font-weight:600;color:var(--ink-soft);margin-bottom:6px;}
+.wards-login-field input,.wards-login-field select{width:100%;padding:13px 15px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--ink);font-family:var(--ff-sans);font-size:16.5px;box-sizing:border-box;transition:border-color .15s ease,box-shadow .15s ease;}
+.wards-login-field input:focus,.wards-login-field select:focus{outline:none;border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
+.wards-profile-card h2{font-size:26px;}
+.wards-login-actions{display:flex;flex-direction:column;gap:9px;margin-top:18px;}
 .wards-login-btn-primary{
-  width:100%;padding:13px 16px;border:none;border-radius:999px;background:var(--evidence);color:#fff;
-  font-family:var(--ff-sans);font-size:15px;font-weight:700;cursor:pointer;
+  width:100%;padding:14px 16px;border:none;border-radius:999px;background:var(--evidence);color:#fff;
+  font-family:var(--ff-sans);font-size:16.5px;font-weight:700;cursor:pointer;
   transition:background .15s ease,transform .15s ease;
 }
 .wards-login-btn-primary:hover{background:var(--evidence-dark);}
 .wards-login-btn-primary:active{transform:scale(0.98);}
 .wards-login-btn-primary:disabled{opacity:0.6;cursor:default;transform:none;}
 .wards-login-btn-google{
-  width:100%;padding:12px 16px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);
-  font-family:var(--ff-sans);font-size:14.5px;font-weight:600;cursor:pointer;
+  width:100%;padding:13px 16px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--ink);
+  font-family:var(--ff-sans);font-size:16px;font-weight:600;cursor:pointer;
   display:flex;align-items:center;justify-content:center;gap:10px;
   transition:background .15s ease,border-color .15s ease;
 }
 .wards-login-btn-google:hover{background:var(--paper);border-color:var(--ink-faint);}
 .wards-login-btn-google svg{flex:0 0 auto;}
-.wards-login-links{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:16px;}
-.wards-login-links button{background:none;border:none;color:var(--evidence);font-family:var(--ff-sans);font-size:12.5px;font-weight:600;cursor:pointer;padding:2px;}
+.wards-login-links{display:flex;align-items:center;justify-content:center;gap:16px;margin-top:18px;}
+.wards-login-links button{background:none;border:none;color:var(--evidence);font-family:var(--ff-sans);font-size:14px;font-weight:600;cursor:pointer;padding:2px;}
 .wards-login-links button:hover{color:var(--evidence-dark);text-decoration:underline;}
-.wards-login-divider{display:flex;align-items:center;gap:10px;margin:18px 0;color:var(--ink-faint);font-family:var(--ff-sans);font-size:11px;text-transform:uppercase;letter-spacing:.06em;}
+.wards-login-divider{display:flex;align-items:center;gap:10px;margin:20px 0;color:var(--ink-faint);font-family:var(--ff-sans);font-size:12px;text-transform:uppercase;letter-spacing:.06em;}
 .wards-login-divider::before,.wards-login-divider::after{content:'';flex:1;height:1px;background:var(--line);}
-.wards-login-remember{display:flex;align-items:center;gap:8px;margin:4px 0 4px;font-family:var(--ff-sans);font-size:13px;color:var(--ink-soft);cursor:pointer;user-select:none;text-align:left;}
-.wards-login-remember input{width:16px;height:16px;accent-color:var(--evidence);cursor:pointer;}
+.wards-login-remember{display:flex;align-items:center;gap:9px;margin:6px 0 6px;font-family:var(--ff-sans);font-size:14.5px;color:var(--ink-soft);cursor:pointer;user-select:none;text-align:left;}
+.wards-login-remember input{width:17px;height:17px;accent-color:var(--evidence);cursor:pointer;}
 @media (prefers-reduced-motion: reduce){
   .wards-login-card h2{-webkit-text-fill-color:currentColor;background:none;color:var(--ink);animation:none;}
 }
@@ -4045,16 +4060,16 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 </div>
 
 <div class="wards-qr-modal" id="wards-profile-modal" hidden role="dialog" aria-modal="true" aria-labelledby="wards-profile-title">
-  <div class="wards-qr-card wards-qr-card--left" role="document">
-    <h3 id="wards-profile-title" style="text-align:center;">Tell us about yourself</h3>
-    <p class="wards-qr-disclaimer" style="margin-top:0;">One-time — shown as your greeting in Wards and to anyone you chart or chat with.</p>
-    <div class="ws-row">
-      <label class="ws-label" for="wards-profile-name" style="margin-bottom:6px;">Your name</label>
-      <input type="text" id="wards-profile-name" class="settings-select w-100" placeholder="e.g. Alex Rivera" maxlength="60" autocomplete="name">
+  <div class="wards-login-card wards-profile-card" role="document">
+    <h2 id="wards-profile-title">Tell us about yourself</h2>
+    <p class="wards-login-sub">One-time — shown as your greeting in Wards and to anyone you chart or chat with.</p>
+    <div class="wards-login-field" style="margin-top:20px;">
+      <label for="wards-profile-name">Your name</label>
+      <input type="text" id="wards-profile-name" placeholder="e.g. Alex Rivera" maxlength="60" autocomplete="name">
     </div>
-    <div class="ws-row">
-      <label class="ws-label" for="wards-profile-role" style="margin-bottom:6px;">Your role</label>
-      <select id="wards-profile-role" class="settings-select w-100">
+    <div class="wards-login-field">
+      <label for="wards-profile-role">Your role</label>
+      <select id="wards-profile-role">
         <option value="">— select —</option>
         <option value="doctor">Doctor</option>
         <option value="nurse">Nurse</option>
@@ -4064,7 +4079,9 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       </select>
     </div>
     <p class="login-error" id="wards-profile-error" role="alert"></p>
-    <button type="button" class="settings-btn w-100" id="wards-profile-save-btn">Continue</button>
+    <div class="wards-login-actions">
+      <button type="button" class="wards-login-btn-primary" id="wards-profile-save-btn">Continue</button>
+    </div>
   </div>
 </div>
 
@@ -5801,9 +5818,13 @@ async function wardsSaveProfile(user, name, role){
 function wardsRenderWelcomeGreeting(name, role){
   const el = document.getElementById('wards-welcome-greeting');
   if(!el) return;
-  if(!name || !role || !WARDS_ROLE_GREETING_PREFIX[role]){ el.hidden = true; return; }
+  if(!name || !role || !WARDS_ROLE_GREETING_PREFIX[role]){ el.hidden = true; el.classList.remove('wce-in'); return; }
   el.innerHTML = 'Welcome, <strong>' + WARDS_ROLE_GREETING_PREFIX[role] + ' ' + escapeHtml(name) + '</strong>';
   el.hidden = false;
+  // restart the entrance animation even if it was already showing (e.g. re-render after editing the profile)
+  el.classList.remove('wce-in');
+  void el.offsetWidth; // force reflow so the class removal registers before re-adding
+  el.classList.add('wce-in');
 }
 let wardsProfileGateWired = false;
 function wardsWireProfileGateOnce(){
