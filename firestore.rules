@@ -326,8 +326,14 @@ match /databases/{database}/documents {
   // lives entirely on `hospitals/{hospitalId}.admins` instead.
   match /users/{uid} {
     allow read: if signedIn() && request.auth.uid == uid;
-    allow create: if signedIn() && request.auth.uid == uid;
-    allow update: if signedIn() && request.auth.uid == uid;
+    // role/displayName are denormalized into every chat message and
+    // announcement this user sends (see wardsChatDisplayName() and
+    // senderRole in wards.html) -- validate them here rather than trust
+    // the client's maxlength attribute, which is UI-only and doesn't
+    // stop a modified client from writing anything.
+    allow create, update: if signedIn() && request.auth.uid == uid
+      && (!('role' in request.resource.data) || request.resource.data.role in ['doctor', 'nurse', 'intern', 'student', 'student-nurse'])
+      && (!('displayName' in request.resource.data) || (request.resource.data.displayName is string && request.resource.data.displayName.size() <= 80));
     allow delete: if signedIn() && request.auth.uid == uid;
   }
 

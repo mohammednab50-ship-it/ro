@@ -1900,7 +1900,10 @@ table.vitals-table td.vitals-td-news2.n2-high{color:var(--caution);}
 .vitals-board-toggle-btn[aria-pressed="true"]{background:var(--evidence);color:var(--shell-ink);border-color:var(--evidence);}
 .vitals-board-card.is-archived{border-color:var(--line);opacity:.92;}
 .vitals-board-archived-date{font-size:11px;font-weight:700;color:var(--ink-faint);}
-.vitals-board{margin-bottom:var(--space-6);}
+.vitals-board{margin-bottom:var(--space-6);animation:wards-view-fade-in .35s var(--ease-out) both;}
+#vitals-patient-view{animation:wards-view-fade-in .35s var(--ease-out) both;}
+@keyframes wards-view-fade-in{0%{opacity:0;}100%{opacity:1;}}
+@media (prefers-reduced-motion: reduce){ .vitals-board,#vitals-patient-view{animation:none;} }
 .vitals-board-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:var(--space-4);}
 .vitals-mapview-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:var(--space-3);}
 .vitals-bed-tile{text-align:left;border:2px solid var(--line);border-radius:var(--r-md);background:var(--surface);padding:10px;cursor:pointer;display:flex;flex-direction:column;gap:4px;min-height:92px;}
@@ -2805,6 +2808,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 .wards-qr-card--left h3{text-align:center;}
 .wards-qr-card--400{max-width:400px;}
 .wards-qr-card--420{max-width:420px;}
+.wards-history-list-scroll{max-height:50vh;overflow-y:auto;font-family:var(--ff-sans);font-size:12.5px;color:var(--ink-soft);}
 .wards-qr-card--480{max-width:480px;}
 .w-100{width:100%;}
 .mt-8{margin-top:8px;}
@@ -3133,6 +3137,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div class="ws-row">
           <span class="ws-label">Terms &amp; Privacy<span class="ws-sub">Re-read the Terms of Use and Privacy Policy</span></span>
           <button type="button" class="settings-btn" id="wards-view-terms-btn">View</button>
+        </div>
+        <div class="ws-row">
+          <span class="ws-label">Error log<span class="ws-sub">Local-only record of app errors — helps when reporting a bug</span></span>
+          <button type="button" class="settings-btn" id="wards-view-crashlog-btn">View</button>
         </div>
       </div>
     </div>
@@ -4100,6 +4108,19 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   </div>
 </div>
 
+<div class="wards-qr-modal" id="wards-crashlog-modal" hidden>
+  <div class="wards-qr-card wards-qr-card--left wards-qr-card--420" role="dialog" aria-modal="true" aria-labelledby="wards-crashlog-title">
+    <button type="button" class="mat-lb-close" id="wards-crashlog-close" aria-label="Close">&times;</button>
+    <h3 id="wards-crashlog-title" style="text-align:center;">Error log</h3>
+    <p class="wards-qr-disclaimer" style="margin-top:0;">Captured automatically when something goes wrong — stays on this device only, never uploaded. Useful to copy/paste when reporting a bug.</p>
+    <div id="wards-crashlog-list" class="wards-history-list-scroll"></div>
+    <div class="ws-row" style="gap:8px; margin-top:10px;">
+      <button type="button" class="settings-btn" id="wards-crashlog-copy-btn">Copy log</button>
+      <button type="button" class="settings-btn settings-btn-danger" id="wards-crashlog-clear-btn">Clear log</button>
+    </div>
+  </div>
+</div>
+
 <div class="wards-qr-modal" id="wards-profile-modal" hidden role="dialog" aria-modal="true" aria-labelledby="wards-profile-title">
   <div class="wards-login-card wards-profile-card" role="document">
     <h2 id="wards-profile-title">Tell us about yourself</h2>
@@ -4449,6 +4470,81 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
    No login/auth in this pass — a real Firestore-backed ward/group
    access-control system is planned directly for this app next.
    ============================================================ */
+
+/* ============================================================
+   Lightweight crash/error log — same pattern as Rounds' (index.html),
+   ported here since Wards never had it. Captured silently, viewable
+   from Settings > Error log. Installed first thing so it catches
+   errors thrown anywhere else in this script too. Never lets a
+   logging failure itself throw or surface to the user.
+   ============================================================ */
+const WARDS_CRASH_LOG_KEY = 'wards_crash_log_v1';
+const WARDS_CRASH_LOG_MAX = 50;
+function wardsLogCrash(message, stack){
+  try{
+    const raw = localStorage.getItem(WARDS_CRASH_LOG_KEY);
+    const list = raw ? JSON.parse(raw) : [];
+    list.push({ t: new Date().toISOString(), message: String(message || 'Unknown error').slice(0, 2000), stack: stack ? String(stack).slice(0, 4000) : '' });
+    while(list.length > WARDS_CRASH_LOG_MAX) list.shift();
+    localStorage.setItem(WARDS_CRASH_LOG_KEY, JSON.stringify(list));
+  }catch(e){ /* never let logging itself throw */ }
+}
+function wardsGetCrashLog(){
+  try{ return JSON.parse(localStorage.getItem(WARDS_CRASH_LOG_KEY) || '[]'); }catch(e){ return []; }
+}
+function wardsClearCrashLog(){
+  try{ localStorage.removeItem(WARDS_CRASH_LOG_KEY); }catch(e){}
+}
+window.addEventListener('error', (e) => {
+  try{ wardsLogCrash(e.message, e.error && e.error.stack); }catch(err){}
+});
+window.addEventListener('unhandledrejection', (e) => {
+  try{
+    const reason = e.reason;
+    const msg = reason && reason.message ? reason.message : String(reason);
+    wardsLogCrash('Unhandled rejection: ' + msg, reason && reason.stack);
+  }catch(err){}
+});
+function wardsCrashLogText(){
+  const list = wardsGetCrashLog();
+  if(!list.length) return 'No errors captured.';
+  return list.map(e => `[${e.t}] ${e.message}${e.stack ? '\n' + e.stack : ''}`).join('\n\n');
+}
+function wardsOpenCrashLog(){
+  const modal = document.getElementById('wards-crashlog-modal');
+  if(!modal) return;
+  const listEl = document.getElementById('wards-crashlog-list');
+  const list = wardsGetCrashLog();
+  listEl.innerHTML = !list.length
+    ? '<p class="vitals-dept-empty">No errors captured — nothing has gone wrong (that we caught).</p>'
+    : list.slice().reverse().map(e => `<div style="padding:8px 0;border-bottom:1px solid var(--line);">` +
+        `<div style="font-size:10.5px;color:var(--ink-faint);margin-bottom:2px;">${escapeHtml(e.t)}</div>` +
+        `<div style="white-space:pre-wrap;word-break:break-word;">${escapeHtml(e.message)}${e.stack ? '\n' + escapeHtml(e.stack) : ''}</div>` +
+      `</div>`).join('');
+
+  const copyBtn = document.getElementById('wards-crashlog-copy-btn');
+  if(copyBtn) copyBtn.onclick = () => {
+    const text = wardsCrashLogText();
+    const done = () => showToast('Error log copied.', 'ok');
+    if(navigator.clipboard && navigator.clipboard.writeText){
+      navigator.clipboard.writeText(text).then(done).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); ta.remove(); done();
+      });
+    }else{
+      const ta = document.createElement('textarea');
+      ta.value = text; document.body.appendChild(ta); ta.select();
+      document.execCommand('copy'); ta.remove(); done();
+    }
+  };
+  const clearBtn = document.getElementById('wards-crashlog-clear-btn');
+  if(clearBtn) clearBtn.onclick = () => { wardsClearCrashLog(); showToast('Error log cleared.', 'ok'); wardsOpenCrashLog(); };
+  const closeBtn = document.getElementById('wards-crashlog-close');
+  if(closeBtn) closeBtn.onclick = () => { modal.hidden = true; modal.classList.remove('show'); };
+
+  modal.hidden = false; modal.classList.add('show');
+}
 
 const THEME_KEY = 'wards_theme_v1';
 
@@ -4800,6 +4896,9 @@ function setupWardsSettingsUI(){
 
   const termsBtn = document.getElementById('wards-view-terms-btn');
   if(termsBtn) termsBtn.addEventListener('click', () => { haptic('Light'); wardsShowTermsReadOnly(); });
+
+  const crashlogBtn = document.getElementById('wards-view-crashlog-btn');
+  if(crashlogBtn) crashlogBtn.addEventListener('click', () => { haptic('Light'); wardsOpenCrashLog(); });
 
   btn.addEventListener('click', (e) => {
     e.stopPropagation();
