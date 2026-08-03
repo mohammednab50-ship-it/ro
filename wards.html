@@ -1779,6 +1779,29 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .opd-side-scroll-controls{display:flex;justify-content:center;gap:12px;}
 .opd-side-scroll-btn{width:38px;height:38px;border-radius:50%;border:none;background:var(--paper);box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);font-size:18px;font-weight:600;line-height:1;}
 .opd-side-scroll-btn:hover{background:var(--line-soft);}
+
+/* ---- individual OPD patient report -- a dedicated on-screen view (not a
+   print/export file) recreating the mockup's dashboard composition for
+   one patient: greeting+avatar header, a plain stat row, gradient
+   summary cards, a visit-activity bar chart standing in for the
+   mockup's heart-rate chart, then the real clinical content (full visit
+   history) below it. ---- */
+/* .wards-qr-card.opd-report-card (two classes) beats plain .wards-qr-card's
+   own max-width:340px;width:100% -- same specificity as a single class
+   loses to source order otherwise, and .wards-qr-card is declared later
+   in the sheet. */
+.wards-qr-card.opd-report-card{width:760px;max-width:92vw;text-align:left;padding:28px 30px 30px;max-height:88vh;overflow-y:auto;}
+.opd-report-header{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:20px;}
+.opd-report-stat-row{display:flex;gap:28px;flex-wrap:wrap;padding-bottom:20px;margin-bottom:20px;border-bottom:1px solid var(--line);}
+.opd-report-cards{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:24px;}
+.opd-report-chart-panel{border:1px solid var(--line);border-radius:var(--r-lg);padding:18px 20px;margin-bottom:24px;background:var(--surface);}
+.opd-report-chart-sub{font-family:var(--ff-sans);font-size:12px;color:var(--ink-faint);}
+.opd-report-bars{display:flex;align-items:flex-end;gap:14px;height:120px;padding-top:10px;}
+.opd-report-bar-col{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%;gap:6px;}
+.opd-report-bar{width:100%;max-width:34px;border-radius:8px 8px 3px 3px;background:linear-gradient(180deg,#34d399,#0d9488);min-height:4px;}
+.opd-report-bar-label{font-family:var(--ff-sans);font-size:10.5px;color:var(--ink-faint);}
+.opd-report-history{}
+@media (max-width:640px){ .opd-report-card{padding:22px 18px 24px;} .opd-report-stat-row{gap:18px;} }
 .vitals-notes-field{margin-bottom:var(--space-5);}
 .vitals-submit-btn{width:100%;min-height:48px;}
 @media (min-width:560px){.vitals-submit-btn{width:auto;min-width:200px;}}
@@ -4178,7 +4201,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       <div class="vitals-dept-block">
         <div class="wb-head">
           <p class="vitals-dept-subtitle">Visit history — every department</p>
-          <button type="button" class="vitals-btn-primary" id="opd-add-visit-btn">+ New visit</button>
+          <div style="display:flex;gap:8px;">
+            <button type="button" class="vitals-btn-ghost" id="opd-view-report-btn">View report</button>
+            <button type="button" class="vitals-btn-primary" id="opd-add-visit-btn">+ New visit</button>
+          </div>
         </div>
         <div id="opd-visit-list"></div>
         <p class="vitals-dept-empty" id="opd-visit-empty" hidden>No visits logged yet.</p>
@@ -4233,6 +4259,30 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       </div>
     </div>
   </aside>
+</div>
+
+<div class="wards-qr-modal opd-report-modal" id="opd-report-modal" hidden>
+  <div class="wards-qr-card opd-report-card" role="dialog" aria-modal="true" aria-labelledby="opd-report-name">
+    <button type="button" class="mat-lb-close" id="opd-report-close" aria-label="Close">&times;</button>
+    <header class="opd-report-header">
+      <div>
+        <p class="vitals-kicker">Good Morning,</p>
+        <h3 class="vitals-patient-name" id="opd-report-name">—</h3>
+        <p class="vitals-patient-sub" id="opd-report-sub"></p>
+      </div>
+      <span class="opd-patient-avatar" id="opd-report-avatar" aria-hidden="true">—</span>
+    </header>
+    <div class="opd-report-stat-row" id="opd-report-stat-row"></div>
+    <div class="opd-report-cards" id="opd-report-cards"></div>
+    <div class="opd-report-chart-panel">
+      <div class="wb-head"><p class="vitals-dept-subtitle">Visit activity</p><span class="opd-report-chart-sub">Last 6 months</span></div>
+      <div class="opd-report-bars" id="opd-report-bars"></div>
+    </div>
+    <div class="opd-report-history">
+      <p class="vitals-dept-subtitle">Full visit history — every department</p>
+      <div id="opd-report-visit-list"></div>
+    </div>
+  </div>
 </div>
 
 <div id="vitals-print-summary"></div>
@@ -13486,6 +13536,21 @@ function renderOpdPatientList(){
   renderOpdStats();
 }
 
+function opdVisitCardsHtml(visits){
+  return visits.map(v => `
+    <div class="opd-visit-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+        <span class="opd-visit-dept-pill">${escapeHtml(v.department || 'General')}</span>
+        <span style="font-size:12px;color:var(--ink-faint);">${escapeHtml(fmtWardsDateTime(new Date(v.date)))}</span>
+      </div>
+      ${v.chiefComplaint ? `<div><b>Complaint:</b> ${escapeHtml(v.chiefComplaint)}</div>` : ''}
+      ${v.diagnosis ? `<div><b>Diagnosis:</b> ${escapeHtml(v.diagnosis)}</div>` : ''}
+      ${v.plan ? `<div><b>Plan:</b> ${escapeHtml(v.plan)}</div>` : ''}
+      ${v.followUpDate ? `<div><b>Follow-up:</b> ${escapeHtml(v.followUpDate)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
 function renderOpdVisitList(){
   const wrap = document.getElementById('opd-visit-list');
   const emptyEl = document.getElementById('opd-visit-empty');
@@ -13498,18 +13563,91 @@ function renderOpdVisitList(){
     return;
   }
   if(emptyEl) emptyEl.hidden = true;
-  wrap.innerHTML = visits.map(v => `
-    <div class="opd-visit-card">
-      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
-        <span class="opd-visit-dept-pill">${escapeHtml(v.department || 'General')}</span>
-        <span style="font-size:12px;color:var(--ink-faint);">${escapeHtml(fmtWardsDateTime(new Date(v.date)))}</span>
+  wrap.innerHTML = opdVisitCardsHtml(visits);
+}
+
+function renderOpdReport(){
+  const p = opdActivePatient();
+  const modal = document.getElementById('opd-report-modal');
+  if(!p || !modal) return;
+  const visits = opdVisitsFor(p.id);
+  const depts = opdPatientDepartments(p.id);
+
+  const nameEl = document.getElementById('opd-report-name');
+  const subEl = document.getElementById('opd-report-sub');
+  const avatarEl = document.getElementById('opd-report-avatar');
+  if(nameEl) nameEl.textContent = p.name || 'Unnamed';
+  const bits = [];
+  if(p.age != null && p.age !== '') bits.push(p.age + 'y');
+  if(p.gender) bits.push(p.gender.charAt(0).toUpperCase() + p.gender.slice(1));
+  if(p.mrn) bits.push('MRN ' + p.mrn);
+  if(subEl) subEl.textContent = bits.join(' · ');
+  if(avatarEl) avatarEl.textContent = ((p.name || '?').trim().split(/\s+/).slice(0, 2).map(w => w[0]).join('').toUpperCase()) || '?';
+
+  const statRow = document.getElementById('opd-report-stat-row');
+  if(statRow){
+    const stats = [
+      { label: 'Age', value: (p.age != null && p.age !== '') ? p.age : '—' },
+      { label: 'Gender', value: p.gender ? p.gender.charAt(0).toUpperCase() + p.gender.slice(1) : '—' },
+      { label: 'MRN', value: p.mrn || '—' },
+      { label: 'Departments seen', value: depts.length || 0 }
+    ];
+    statRow.innerHTML = stats.map(s => `<div><p class="opd-quickstat-value">${escapeHtml(String(s.value))}</p><p class="opd-quickstat-label">${escapeHtml(s.label)}</p></div>`).join('');
+  }
+
+  const cardsEl = document.getElementById('opd-report-cards');
+  if(cardsEl){
+    const latest = visits[0] || null;
+    const today = new Date().toISOString().slice(0, 10);
+    const upcoming = visits.filter(v => v.followUpDate && v.followUpDate >= today).sort((a, b) => a.followUpDate.localeCompare(b.followUpDate));
+    cardsEl.innerHTML = `
+      <div class="opd-stat-card opd-stat-card--teal">
+        <span class="opd-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4h6l1 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h3Z"/><path d="M9 4a3 3 0 0 1 6 0" stroke-linecap="round"/></svg></span>
+        <p class="opd-stat-label">Total Visits</p>
+        <p class="opd-stat-value">${visits.length}</p>
       </div>
-      ${v.chiefComplaint ? `<div><b>Complaint:</b> ${escapeHtml(v.chiefComplaint)}</div>` : ''}
-      ${v.diagnosis ? `<div><b>Diagnosis:</b> ${escapeHtml(v.diagnosis)}</div>` : ''}
-      ${v.plan ? `<div><b>Plan:</b> ${escapeHtml(v.plan)}</div>` : ''}
-      ${v.followUpDate ? `<div><b>Follow-up:</b> ${escapeHtml(v.followUpDate)}</div>` : ''}
-    </div>
-  `).join('');
+      <div class="opd-stat-card opd-stat-card--mint">
+        <span class="opd-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6M9 6h6"/><circle cx="12" cy="15" r="6"/></svg></span>
+        <p class="opd-stat-label">Latest Visit</p>
+        <p class="opd-stat-value opd-stat-value--sm">${latest ? escapeHtml(latest.department || 'General') + ' · ' + escapeHtml(fmtWardsDateTime(new Date(latest.date))) : '—'}</p>
+      </div>
+      <div class="opd-stat-card opd-stat-card--outline">
+        <span class="opd-stat-icon"><svg viewBox="0 0 24 24" fill="none" stroke="var(--evidence)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M3 9h18M8 3v3M16 3v3"/></svg></span>
+        <p class="opd-stat-label">Next Follow-up</p>
+        <p class="opd-stat-value opd-stat-value--sm">${upcoming.length ? escapeHtml(upcoming[0].followUpDate) : '—'}</p>
+      </div>
+    `;
+  }
+
+  const barsEl = document.getElementById('opd-report-bars');
+  if(barsEl){
+    const now = new Date();
+    const months = [];
+    for(let i = 5; i >= 0; i--){
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      months.push({ key: d.getFullYear() + '-' + d.getMonth(), label: d.toLocaleDateString(undefined, { month: 'short' }), count: 0 });
+    }
+    visits.forEach(v => {
+      const vd = new Date(v.date);
+      if(isNaN(vd)) return;
+      const key = vd.getFullYear() + '-' + vd.getMonth();
+      const m = months.find(m => m.key === key);
+      if(m) m.count++;
+    });
+    const max = Math.max(1, ...months.map(m => m.count));
+    barsEl.innerHTML = months.map(m => `
+      <div class="opd-report-bar-col">
+        <div class="opd-report-bar" style="height:${Math.max(4, Math.round((m.count / max) * 100))}%" title="${m.count} visit(s)"></div>
+        <span class="opd-report-bar-label">${escapeHtml(m.label)}</span>
+      </div>
+    `).join('');
+  }
+
+  const historyEl = document.getElementById('opd-report-visit-list');
+  if(historyEl) historyEl.innerHTML = visits.length ? opdVisitCardsHtml(visits) : '<p class="vitals-dept-empty">No visits logged yet.</p>';
+
+  modal.hidden = false;
+  modal.classList.add('show'); // .wards-qr-modal is display:none by default -- only .show flips it to display:grid
 }
 
 function renderOpdStats(){
@@ -13646,6 +13784,13 @@ function setupOpdUI(){
   const visitListEl = document.getElementById('opd-visit-list');
   if(scrollUpBtn && visitListEl) scrollUpBtn.addEventListener('click', () => visitListEl.scrollBy({ top: -160, behavior: 'smooth' }));
   if(scrollDownBtn && visitListEl) scrollDownBtn.addEventListener('click', () => visitListEl.scrollBy({ top: 160, behavior: 'smooth' }));
+
+  const reportBtn = document.getElementById('opd-view-report-btn');
+  const reportModal = document.getElementById('opd-report-modal');
+  const reportClose = document.getElementById('opd-report-close');
+  if(reportBtn) reportBtn.addEventListener('click', () => { haptic('Light'); renderOpdReport(); });
+  if(reportClose && reportModal) reportClose.addEventListener('click', () => { reportModal.hidden = true; reportModal.classList.remove('show'); });
+  if(reportModal) reportModal.addEventListener('click', e => { if(e.target === reportModal){ reportModal.hidden = true; reportModal.classList.remove('show'); } });
 
   const searchInput = document.getElementById('opd-search-input');
   if(searchInput) searchInput.addEventListener('input', () => { opdSearch = searchInput.value; renderOpdPatientList(); });
