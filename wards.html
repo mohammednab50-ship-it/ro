@@ -1980,6 +1980,13 @@ html.wards-cbsafe .vitals-latest-tile.n2-3 .vlt-k::before{content:"\25b2\25b2 ";
 .vitals-problem-list li .prob-added{color:var(--ink-faint);font-size:11.5px;white-space:nowrap;}
 .vitals-problem-add-row{display:flex;gap:8px;}
 .vitals-problem-add-row input{flex:1;min-width:0;padding:9px 11px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--paper);color:var(--ink);font-family:var(--ff-sans);font-size:13.5px;}
+.vitals-task-add-row #vitals-task-due-input{flex:0 0 auto;width:110px;}
+.vitals-task-list{list-style:none;margin:0 0 10px;padding:0;display:flex;flex-direction:column;gap:6px;}
+.vitals-task-list li{display:flex;align-items:center;gap:10px;font-family:var(--ff-sans);font-size:13.5px;padding:6px 0;}
+.vitals-task-list li.is-done .task-text{color:var(--ink-faint);text-decoration:line-through;}
+.vitals-task-list li .task-text{flex:1;color:var(--ink);}
+.vitals-task-list li .task-due{font-family:var(--ff-mono);font-size:11px;font-weight:700;color:var(--ink-faint);background:var(--paper-deep,var(--paper));padding:2px 8px;border-radius:var(--r-pill);white-space:nowrap;}
+.vitals-task-list li.is-overdue .task-due{color:var(--caution);background:var(--caution-bg);}
 
 /* ---- voice-to-text mic button — wraps a field, absolutely positions
    a mic toggle in its corner; only injected where SpeechRecognition
@@ -2152,6 +2159,7 @@ html.wards-cbsafe .vitals-latest-tile.n2-3 .vlt-k::before{content:"\25b2\25b2 ";
 .vitals-timeline-list li::before{content:"";position:absolute;left:-18.5px;top:4px;width:9px;height:9px;border-radius:50%;background:var(--evidence);}
 .vitals-timeline-time{font-family:var(--ff-mono);font-size:11px;color:var(--ink-faint);display:block;}
 .vitals-timeline-kind{font-weight:800;font-size:10px;letter-spacing:.04em;text-transform:uppercase;color:var(--ink-soft);margin-right:6px;}
+.vitals-timeline-kind.timeline-kind-overdue{color:var(--caution);}
 .vitals-compare-cell-flag{color:var(--caution);font-weight:800;}
 .ws-flowsheet-cols{display:flex;flex-wrap:wrap;gap:6px 14px;padding:2px 0 10px;font-size:12.5px;color:var(--ink-soft);}
 .ws-flowsheet-cols label{display:flex;align-items:center;gap:5px;white-space:nowrap;}
@@ -3649,6 +3657,23 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <div class="vitals-problem-add-row">
           <input type="text" id="vitals-problem-input" maxlength="120" placeholder="e.g. AKI, awaiting renal review">
           <button type="button" class="vitals-btn-outline" id="vitals-problem-add-btn">+ Add problem</button>
+        </div>
+      </div>
+
+      <!-- Jobs/tasks -- distinct from the problem list (ongoing clinical
+           issues) and the escalation trail (who's been told) below: this
+           is the "chase CXR," "recheck K+ after replacement," "review at
+           18:00" list a round actually generates and that's easy to lose
+           between shifts. Same add/toggle pattern as the problem list,
+           plus an optional due time so a job can be flagged overdue. -->
+      <div class="vitals-problem-list-panel">
+        <p class="vitals-dept-subtitle">Jobs</p>
+        <ul class="vitals-task-list" id="vitals-task-list"></ul>
+        <p class="vitals-dept-empty" id="vitals-task-list-empty" hidden>No open jobs.</p>
+        <div class="vitals-problem-add-row vitals-task-add-row">
+          <input type="text" id="vitals-task-input" maxlength="140" placeholder="e.g. Chase CXR result">
+          <input type="time" id="vitals-task-due-input" title="Optional — due time today">
+          <button type="button" class="vitals-btn-outline" id="vitals-task-add-btn">+ Add job</button>
         </div>
       </div>
 
@@ -8401,6 +8426,7 @@ function initVitals(){
   setupVitalsCopyLastButton();
   setupEscalationTrail();
   setupProblemList();
+  setupTaskList();
   setupRoundingChecklist();
   setupPatientCompare();
   setupPatientTimeline();
@@ -10633,6 +10659,7 @@ function renderVitalsMain(){
   renderDeptSections(p);
   renderAllergyBanner(p);
   renderProblemList(p);
+  renderTaskList(p);
   renderMarSection(p);
   renderEscalationBanner(p);
   renderVitalsLatestStrip(p);
@@ -11884,6 +11911,100 @@ function setupProblemList(){
   }
 }
 
+/* ---- ward jobs -- the "chase CXR," "recheck K+ after replacement,"
+   "review at 18:00" list a round actually generates, distinct from the
+   problem list (ongoing clinical issues) above and the escalation trail
+   (who's been told) below. Same add/toggle pattern as the problem list;
+   the only real addition is an optional same-day due time so a job can
+   be flagged overdue at a glance, surfaced here AND aggregated into the
+   end-of-shift summary the same way unresolved problems already are. */
+function ensureTasks(p){
+  if(!Array.isArray(p.tasks)) p.tasks = [];
+  return p.tasks;
+}
+function taskIsOverdue(task, now){
+  return !task.doneAt && task.dueAt && new Date(task.dueAt).getTime() < (now || Date.now());
+}
+function renderTaskList(p){
+  const list = document.getElementById('vitals-task-list');
+  const empty = document.getElementById('vitals-task-list-empty');
+  if(!list) return;
+  const tasks = (p && p.tasks) || [];
+  if(!tasks.length){
+    list.innerHTML = '';
+    if(empty) empty.hidden = false;
+    return;
+  }
+  if(empty) empty.hidden = true;
+  const now = Date.now();
+  const sorted = tasks.slice().sort((a, b) => {
+    const doneDiff = (a.doneAt ? 1 : 0) - (b.doneAt ? 1 : 0);
+    if(doneDiff) return doneDiff;
+    if(a.dueAt && b.dueAt) return new Date(a.dueAt) - new Date(b.dueAt);
+    if(a.dueAt) return -1; // a job with a due time sorts ahead of one without
+    if(b.dueAt) return 1;
+    return new Date(b.createdAt) - new Date(a.createdAt);
+  });
+  list.innerHTML = sorted.map(t => {
+    const done = !!t.doneAt;
+    const overdue = taskIsOverdue(t, now);
+    return `<li class="${done ? 'is-done' : ''} ${overdue ? 'is-overdue' : ''}" data-task-id="${t.id}">` +
+      `<span class="task-text">${escapeHtml(t.text)}</span>` +
+      (t.dueAt ? `<span class="task-due">${escapeHtml(fmtVitalsTime(t.dueAt))}${overdue ? ' overdue' : ''}</span>` : '') +
+      `<button type="button" class="vitals-btn-outline" data-task-toggle="${t.id}">${done ? 'Reopen' : 'Done'}</button>` +
+      `</li>`;
+  }).join('');
+}
+function setupTaskList(){
+  const addBtn = document.getElementById('vitals-task-add-btn');
+  const input = document.getElementById('vitals-task-input');
+  const dueInput = document.getElementById('vitals-task-due-input');
+  const list = document.getElementById('vitals-task-list');
+  if(!addBtn || addBtn.dataset.wired) return;
+  addBtn.dataset.wired = '1';
+
+  const addTask = () => {
+    const p = activePatient();
+    if(!p || !input) return;
+    const text = input.value.trim();
+    if(!text) return;
+    let dueAt = null;
+    if(dueInput && dueInput.value){
+      // A same-day due time -- a job created near midnight for "later"
+      // still means today; there's no ambiguity worth a date picker for
+      // what's meant to be a quick round-time note.
+      const [hh, mm] = dueInput.value.split(':').map(Number);
+      const due = new Date();
+      due.setHours(hh, mm, 0, 0);
+      dueAt = due.toISOString();
+    }
+    ensureTasks(p).push({ id: genVitalsId('task'), text, dueAt, createdAt: new Date().toISOString(), doneAt: null });
+    saveVitalsData();
+    input.value = '';
+    if(dueInput) dueInput.value = '';
+    renderTaskList(p);
+    haptic('Light');
+  };
+  addBtn.addEventListener('click', addTask);
+  if(input) input.addEventListener('keydown', e => { if(e.key === 'Enter'){ e.preventDefault(); addTask(); } });
+
+  if(list && !list.dataset.wired){
+    list.dataset.wired = '1';
+    list.addEventListener('click', e => {
+      const btn = e.target.closest('[data-task-toggle]');
+      if(!btn) return;
+      const p = activePatient();
+      if(!p) return;
+      const task = ensureTasks(p).find(t => t.id === btn.dataset.taskToggle);
+      if(!task) return;
+      task.doneAt = task.doneAt ? null : new Date().toISOString();
+      saveVitalsData();
+      renderTaskList(p);
+      haptic('Light');
+    });
+  }
+}
+
 /* ---- medication administration record (MAR) — a lightweight personal
    charting aid, explicitly not a substitute for the institution's real
    eMAR/drug chart (see the disclaimer rendered alongside it). ---- */
@@ -12683,6 +12804,14 @@ function renderEndOfShiftSummary(){
   }));
   const unresolvedProblems = [];
   scope.forEach(p => (p.problems || []).filter(pr => !pr.resolvedAt).forEach(pr => unresolvedProblems.push({ p, pr })));
+  const openTasks = [];
+  scope.forEach(p => (p.tasks || []).filter(t => !t.doneAt).forEach(t => openTasks.push({ p, t })));
+  openTasks.sort((a, b) => {
+    const overdueDiff = (taskIsOverdue(b.t, now) ? 1 : 0) - (taskIsOverdue(a.t, now) ? 1 : 0);
+    if(overdueDiff) return overdueDiff; // overdue jobs first, same as the per-patient list
+    if(a.t.dueAt && b.t.dueAt) return new Date(a.t.dueAt) - new Date(b.t.dueAt);
+    return a.t.dueAt ? -1 : (b.t.dueAt ? 1 : 0);
+  });
   const quietWins = countQuietWins(scope);
 
   const listOrEmpty = (items, emptyMsg) => items.length
@@ -12702,6 +12831,8 @@ function renderEndOfShiftSummary(){
     listOrEmpty(overdueVitals.map(p => `<li><span class="vitals-timeline-kind">VITALS</span>${escapeHtml(p.bed || '—')} ${escapeHtml(p.name || 'Unnamed')} — not seen in over ${effectiveUnseenThresholdHours(p)}h</li>`).join(''), 'Nothing overdue.') +
     `<p class="vitals-dept-subtitle">Unresolved problems</p>` +
     listOrEmpty(unresolvedProblems.map(u => `<li><span class="vitals-timeline-kind">PROBLEM</span>${escapeHtml(u.p.bed || '—')} ${escapeHtml(u.p.name || 'Unnamed')} — ${escapeHtml(u.pr.text)}</li>`).join(''), 'No unresolved problems.') +
+    `<p class="vitals-dept-subtitle">Open jobs</p>` +
+    listOrEmpty(openTasks.map(o => `<li><span class="vitals-timeline-kind${taskIsOverdue(o.t, now) ? ' timeline-kind-overdue' : ''}">JOB</span>${escapeHtml(o.p.bed || '—')} ${escapeHtml(o.p.name || 'Unnamed')} — ${escapeHtml(o.t.text)}${o.t.dueAt ? ` (${escapeHtml(fmtVitalsTime(o.t.dueAt))}${taskIsOverdue(o.t, now) ? ' — overdue' : ''})` : ''}</li>`).join(''), 'No open jobs.') +
     `<p class="vitals-dept-subtitle">Your reading-history heatmap</p>` +
     buildReadingHeatmapHtml();
 }
