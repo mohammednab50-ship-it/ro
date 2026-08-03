@@ -1695,11 +1695,31 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-field label span.vitals-delta{font-weight:600;color:var(--ink-faint);}
 .vitals-field label span.vitals-delta.vitals-delta-up{color:var(--caution);}
 .vitals-field label span.vitals-delta.vitals-delta-down{color:var(--evidence-dark);}
-.vitals-field input,.vitals-field textarea{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 13px;
+.vitals-field input,.vitals-field textarea,.vitals-field select{border:1px solid var(--line);border-radius:var(--r-sm);padding:12px 13px;
   font-family:var(--ff-sans);font-size:15.5px;background:var(--paper);color:var(--ink);width:100%;min-height:46px;
   transition:border-color var(--dur-fast) var(--ease-out),box-shadow var(--dur-fast) var(--ease-out);}
 .vitals-field textarea{min-height:64px;resize:vertical;font-size:14.5px;}
-.vitals-field input:focus,.vitals-field textarea:focus{outline:none;border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
+.vitals-field input:focus,.vitals-field textarea:focus,.vitals-field select:focus{outline:none;border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
+.opd-search-input{width:100%;box-sizing:border-box;border:1px solid var(--line);border-radius:var(--r-pill);padding:9px 14px;margin-bottom:10px;
+  font-family:var(--ff-sans);font-size:13.5px;background:var(--surface);color:var(--ink);}
+.opd-search-input:focus{outline:none;border-color:var(--evidence);box-shadow:0 0 0 3px var(--evidence-bg);}
+
+/* Quick-glance stat cards atop the OPD main panel -- gradient cards echo the
+   "Alutem" mockup's vitals tiles (teal/mint, rounded, white text) without
+   pulling in a chart library; these are just a live patient/visit count. */
+.opd-stats-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:var(--space-5);}
+.opd-stat-card{flex:1 1 150px;min-width:130px;border-radius:var(--r-lg);padding:16px 18px;box-shadow:var(--shadow-sm);}
+.opd-stat-card--teal{background:linear-gradient(135deg,#0d9488,#0891b2);}
+.opd-stat-card--mint{background:linear-gradient(135deg,#10b981,#34d399);}
+.opd-stat-card--teal .opd-stat-label,.opd-stat-card--mint .opd-stat-label{color:rgba(255,255,255,0.85);}
+.opd-stat-card--teal .opd-stat-value,.opd-stat-card--mint .opd-stat-value{color:#fff;}
+.opd-stat-card--outline{background:var(--surface);border:1px solid var(--line);}
+.opd-stat-label{font-family:var(--ff-sans);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:var(--tracking-wide);color:var(--ink-faint);margin:0 0 6px;}
+.opd-stat-value{font-family:var(--ff-display);font-size:28px;font-weight:600;color:var(--ink);margin:0;line-height:1;}
+.opd-stat-value--sm{font-family:var(--ff-sans);font-size:15px;font-weight:700;}
+
+.opd-visit-card{border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;margin-bottom:10px;background:var(--surface);}
+.opd-visit-dept-pill{display:inline-block;font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#0d9488;background:rgba(13,148,136,0.12);padding:3px 10px;border-radius:var(--r-pill);}
 .vitals-notes-field{margin-bottom:var(--space-5);}
 .vitals-submit-btn{width:100%;min-height:48px;}
 @media (min-width:560px){.vitals-submit-btn{width:auto;min-width:200px;}}
@@ -3159,6 +3179,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
 
 <nav class="wards-tabbar" id="wards-tabbar" aria-label="Sections">
   <button type="button" class="wards-tab" data-view="vitals" role="tab" aria-selected="true" aria-controls="view-vitals">Patients</button>
+  <button type="button" class="wards-tab" data-view="opd" role="tab" aria-selected="false" aria-controls="view-opd">OPD</button>
 </nav>
 
 <div class="layout" id="view-vitals" role="tabpanel" aria-labelledby="tab-vitals">
@@ -4019,6 +4040,112 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   </main>
 </div>
 
+<div class="layout" id="view-opd" role="tabpanel" aria-labelledby="tab-opd" hidden>
+  <nav class="chapters" aria-label="OPD patients">
+    <p class="chapters-eyebrow">OPD PATIENTS</p>
+    <div class="vitals-filter-chips" id="opd-dept-chips"></div>
+    <div class="ws-row" style="margin-bottom:10px;">
+      <input type="text" id="opd-search-input" class="opd-search-input" placeholder="Search OPD patients…">
+    </div>
+    <ol class="chapter-list" id="opd-patient-list"></ol>
+    <button type="button" class="vitals-btn-primary vitals-add-patient-cta" id="opd-add-patient-btn">+ Add OPD patient</button>
+    <div class="vitals-add-form" id="opd-add-patient-form" hidden>
+      <div class="vitals-field">
+        <label for="opd-new-name">Name</label>
+        <input id="opd-new-name" type="text" maxlength="60" placeholder="e.g. J. Doe" autocomplete="off">
+      </div>
+      <div class="vitals-field">
+        <label for="opd-new-age">Age</label>
+        <input id="opd-new-age" type="number" min="0" max="130" placeholder="e.g. 45">
+      </div>
+      <div class="vitals-field">
+        <label for="opd-new-gender">Gender</label>
+        <select id="opd-new-gender">
+          <option value="">Not specified</option>
+          <option value="male">Male</option>
+          <option value="female">Female</option>
+          <option value="other">Other</option>
+        </select>
+      </div>
+      <div class="vitals-field">
+        <label for="opd-new-mrn">MRN <span>(optional)</span></label>
+        <input id="opd-new-mrn" type="text" maxlength="40" placeholder="optional">
+      </div>
+      <div class="vitals-add-actions">
+        <button type="button" class="vitals-btn-primary" id="opd-save-patient-btn">Add patient</button>
+        <button type="button" class="vitals-btn-ghost" id="opd-cancel-patient-btn">Cancel</button>
+      </div>
+    </div>
+  </nav>
+  <main>
+    <div class="opd-stats-row" id="opd-stats-row">
+      <div class="opd-stat-card opd-stat-card--teal">
+        <p class="opd-stat-label">OPD Patients</p>
+        <p class="opd-stat-value" id="opd-stat-patients">0</p>
+      </div>
+      <div class="opd-stat-card opd-stat-card--mint">
+        <p class="opd-stat-label">Visits Logged</p>
+        <p class="opd-stat-value" id="opd-stat-visits">0</p>
+      </div>
+      <div class="opd-stat-card opd-stat-card--outline">
+        <p class="opd-stat-label">Department</p>
+        <p class="opd-stat-value opd-stat-value--sm" id="opd-stat-dept">All</p>
+      </div>
+    </div>
+    <div id="opd-empty" class="vitals-empty">
+      <svg class="vitals-empty-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M9 4h6l1 3h3a1 1 0 0 1 1 1v11a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V8a1 1 0 0 1 1-1h3Z"/><path d="M9 4a3 3 0 0 1 6 0" stroke-linecap="round"/></svg>
+      <p><strong>No OPD patients yet.</strong><br>Add one on the left to start logging outpatient visits. Everything you enter here stays only on this device unless you join a ward group.</p>
+    </div>
+    <div id="opd-patient-view" hidden>
+      <header class="vitals-patient-head">
+        <div>
+          <p class="vitals-kicker" id="opd-patient-kicker">OPD</p>
+          <h3 class="vitals-patient-name" id="opd-patient-name">—</h3>
+          <p class="vitals-patient-sub" id="opd-patient-sub"></p>
+        </div>
+      </header>
+      <div class="vitals-dept-block">
+        <div class="wb-head">
+          <p class="vitals-dept-subtitle">Visit history — every department</p>
+          <button type="button" class="vitals-btn-primary" id="opd-add-visit-btn">+ New visit</button>
+        </div>
+        <div id="opd-visit-list"></div>
+        <p class="vitals-dept-empty" id="opd-visit-empty" hidden>No visits logged yet.</p>
+      </div>
+      <div class="vitals-add-form" id="opd-add-visit-form" hidden>
+        <div class="vitals-field">
+          <label for="opd-visit-dept">Department</label>
+          <select id="opd-visit-dept"></select>
+        </div>
+        <div class="vitals-field">
+          <label for="opd-visit-date">Visit date</label>
+          <input id="opd-visit-date" type="date">
+        </div>
+        <div class="vitals-field">
+          <label for="opd-visit-complaint">Chief complaint</label>
+          <input id="opd-visit-complaint" type="text" maxlength="200" placeholder="e.g. Chest pain, 2 days">
+        </div>
+        <div class="vitals-field">
+          <label for="opd-visit-diagnosis">Diagnosis</label>
+          <textarea id="opd-visit-diagnosis" rows="2" maxlength="500" placeholder="Working diagnosis / impression"></textarea>
+        </div>
+        <div class="vitals-field">
+          <label for="opd-visit-plan">Plan / prescription</label>
+          <textarea id="opd-visit-plan" rows="2" maxlength="500" placeholder="Treatment plan, medications prescribed"></textarea>
+        </div>
+        <div class="vitals-field">
+          <label for="opd-visit-followup">Follow-up date <span>(optional)</span></label>
+          <input id="opd-visit-followup" type="date">
+        </div>
+        <div class="vitals-add-actions">
+          <button type="button" class="vitals-btn-primary" id="opd-save-visit-btn">Save visit</button>
+          <button type="button" class="vitals-btn-ghost" id="opd-cancel-visit-btn">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
 <div id="vitals-print-summary"></div>
 
 <div class="wards-qr-modal" id="wards-qr-modal" hidden>
@@ -4139,6 +4266,10 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <option value="student">Student</option>
         <option value="student-nurse">Student Nurse</option>
       </select>
+    </div>
+    <div class="wards-login-field">
+      <label for="wards-profile-department">Your OPD department <span>(optional — set by your hospital admin)</span></label>
+      <select id="wards-profile-department"></select>
     </div>
     <p class="login-error" id="wards-profile-error" role="alert"></p>
     <div class="wards-login-actions">
@@ -5663,8 +5794,16 @@ async function initWardsFirebase(){
   return wardsFirebaseLoading;
 }
 
+/* Shared with the OPD module further down the file (plain closure lookup,
+   not window.*) -- placeholder list, swap for the real one whenever it's
+   confirmed. Also doubles as the "assigned department" choices on the
+   profile modal below, since that's the only place today that can
+   plausibly stand in for a hospital admin's assignment. */
+const OPD_DEPARTMENTS = ['General', 'Cardiology', 'ENT', 'Orthopedics', 'Pediatrics', 'Gynecology'];
+
 let currentWardsUser = null;
 let wardsCurrentUserRole = null;
+let wardsCurrentUserDepartment = null;
 let wardsMyGroups = [];
 let activeSyncGroupId = null;
 let wardsGroupsUnsub = null;
@@ -5950,10 +6089,10 @@ async function wardsGetProfile(uid){
     return snap.exists ? snap.data() : null;
   }catch(e){ return null; }
 }
-async function wardsSaveProfile(user, name, role){
+async function wardsSaveProfile(user, name, role, department){
   if(!wfdb) return;
   await wfdb.collection('users').doc(user.uid).set({
-    email: user.email || '', displayName: name, role
+    email: user.email || '', displayName: name, role, department: department || null
   }, { merge: true });
   // Keep Firebase Auth's own displayName in sync too -- wardsChatDisplayName()
   // (used for every chat message, announcement, and invite) reads
@@ -5980,19 +6119,28 @@ function wardsWireProfileGateOnce(){
   wardsProfileGateWired = true;
   const nameInput = document.getElementById('wards-profile-name');
   const roleSelect = document.getElementById('wards-profile-role');
+  const deptSelect = document.getElementById('wards-profile-department');
   const errEl = document.getElementById('wards-profile-error');
   const saveBtn = document.getElementById('wards-profile-save-btn');
+  if(deptSelect && !deptSelect.dataset.populated){
+    deptSelect.innerHTML = '<option value="">— not assigned yet —</option>' +
+      OPD_DEPARTMENTS.map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+    deptSelect.dataset.populated = '1';
+  }
   saveBtn.addEventListener('click', async () => {
     errEl.textContent = '';
     const name = (nameInput.value || '').trim();
     const role = roleSelect.value;
+    const department = deptSelect ? deptSelect.value : '';
     if(!name){ errEl.textContent = 'Enter your name.'; return; }
     if(!role){ errEl.textContent = 'Select your role.'; return; }
     saveBtn.disabled = true;
     try{
       const user = saveBtn._pendingUser;
-      await wardsSaveProfile(user, name, role);
+      await wardsSaveProfile(user, name, role, department);
       wardsCurrentUserRole = role;
+      wardsCurrentUserDepartment = department || null;
+      if(typeof window.refreshOpdAccess === 'function') window.refreshOpdAccess();
       wardsRenderWelcomeGreeting(name, role);
       const modal = document.getElementById('wards-profile-modal');
       modal.hidden = true; modal.classList.remove('show');
@@ -6013,6 +6161,8 @@ function wardsGateOnProfile(user){
   return wardsGetProfile(user.uid).then(profile => {
     if(profile && profile.displayName && profile.role){
       wardsCurrentUserRole = profile.role;
+      wardsCurrentUserDepartment = profile.department || null;
+      if(typeof window.refreshOpdAccess === 'function') window.refreshOpdAccess();
       wardsRenderWelcomeGreeting(profile.displayName, profile.role);
       return;
     }
@@ -6020,12 +6170,13 @@ function wardsGateOnProfile(user){
     return new Promise(resolve => {
       const nameInput = document.getElementById('wards-profile-name');
       const roleSelect = document.getElementById('wards-profile-role');
+      const deptSelect = document.getElementById('wards-profile-department');
       const errEl = document.getElementById('wards-profile-error');
       const saveBtn = document.getElementById('wards-profile-save-btn');
-      const modal = document.getElementById('wards-profile-modal');
       errEl.textContent = '';
       nameInput.value = (profile && profile.displayName) || user.displayName || '';
       roleSelect.value = (profile && profile.role) || '';
+      if(deptSelect) deptSelect.value = (profile && profile.department) || '';
       saveBtn._pendingUser = user;
       saveBtn._pendingOnDone = resolve;
       modal.hidden = false; modal.classList.add('show');
@@ -6077,6 +6228,7 @@ async function wardsLoadMyHospitals(uid){
   wardsMyHospitals = verified;
   if(activeHospitalId && !verified.some(h => h.id === activeHospitalId)) selectWardsHospital(null);
   renderWardsGroupSelect();
+  if(typeof window.refreshOpdAccess === 'function') window.refreshOpdAccess();
 }
 
 async function wardsCreateHospital(name){
@@ -7054,6 +7206,8 @@ async function wardsOnAuthChanged(user){
     activeDepartmentId = null;
     wardsMyPendingInvites = [];
     wardsCurrentUserRole = null;
+    wardsCurrentUserDepartment = null;
+    if(typeof window.refreshOpdAccess === 'function') window.refreshOpdAccess();
     wardsRenderWelcomeGreeting(null, null);
     wardsShowLoginGate();
   }
@@ -13081,6 +13235,12 @@ function setupQuickNoteCapture(){
 }
 
 window.initVitals = initVitals;
+// fmtWardsDateTime is called from chat/announcements/wellwall code that
+// lives OUTSIDE this IIFE (earlier in the file) -- exposing it here so a
+// bare `fmtWardsDateTime(...)` call from that outer scope resolves via
+// the global object instead of throwing ReferenceError the first time any
+// of those features actually renders a real (non-null) timestamp.
+window.fmtWardsDateTime = fmtWardsDateTime;
 window.setupQuickNoteCapture = setupQuickNoteCapture;
 window.setupAmbientSoundscape = setupAmbientSoundscape;
 window.getDefaultVitalsView = getDefaultVitalsView;
@@ -13096,6 +13256,322 @@ window.handleScannedValue = handleScannedValue;
 })();
 
 /* ============================================================
+   OPD — outpatient visits. Foundation pass: local-only for now (same
+   "100% on-device unless you join a ward group" default as inpatients,
+   but cloud sync for OPD isn't wired up yet -- deliberately deferred
+   rather than guessing at a cross-department sync/visibility model
+   before the real department list and sharing rules are confirmed).
+
+   Distinct from inpatient charting: no bed, no serial vitals through a
+   shift -- an OPD patient is one identity with multiple dated VISITS,
+   each tagged with whichever department saw them. Viewing a patient
+   always shows every visit across every department together (a
+   cardiologist reviewing a patient can see the ENT visit from last
+   month) -- that's the whole point of keeping visits on the patient
+   record rather than siloed per department.
+
+   OPD_DEPARTMENTS is a placeholder list -- swap it for the real one
+   whenever it's confirmed; nothing else needs to change since every
+   other piece just reads from this array.
+   ============================================================ */
+(function(){
+
+// OPD_DEPARTMENTS is defined once, outer scope, near wardsCurrentUserRole --
+// shared with the profile modal so "your OPD department" has something to
+// pick from.
+const OPD_KEY = 'wards_opd_v1';
+let opdState = { patients: [], visits: {}, activePatientId: null };
+let opdDeptFilter = null; // null = all departments (only meaningful when unrestricted -- see opdVisibleDepartments)
+let opdSearch = '';
+
+/* Access control: a signed-in user with an assigned OPD department only
+   ever sees/files into that one department -- "if a user is ENT or
+   OB/GYN, assigned by hospital admin, don't show them every department."
+   Hospital admins (wardsMyHospitals is populated only for hospitals the
+   signed-in account administers) are treated as unrestricted since they
+   already have full oversight of every department they run. Anyone with
+   no assigned department (including fully local/offline use, where
+   there's no admin to assign one) stays unrestricted too -- consistent
+   with today's foundation behavior. */
+function opdIsRestricted(){
+  return !!wardsCurrentUserDepartment && !(window.wardsMyHospitals && window.wardsMyHospitals.length);
+}
+function opdVisibleDepartments(){
+  return opdIsRestricted() ? [wardsCurrentUserDepartment] : OPD_DEPARTMENTS;
+}
+
+function loadOpdData(){
+  try{
+    const raw = localStorage.getItem(OPD_KEY);
+    const parsed = raw ? JSON.parse(raw) : null;
+    opdState = {
+      patients: (parsed && Array.isArray(parsed.patients)) ? parsed.patients : [],
+      visits: (parsed && parsed.visits && typeof parsed.visits === 'object') ? parsed.visits : {},
+      activePatientId: (parsed && parsed.activePatientId) || null
+    };
+  }catch(e){ opdState = { patients: [], visits: {}, activePatientId: null }; }
+}
+function saveOpdData(){
+  try{ localStorage.setItem(OPD_KEY, JSON.stringify(opdState)); }catch(e){}
+}
+function genOpdId(prefix){
+  return prefix + '_' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 8);
+}
+function opdActivePatient(){
+  return opdState.patients.find(p => p.id === opdState.activePatientId) || null;
+}
+function opdVisitsFor(patientId){
+  return (opdState.visits[patientId] || []).slice().sort((a, b) => new Date(b.date) - new Date(a.date));
+}
+/* Every department a patient has actually been seen in, most recent first --
+   used for the roster badge so "which department(s)" is visible at a glance
+   without opening the patient. */
+function opdPatientDepartments(patientId){
+  const seen = new Set();
+  const out = [];
+  opdVisitsFor(patientId).forEach(v => {
+    if(v.department && !seen.has(v.department)){ seen.add(v.department); out.push(v.department); }
+  });
+  return out;
+}
+
+function renderOpdDeptChips(){
+  const wrap = document.getElementById('opd-dept-chips');
+  if(!wrap) return;
+  const depts = opdVisibleDepartments();
+  if(opdIsRestricted()){
+    // One assigned department, nothing to filter -- an "All" chip would just
+    // be a no-op button, so skip the filter row entirely and show a plain label.
+    opdDeptFilter = depts[0];
+    wrap.innerHTML = `<span class="vitals-filter-chip" style="cursor:default;" aria-disabled="true"><span>${escapeHtml(depts[0])} (your department)</span></span>`;
+    renderOpdPatientList();
+    return;
+  }
+  const chips = ['<label class="vitals-filter-chip"><input type="radio" name="opd-dept-filter" value="" ' + (opdDeptFilter ? '' : 'checked') + '><span>All</span></label>']
+    .concat(depts.map(d => `<label class="vitals-filter-chip"><input type="radio" name="opd-dept-filter" value="${escapeHtml(d)}" ${opdDeptFilter === d ? 'checked' : ''}><span>${escapeHtml(d)}</span></label>`));
+  wrap.innerHTML = chips.join('');
+  wrap.querySelectorAll('input[name="opd-dept-filter"]').forEach(input => {
+    input.addEventListener('change', () => { opdDeptFilter = input.value || null; renderOpdPatientList(); });
+  });
+}
+
+function renderOpdPatientList(){
+  const list = document.getElementById('opd-patient-list');
+  if(!list) return;
+  list.innerHTML = '';
+  const needle = opdSearch.trim().toLowerCase();
+  let patients = opdState.patients.slice();
+  if(opdDeptFilter) patients = patients.filter(p => opdPatientDepartments(p.id).includes(opdDeptFilter));
+  if(needle) patients = patients.filter(p => (p.name || '').toLowerCase().includes(needle) || (p.mrn || '').toLowerCase().includes(needle));
+  patients.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+  patients.forEach(p => {
+    const li = document.createElement('li');
+    li.className = 'chapter-li' + (p.id === opdState.activePatientId ? ' active' : '');
+    if(p.id === opdState.activePatientId) li.setAttribute('aria-current', 'page');
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'chapter-btn';
+    btn.dataset.patientId = p.id;
+    const visitCount = (opdState.visits[p.id] || []).length;
+    const badge = visitCount ? `<span class="chapter-new" aria-label="${visitCount} visits">${visitCount}</span>` : '';
+    const depts = opdPatientDepartments(p.id);
+    const deptLabel = depts.length ? escapeHtml(depts[0]) + (depts.length > 1 ? ' +' + (depts.length - 1) : '') : '—';
+    btn.innerHTML = `<span class="chapter-num">${escapeHtml(p.age != null && p.age !== '' ? String(p.age) : '—')}</span><span class="chapter-name">${escapeHtml(p.name || 'Unnamed')}<br><span style="font-size:10.5px;color:var(--ink-faint);font-weight:500;">${deptLabel}</span></span>${badge}`;
+    li.appendChild(btn);
+    list.appendChild(li);
+  });
+  if(!patients.length){
+    const li = document.createElement('li');
+    li.className = 'chapter-li-empty';
+    li.textContent = opdState.patients.length ? 'No patients match this filter.' : 'No OPD patients yet.';
+    list.appendChild(li);
+  }
+  renderOpdStats();
+}
+
+function renderOpdVisitList(){
+  const wrap = document.getElementById('opd-visit-list');
+  const emptyEl = document.getElementById('opd-visit-empty');
+  const p = opdActivePatient();
+  if(!wrap || !p) return;
+  const visits = opdVisitsFor(p.id);
+  if(!visits.length){
+    wrap.innerHTML = '';
+    if(emptyEl) emptyEl.hidden = false;
+    return;
+  }
+  if(emptyEl) emptyEl.hidden = true;
+  wrap.innerHTML = visits.map(v => `
+    <div class="opd-visit-card">
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:6px;">
+        <span class="opd-visit-dept-pill">${escapeHtml(v.department || 'General')}</span>
+        <span style="font-size:12px;color:var(--ink-faint);">${escapeHtml(fmtWardsDateTime(new Date(v.date)))}</span>
+      </div>
+      ${v.chiefComplaint ? `<div><b>Complaint:</b> ${escapeHtml(v.chiefComplaint)}</div>` : ''}
+      ${v.diagnosis ? `<div><b>Diagnosis:</b> ${escapeHtml(v.diagnosis)}</div>` : ''}
+      ${v.plan ? `<div><b>Plan:</b> ${escapeHtml(v.plan)}</div>` : ''}
+      ${v.followUpDate ? `<div><b>Follow-up:</b> ${escapeHtml(v.followUpDate)}</div>` : ''}
+    </div>
+  `).join('');
+}
+
+function renderOpdStats(){
+  const pEl = document.getElementById('opd-stat-patients');
+  const vEl = document.getElementById('opd-stat-visits');
+  const dEl = document.getElementById('opd-stat-dept');
+  if(pEl) pEl.textContent = String(opdState.patients.length);
+  if(vEl) vEl.textContent = String(Object.values(opdState.visits).reduce((n, list) => n + (list ? list.length : 0), 0));
+  if(dEl) dEl.textContent = opdIsRestricted() ? wardsCurrentUserDepartment : 'All';
+}
+
+function renderOpdMain(){
+  const empty = document.getElementById('opd-empty');
+  const view = document.getElementById('opd-patient-view');
+  const p = opdActivePatient();
+  if(!p){
+    if(empty) empty.hidden = false;
+    if(view) view.hidden = true;
+    return;
+  }
+  if(empty) empty.hidden = true;
+  if(view) view.hidden = false;
+  const nameEl = document.getElementById('opd-patient-name');
+  const subEl = document.getElementById('opd-patient-sub');
+  if(nameEl) nameEl.textContent = p.name || 'Unnamed';
+  const bits = [];
+  if(p.age != null && p.age !== '') bits.push(p.age + 'y');
+  if(p.gender) bits.push(p.gender.charAt(0).toUpperCase() + p.gender.slice(1));
+  if(p.mrn) bits.push('MRN ' + p.mrn);
+  if(subEl) subEl.textContent = bits.join(' · ');
+  document.getElementById('opd-add-visit-form').hidden = true; // avoid a stale form carrying over across patients
+  renderOpdVisitList();
+}
+
+function selectOpdPatient(id){
+  opdState.activePatientId = id;
+  saveOpdData();
+  renderOpdPatientList();
+  renderOpdMain();
+}
+
+function opdPopulateDeptSelect(){
+  const sel = document.getElementById('opd-visit-dept');
+  if(!sel) return;
+  // A restricted user (assigned department) can only file visits under their
+  // own department -- they shouldn't be able to open the dropdown and pick
+  // "Cardiology" if they're ENT staff.
+  sel.innerHTML = opdVisibleDepartments().map(d => `<option value="${escapeHtml(d)}">${escapeHtml(d)}</option>`).join('');
+  sel.disabled = opdIsRestricted();
+}
+
+function setupOpdUI(){
+  loadOpdData();
+  renderOpdDeptChips();
+  opdPopulateDeptSelect();
+  renderOpdPatientList();
+  renderOpdMain();
+
+  const searchInput = document.getElementById('opd-search-input');
+  if(searchInput) searchInput.addEventListener('input', () => { opdSearch = searchInput.value; renderOpdPatientList(); });
+
+  const list = document.getElementById('opd-patient-list');
+  if(list) list.addEventListener('click', e => {
+    const btn = e.target.closest('[data-patient-id]');
+    if(!btn) return;
+    haptic('Light');
+    selectOpdPatient(btn.dataset.patientId);
+  });
+
+  const addBtn = document.getElementById('opd-add-patient-btn');
+  const addForm = document.getElementById('opd-add-patient-form');
+  if(addBtn && addForm) addBtn.addEventListener('click', () => {
+    addForm.hidden = !addForm.hidden;
+    if(!addForm.hidden) document.getElementById('opd-new-name').focus();
+  });
+  const cancelPatientBtn = document.getElementById('opd-cancel-patient-btn');
+  if(cancelPatientBtn) cancelPatientBtn.addEventListener('click', () => { addForm.hidden = true; });
+  const savePatientBtn = document.getElementById('opd-save-patient-btn');
+  if(savePatientBtn) savePatientBtn.addEventListener('click', () => {
+    const name = document.getElementById('opd-new-name').value.trim();
+    if(!name){ showToast('Enter a name.', 'err'); return; }
+    const p = {
+      id: genOpdId('opdpt'),
+      name,
+      age: document.getElementById('opd-new-age').value ? Number(document.getElementById('opd-new-age').value) : null,
+      gender: document.getElementById('opd-new-gender').value || '',
+      mrn: document.getElementById('opd-new-mrn').value.trim(),
+      createdAt: new Date().toISOString()
+    };
+    opdState.patients.push(p);
+    document.getElementById('opd-new-name').value = '';
+    document.getElementById('opd-new-age').value = '';
+    document.getElementById('opd-new-gender').value = '';
+    document.getElementById('opd-new-mrn').value = '';
+    addForm.hidden = true;
+    saveOpdData();
+    selectOpdPatient(p.id);
+    haptic('Medium');
+    showToast('OPD patient added.', 'ok');
+  });
+
+  const addVisitBtn = document.getElementById('opd-add-visit-btn');
+  const visitForm = document.getElementById('opd-add-visit-form');
+  if(addVisitBtn && visitForm) addVisitBtn.addEventListener('click', () => {
+    visitForm.hidden = !visitForm.hidden;
+    if(!visitForm.hidden){
+      const dateInput = document.getElementById('opd-visit-date');
+      if(dateInput && !dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+    }
+  });
+  const cancelVisitBtn = document.getElementById('opd-cancel-visit-btn');
+  if(cancelVisitBtn) cancelVisitBtn.addEventListener('click', () => { visitForm.hidden = true; });
+  const saveVisitBtn = document.getElementById('opd-save-visit-btn');
+  if(saveVisitBtn) saveVisitBtn.addEventListener('click', () => {
+    const p = opdActivePatient();
+    if(!p) return;
+    const date = document.getElementById('opd-visit-date').value || new Date().toISOString().slice(0, 10);
+    const visit = {
+      id: genOpdId('opdvisit'),
+      department: document.getElementById('opd-visit-dept').value,
+      date,
+      chiefComplaint: document.getElementById('opd-visit-complaint').value.trim(),
+      diagnosis: document.getElementById('opd-visit-diagnosis').value.trim(),
+      plan: document.getElementById('opd-visit-plan').value.trim(),
+      followUpDate: document.getElementById('opd-visit-followup').value || '',
+      ts: new Date().toISOString()
+    };
+    if(!opdState.visits[p.id]) opdState.visits[p.id] = [];
+    opdState.visits[p.id].push(visit);
+    document.getElementById('opd-visit-complaint').value = '';
+    document.getElementById('opd-visit-diagnosis').value = '';
+    document.getElementById('opd-visit-plan').value = '';
+    document.getElementById('opd-visit-followup').value = '';
+    visitForm.hidden = true;
+    saveOpdData();
+    renderOpdPatientList();
+    renderOpdVisitList();
+    haptic('Medium');
+    showToast('Visit saved.', 'ok');
+  });
+}
+
+function initOpd(){
+  setupOpdUI();
+}
+window.initOpd = initOpd;
+window.getOpdData = () => opdState;
+// Re-applies department access after sign-in/profile save if the OPD tab
+// was already opened earlier in the session (setupOpdUI only runs once).
+window.refreshOpdAccess = function(){
+  if(!document.getElementById('opd-dept-chips')) return;
+  renderOpdDeptChips();
+  opdPopulateDeptSelect();
+};
+
+})();
+
+/* ============================================================
    Tab switcher — a single unified Patients tab now (Vitals and
    Maternity were merged into one department-aware patient system;
    the Maternity tab itself is gone). Kept as a named "switcher" with
@@ -13103,18 +13579,32 @@ window.handleScannedValue = handleScannedValue;
    own [hidden] attribute is still watched elsewhere.
    ============================================================ */
 let wardsVitalsInit = false;
+let wardsOpdInit = false;
 
 function wardsSwitchView(targetView){
   haptic('Light');
   document.querySelectorAll('#wards-tabbar .wards-tab').forEach(b =>
     b.setAttribute('aria-selected', b.dataset.view === targetView ? 'true' : 'false'));
 
-  const el = document.getElementById('view-vitals');
-  if(el){ el.style.display = ''; el.hidden = false; }
+  ['vitals', 'opd'].forEach(view => {
+    const el = document.getElementById('view-' + view);
+    if(!el) return;
+    const show = view === targetView;
+    el.hidden = !show;
+    // .layout{display:grid} outranks the UA stylesheet's [hidden]{display:none}
+    // (author CSS always wins over UA defaults, regardless of specificity or
+    // source order) -- the hidden attribute alone never actually hides a
+    // .layout element. Set style.display explicitly too.
+    el.style.display = show ? '' : 'none';
+  });
 
-  if(!wardsVitalsInit){
+  if(targetView === 'vitals' && !wardsVitalsInit){
     wardsVitalsInit = true;
     if(typeof window.initVitals === 'function') window.initVitals();
+  }
+  if(targetView === 'opd' && !wardsOpdInit){
+    wardsOpdInit = true;
+    if(typeof window.initOpd === 'function') window.initOpd();
   }
 }
 
@@ -13131,13 +13621,15 @@ function setupWardsTabs(){
    tabs live here on their own, this bundles just the two of them).
    ============================================================ */
 function exportAllWardsData(){
-  let vitals = null, maternity = [];
+  let vitals = null, maternity = [], opd = null;
   try{ const raw = localStorage.getItem('rounds_vitals_v1'); vitals = raw ? JSON.parse(raw) : null; }catch(e){}
   try{ const raw = localStorage.getItem('mat_portal_patients_v1'); maternity = raw ? JSON.parse(raw) : []; }catch(e){}
+  try{ const raw = localStorage.getItem('wards_opd_v1'); opd = raw ? JSON.parse(raw) : null; }catch(e){}
   const payload = {
     app: 'Wards', exportedAt: new Date().toISOString(), version: 1,
     vitals: vitals || { patients: [], logs: {} },
-    maternity: maternity || []
+    maternity: maternity || [],
+    opd: opd || { patients: [], visits: {} }
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
