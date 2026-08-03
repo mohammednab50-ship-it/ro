@@ -2549,7 +2549,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   padding:14px 28px; background:var(--header-bg,var(--paper)); border-bottom:1px solid var(--header-line,var(--line));
   backdrop-filter:blur(8px);
 }
-.wards-brand{display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;}
+.wards-brand{display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit; flex:0 0 auto;}
+.wards-welcome-greeting{
+  flex:1 1 auto; text-align:center; margin:0; min-width:120px;
+  font-family:var(--ff-sans); font-size:14px; font-weight:600; color:var(--ink-soft);
+}
+.wards-welcome-greeting[hidden]{display:none;}
+.wards-welcome-greeting strong{color:var(--ink); font-weight:800;}
+@media (max-width:760px){ .wards-welcome-greeting{order:3; flex:1 1 100%; text-align:left; font-size:13px;} }
 .wards-mark{
   width:38px; height:38px; border-radius:11px; flex:0 0 auto;
   display:grid; place-items:center;
@@ -2849,6 +2856,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       <p class="wards-brand-tagline">Patient Charting, Simplified</p>
     </div>
   </a>
+  <p class="wards-welcome-greeting" id="wards-welcome-greeting" hidden></p>
   <div class="wards-header-actions">
     <span class="connectivity-indicator" id="connectivity-indicator" role="status" aria-live="polite" data-state="online" title="Online — Wards itself works fully offline; this reflects general network status">
       <span class="dot" aria-hidden="true"></span><span class="label">Online</span>
@@ -4033,6 +4041,30 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <div class="ws-row"><input type="text" id="wards-delete-account-confirm-input" class="settings-select w-100" placeholder="Type DELETE to confirm" autocomplete="off"></div>
     <p class="login-error" id="wards-delete-account-error" role="alert"></p>
     <button type="button" class="settings-btn settings-btn-danger w-100" id="wards-delete-account-confirm-btn" disabled>Delete my account</button>
+  </div>
+</div>
+
+<div class="wards-qr-modal" id="wards-profile-modal" hidden role="dialog" aria-modal="true" aria-labelledby="wards-profile-title">
+  <div class="wards-qr-card wards-qr-card--left" role="document">
+    <h3 id="wards-profile-title" style="text-align:center;">Tell us about yourself</h3>
+    <p class="wards-qr-disclaimer" style="margin-top:0;">One-time — shown as your greeting in Wards and to anyone you chart or chat with.</p>
+    <div class="ws-row">
+      <label class="ws-label" for="wards-profile-name" style="margin-bottom:6px;">Your name</label>
+      <input type="text" id="wards-profile-name" class="settings-select w-100" placeholder="e.g. Alex Rivera" maxlength="60" autocomplete="name">
+    </div>
+    <div class="ws-row">
+      <label class="ws-label" for="wards-profile-role" style="margin-bottom:6px;">Your role</label>
+      <select id="wards-profile-role" class="settings-select w-100">
+        <option value="">— select —</option>
+        <option value="doctor">Doctor</option>
+        <option value="nurse">Nurse</option>
+        <option value="intern">Intern</option>
+        <option value="student">Student</option>
+        <option value="student-nurse">Student Nurse</option>
+      </select>
+    </div>
+    <p class="login-error" id="wards-profile-error" role="alert"></p>
+    <button type="button" class="settings-btn w-100" id="wards-profile-save-btn">Continue</button>
   </div>
 </div>
 
@@ -5593,7 +5625,7 @@ async function wardsFindUidByEmail(email){
    gate shipped (no matching field yet either), and version bumps (stale
    value stored), without needing to track Firebase's isNewUser flag
    across both the email/password and Google sign-in paths. */
-const WARDS_TERMS_VERSION = '2026-08-02-draft-3';
+const WARDS_TERMS_VERSION = '2026-08-02-draft-4';
 const WARDS_TERMS_AND_PRIVACY_HTML = `
 <h4>Terms of Use</h4>
 <p><strong>Last updated:</strong> [NEEDS INPUT: date of actual publication]</p>
@@ -5620,7 +5652,7 @@ const WARDS_TERMS_AND_PRIVACY_HTML = `
 </ul>
 <h4>Wards</h4>
 <ul>
-<li><strong>Account data:</strong> same as above — email (and display name via Google sign-in), via Firebase Authentication.</li>
+<li><strong>Account data:</strong> same as above — email (and display name via Google sign-in), via Firebase Authentication. Wards also asks for your name and role (Doctor/Nurse/Intern/Student/Student Nurse) once, right after sign-up, shown as your greeting in the app and visible to anyone you chart or chat with through a shared ward group or department.</li>
 <li><strong>Signing in is required to use Wards.</strong> By default, though, your patient data stays 100% local-only after you sign in — no data leaves your device, patient data lives only in local browser/device storage, until you take the separate, explicit step below of joining a ward group.</li>
 <li><strong>If you sign in and select or create a "hospital" and a "ward group"</strong> (an explicit, opt-in action), patient data you enter for that ward group syncs to a shared cloud database (Google Firebase/Firestore) so your care team can see the same records in real time. This includes: patient identifiers you enter (name, bed, MRN if provided), vitals readings, clinical notes, and department-specific fields. <strong>A private, personal "nickname" field and a personal "something that went well" reflection note are deliberately excluded from sync and from every export/print/SBAR feature</strong> — those stay local-only by design.</li>
 <li><strong>Data isolation:</strong> each "hospital" in this system is a fully separate, isolated tenant — hospital admins can only see and manage their own hospital's data, never another hospital's, enforced by server-side security rules, not just app behavior.</li>
@@ -5741,6 +5773,92 @@ function wardsGateOnTerms(user){
     if(agreed) return true;
     return new Promise(resolve => {
       wardsShowTermsGate(user, () => resolve(true), () => resolve(false));
+    });
+  });
+}
+
+/* ---- one-time profile completion: name + role, asked right after terms
+   (registration, not just "sign in") ---- */
+const WARDS_ROLE_LABELS = {
+  doctor: 'Doctor', nurse: 'Nurse', intern: 'Intern', student: 'Student', 'student-nurse': 'Student Nurse'
+};
+const WARDS_ROLE_GREETING_PREFIX = {
+  doctor: 'Dr.', nurse: 'Nurse', intern: 'Intern', student: 'Student', 'student-nurse': 'Student Nurse'
+};
+async function wardsGetProfile(uid){
+  if(!wfdb) return null;
+  try{
+    const snap = await wfdb.collection('users').doc(uid).get();
+    return snap.exists ? snap.data() : null;
+  }catch(e){ return null; }
+}
+async function wardsSaveProfile(user, name, role){
+  if(!wfdb) return;
+  await wfdb.collection('users').doc(user.uid).set({
+    email: user.email || '', displayName: name, role
+  }, { merge: true });
+}
+function wardsRenderWelcomeGreeting(name, role){
+  const el = document.getElementById('wards-welcome-greeting');
+  if(!el) return;
+  if(!name || !role || !WARDS_ROLE_GREETING_PREFIX[role]){ el.hidden = true; return; }
+  el.innerHTML = 'Welcome, <strong>' + WARDS_ROLE_GREETING_PREFIX[role] + ' ' + escapeHtml(name) + '</strong>';
+  el.hidden = false;
+}
+let wardsProfileGateWired = false;
+function wardsWireProfileGateOnce(){
+  if(wardsProfileGateWired) return;
+  wardsProfileGateWired = true;
+  const nameInput = document.getElementById('wards-profile-name');
+  const roleSelect = document.getElementById('wards-profile-role');
+  const errEl = document.getElementById('wards-profile-error');
+  const saveBtn = document.getElementById('wards-profile-save-btn');
+  saveBtn.addEventListener('click', async () => {
+    errEl.textContent = '';
+    const name = (nameInput.value || '').trim();
+    const role = roleSelect.value;
+    if(!name){ errEl.textContent = 'Enter your name.'; return; }
+    if(!role){ errEl.textContent = 'Select your role.'; return; }
+    saveBtn.disabled = true;
+    try{
+      const user = saveBtn._pendingUser;
+      await wardsSaveProfile(user, name, role);
+      wardsRenderWelcomeGreeting(name, role);
+      const modal = document.getElementById('wards-profile-modal');
+      modal.hidden = true; modal.classList.remove('show');
+      const onDone = saveBtn._pendingOnDone;
+      if(typeof onDone === 'function') onDone();
+    }catch(e){
+      errEl.textContent = (e && e.message) || 'Could not save — try again.';
+    }finally{
+      saveBtn.disabled = false;
+    }
+  });
+}
+/* Resolves once name+role are on file -- shows the one-time modal only
+   if either is still missing (covers both a fresh email/password signup
+   and a first-time Google sign-in, which has no separate "signup" step
+   of its own to hook into). */
+function wardsGateOnProfile(user){
+  return wardsGetProfile(user.uid).then(profile => {
+    if(profile && profile.displayName && profile.role){
+      wardsRenderWelcomeGreeting(profile.displayName, profile.role);
+      return;
+    }
+    wardsWireProfileGateOnce();
+    return new Promise(resolve => {
+      const nameInput = document.getElementById('wards-profile-name');
+      const roleSelect = document.getElementById('wards-profile-role');
+      const errEl = document.getElementById('wards-profile-error');
+      const saveBtn = document.getElementById('wards-profile-save-btn');
+      const modal = document.getElementById('wards-profile-modal');
+      errEl.textContent = '';
+      nameInput.value = (profile && profile.displayName) || user.displayName || '';
+      roleSelect.value = (profile && profile.role) || '';
+      saveBtn._pendingUser = user;
+      saveBtn._pendingOnDone = resolve;
+      modal.hidden = false; modal.classList.add('show');
+      nameInput.focus();
     });
   });
 }
@@ -6717,6 +6835,7 @@ async function wardsOnAuthChanged(user){
   if(user){
     const ok = await wardsGateOnTerms(user);
     if(!ok) return; // declined — already signed out; the next onAuthStateChanged(null) call does the cleanup below
+    await wardsGateOnProfile(user);
     wardsHideLoginGate();
     if(!wardsLockConfig()) showWardsOnboarding();
     wardsUpsertUsersByEmail(user);
@@ -6749,6 +6868,7 @@ async function wardsOnAuthChanged(user){
     wardsMyDepartments = [];
     activeDepartmentId = null;
     wardsMyPendingInvites = [];
+    wardsRenderWelcomeGreeting(null, null);
     wardsShowLoginGate();
   }
   renderWardsGroupSelect();
