@@ -1718,6 +1718,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .opd-stat-value{font-family:var(--ff-display);font-size:28px;font-weight:600;color:var(--ink);margin:0;line-height:1;}
 .opd-stat-value--sm{font-family:var(--ff-sans);font-size:15px;font-weight:700;}
 
+#opd-visit-list{max-height:520px;overflow-y:auto;padding-right:4px;}
 .opd-visit-card{border:1px solid var(--line);border-radius:var(--r-md);padding:14px 16px;margin-bottom:10px;background:var(--surface);}
 .opd-visit-dept-pill{display:inline-block;font-family:var(--ff-sans);font-size:11px;font-weight:700;letter-spacing:var(--tracking-wide);text-transform:uppercase;color:#0d9488;background:rgba(13,148,136,0.12);padding:3px 10px;border-radius:var(--r-pill);}
 
@@ -1733,6 +1734,51 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .opd-stat-icon{width:30px;height:30px;border-radius:50%;background:rgba(255,255,255,0.25);display:flex;align-items:center;justify-content:center;margin-bottom:10px;}
 .opd-stat-card--outline .opd-stat-icon{background:var(--evidence-bg);}
 .opd-stat-icon svg{width:16px;height:16px;}
+
+/* ---- OPD dashboard shell: three columns (department nav / main / visit
+   breakdown panel), matching the reference mockup's sidebar + dashboard +
+   right-rail structure. The right rail swaps the mockup's 3D anatomy
+   viewer for a department-breakdown ring + next-follow-up card, since
+   OPD tracks visits/diagnoses rather than per-body-region vitals -- same
+   "floating card over a soft panel" visual language, relevant content. */
+.opd-layout-3col{grid-template-columns:240px 1fr 260px;}
+@media (max-width:1180px){ .opd-layout-3col{grid-template-columns:220px 1fr;} .opd-layout-3col .opd-side-panel{display:none;} }
+@media (max-width:860px){ .opd-layout-3col{grid-template-columns:1fr;} }
+
+.opd-nav-list{display:flex;flex-direction:column;gap:3px;margin-bottom:16px;}
+.opd-nav-item{display:flex;align-items:center;gap:10px;padding:9px 14px;border-radius:var(--r-pill);cursor:pointer;
+  font-family:var(--ff-sans);font-size:13.5px;font-weight:600;color:var(--ink-soft);border:none;background:none;width:100%;text-align:left;
+  transition:background var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out);}
+.opd-nav-item:hover{background:var(--line-soft);}
+.opd-nav-item.active{background:rgba(13,148,136,0.13);color:#0d9488;}
+.opd-nav-item .opd-nav-icon{width:16px;height:16px;flex-shrink:0;opacity:0.75;}
+.opd-nav-item.active .opd-nav-icon{opacity:1;}
+.opd-nav-item[aria-disabled="true"]{cursor:default;}
+
+.opd-patient-head-right{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+.opd-bell{position:relative;width:38px;height:38px;border-radius:50%;background:var(--surface);border:1px solid var(--line);display:flex;align-items:center;justify-content:center;color:var(--ink-soft);flex-shrink:0;}
+.opd-bell svg{width:17px;height:17px;}
+.opd-bell-dot{position:absolute;top:8px;right:9px;width:7px;height:7px;border-radius:50%;background:#ef4444;border:1.5px solid var(--paper);}
+
+.opd-side-panel{position:sticky;top:24px;border-radius:var(--r-lg);padding:22px 18px;background:linear-gradient(160deg,#ecfeff,#f0fdfa);border:1px solid var(--line);box-shadow:var(--shadow-sm);}
+:root[data-theme="dark"] .opd-side-panel,.wards-dark .opd-side-panel{background:linear-gradient(160deg,rgba(13,148,136,0.14),rgba(52,211,153,0.06));}
+.opd-side-panel-empty{font-family:var(--ff-sans);font-size:13px;color:var(--ink-faint);text-align:center;line-height:1.5;margin:0;}
+.opd-ring-wrap{position:relative;width:148px;height:148px;margin:0 auto 18px;display:flex;align-items:center;justify-content:center;}
+.opd-ring{width:148px;height:148px;border-radius:50%;background:conic-gradient(var(--line) 0turn 1turn);}
+.opd-ring::after{content:"";position:absolute;width:96px;height:96px;border-radius:50%;background:var(--paper);}
+.opd-ring-center{position:absolute;display:flex;flex-direction:column;align-items:center;z-index:1;}
+.opd-ring-center strong{font-family:var(--ff-display);font-size:26px;color:var(--ink);line-height:1;}
+.opd-ring-center span{font-family:var(--ff-sans);font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:var(--tracking-wide);margin-top:2px;}
+.opd-side-legend{display:flex;flex-direction:column;gap:7px;margin-bottom:16px;}
+.opd-side-legend-row{display:flex;align-items:center;gap:8px;font-family:var(--ff-sans);font-size:12px;color:var(--ink-soft);}
+.opd-side-legend-dot{width:8px;height:8px;border-radius:50%;flex-shrink:0;}
+.opd-side-legend-row span:last-child{margin-left:auto;color:var(--ink-faint);}
+.opd-side-followup{background:var(--paper);border-radius:var(--r-md);padding:12px 14px;text-align:center;margin-bottom:16px;box-shadow:var(--shadow-sm);}
+.opd-side-followup span{font-family:var(--ff-sans);font-size:10px;color:var(--ink-faint);text-transform:uppercase;letter-spacing:var(--tracking-wide);}
+.opd-side-followup strong{display:block;font-family:var(--ff-display);font-size:16px;color:var(--ink);margin-top:3px;}
+.opd-side-scroll-controls{display:flex;justify-content:center;gap:12px;}
+.opd-side-scroll-btn{width:38px;height:38px;border-radius:50%;border:none;background:var(--paper);box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--ink);font-size:18px;font-weight:600;line-height:1;}
+.opd-side-scroll-btn:hover{background:var(--line-soft);}
 .vitals-notes-field{margin-bottom:var(--space-5);}
 .vitals-submit-btn{width:100%;min-height:48px;}
 @media (min-width:560px){.vitals-submit-btn{width:auto;min-width:200px;}}
@@ -4053,10 +4099,11 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
   </main>
 </div>
 
-<div class="layout" id="view-opd" role="tabpanel" aria-labelledby="tab-opd" hidden>
+<div class="layout opd-layout-3col" id="view-opd" role="tabpanel" aria-labelledby="tab-opd" hidden>
   <nav class="chapters" aria-label="OPD patients">
+    <p class="chapters-eyebrow">DEPARTMENTS</p>
+    <div class="opd-nav-list" id="opd-dept-chips"></div>
     <p class="chapters-eyebrow">OPD PATIENTS</p>
-    <div class="vitals-filter-chips" id="opd-dept-chips"></div>
     <div class="ws-row" style="margin-bottom:10px;">
       <input type="text" id="opd-search-input" class="opd-search-input" placeholder="Search OPD patients…">
     </div>
@@ -4115,11 +4162,17 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <div id="opd-patient-view" hidden>
       <header class="vitals-patient-head">
         <div>
-          <p class="vitals-kicker" id="opd-patient-kicker">Good day,</p>
+          <p class="vitals-kicker" id="opd-patient-kicker">Good Morning,</p>
           <h3 class="vitals-patient-name" id="opd-patient-name">—</h3>
           <p class="vitals-patient-sub" id="opd-patient-sub"></p>
         </div>
-        <span class="opd-patient-avatar" id="opd-patient-avatar" aria-hidden="true">—</span>
+        <div class="opd-patient-head-right">
+          <span class="opd-bell" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 4 1.5 5.5 2 6H4c.5-.5 2-2 2-6Z"/><path d="M10 20a2 2 0 0 0 4 0"/></svg>
+            <span class="opd-bell-dot" id="opd-bell-dot" hidden></span>
+          </span>
+          <span class="opd-patient-avatar" id="opd-patient-avatar" aria-hidden="true">—</span>
+        </div>
       </header>
       <div class="opd-quickstats" id="opd-quickstats"></div>
       <div class="vitals-dept-block">
@@ -4162,6 +4215,24 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       </div>
     </div>
   </main>
+  <aside class="opd-side-panel" id="opd-side-panel" aria-label="Visit breakdown">
+    <p class="opd-side-panel-empty" id="opd-side-empty">Select a patient to see their visit breakdown.</p>
+    <div id="opd-side-content" hidden>
+      <div class="opd-ring-wrap">
+        <div class="opd-ring" id="opd-ring"></div>
+        <div class="opd-ring-center"><strong id="opd-ring-total">0</strong><span>Visits</span></div>
+      </div>
+      <div class="opd-side-legend" id="opd-side-legend"></div>
+      <div class="opd-side-followup">
+        <span>Next follow-up</span>
+        <strong id="opd-side-followup-date">—</strong>
+      </div>
+      <div class="opd-side-scroll-controls">
+        <button type="button" class="opd-side-scroll-btn" id="opd-side-scroll-up" aria-label="Scroll visit history up">&minus;</button>
+        <button type="button" class="opd-side-scroll-btn" id="opd-side-scroll-down" aria-label="Scroll visit history down">+</button>
+      </div>
+    </div>
+  </aside>
 </div>
 
 <div id="vitals-print-summary"></div>
@@ -13353,23 +13424,30 @@ function opdPatientDepartments(patientId){
   return out;
 }
 
+const OPD_NAV_ICON_ALL = '<svg class="opd-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg>';
+const OPD_NAV_ICON_DEPT = '<svg class="opd-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v6M9 6h6"/><circle cx="12" cy="15" r="6"/></svg>';
+
 function renderOpdDeptChips(){
   const wrap = document.getElementById('opd-dept-chips');
   if(!wrap) return;
   const depts = opdVisibleDepartments();
   if(opdIsRestricted()){
-    // One assigned department, nothing to filter -- an "All" chip would just
-    // be a no-op button, so skip the filter row entirely and show a plain label.
+    // One assigned department, nothing to filter -- an "All" item would just
+    // be a no-op button, so skip the nav list entirely and show a plain label.
     opdDeptFilter = depts[0];
-    wrap.innerHTML = `<span class="vitals-filter-chip" style="cursor:default;" aria-disabled="true"><span>${escapeHtml(depts[0])} (your department)</span></span>`;
+    wrap.innerHTML = `<span class="opd-nav-item active" aria-disabled="true">${OPD_NAV_ICON_DEPT}<span>${escapeHtml(depts[0])} (yours)</span></span>`;
     renderOpdPatientList();
     return;
   }
-  const chips = ['<label class="vitals-filter-chip"><input type="radio" name="opd-dept-filter" value="" ' + (opdDeptFilter ? '' : 'checked') + '><span>All</span></label>']
-    .concat(depts.map(d => `<label class="vitals-filter-chip"><input type="radio" name="opd-dept-filter" value="${escapeHtml(d)}" ${opdDeptFilter === d ? 'checked' : ''}><span>${escapeHtml(d)}</span></label>`));
-  wrap.innerHTML = chips.join('');
-  wrap.querySelectorAll('input[name="opd-dept-filter"]').forEach(input => {
-    input.addEventListener('change', () => { opdDeptFilter = input.value || null; renderOpdPatientList(); });
+  const items = [`<button type="button" class="opd-nav-item${opdDeptFilter ? '' : ' active'}" data-dept="">${OPD_NAV_ICON_ALL}<span>All</span></button>`]
+    .concat(depts.map(d => `<button type="button" class="opd-nav-item${opdDeptFilter === d ? ' active' : ''}" data-dept="${escapeHtml(d)}">${OPD_NAV_ICON_DEPT}<span>${escapeHtml(d)}</span></button>`));
+  wrap.innerHTML = items.join('');
+  wrap.querySelectorAll('.opd-nav-item[data-dept]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      opdDeptFilter = btn.dataset.dept || null;
+      wrap.querySelectorAll('.opd-nav-item').forEach(b => b.classList.toggle('active', b === btn));
+      renderOpdPatientList();
+    });
   });
 }
 
@@ -13443,6 +13521,56 @@ function renderOpdStats(){
   if(dEl) dEl.textContent = opdIsRestricted() ? wardsCurrentUserDepartment : 'All';
 }
 
+const OPD_RING_COLORS = ['#0d9488', '#34d399', '#f59e0b', '#6366f1', '#ec4899', '#0891b2', '#a855f7'];
+
+function renderOpdSidePanel(p){
+  const emptyEl = document.getElementById('opd-side-empty');
+  const contentEl = document.getElementById('opd-side-content');
+  const bellDot = document.getElementById('opd-bell-dot');
+  if(!p){
+    if(emptyEl) emptyEl.hidden = false;
+    if(contentEl) contentEl.hidden = true;
+    return;
+  }
+  if(emptyEl) emptyEl.hidden = true;
+  if(contentEl) contentEl.hidden = false;
+
+  const visits = opdVisitsFor(p.id);
+  const counts = {};
+  visits.forEach(v => { const d = v.department || 'General'; counts[d] = (counts[d] || 0) + 1; });
+  const depts = Object.keys(counts);
+  const total = visits.length;
+
+  const ringEl = document.getElementById('opd-ring');
+  const totalEl = document.getElementById('opd-ring-total');
+  if(totalEl) totalEl.textContent = String(total);
+  if(ringEl){
+    if(!total){
+      ringEl.style.background = 'conic-gradient(var(--line) 0turn 1turn)';
+    }else{
+      let acc = 0;
+      const stops = depts.map((d, i) => {
+        const frac = counts[d] / total;
+        const from = acc, to = acc + frac;
+        acc = to;
+        return `${OPD_RING_COLORS[i % OPD_RING_COLORS.length]} ${from}turn ${to}turn`;
+      });
+      ringEl.style.background = `conic-gradient(${stops.join(',')})`;
+    }
+  }
+  const legendEl = document.getElementById('opd-side-legend');
+  if(legendEl){
+    legendEl.innerHTML = depts.map((d, i) => `<div class="opd-side-legend-row"><span class="opd-side-legend-dot" style="background:${OPD_RING_COLORS[i % OPD_RING_COLORS.length]}"></span><span>${escapeHtml(d)}</span><span>${counts[d]}</span></div>`).join('')
+      || '<div class="opd-side-legend-row"><span>No visits logged yet.</span></div>';
+  }
+
+  const today = new Date().toISOString().slice(0, 10);
+  const upcoming = visits.filter(v => v.followUpDate && v.followUpDate >= today).sort((a, b) => a.followUpDate.localeCompare(b.followUpDate));
+  const followupEl = document.getElementById('opd-side-followup-date');
+  if(followupEl) followupEl.textContent = upcoming.length ? upcoming[0].followUpDate : '—';
+  if(bellDot) bellDot.hidden = !upcoming.length;
+}
+
 function renderOpdMain(){
   const empty = document.getElementById('opd-empty');
   const view = document.getElementById('opd-patient-view');
@@ -13450,6 +13578,7 @@ function renderOpdMain(){
   if(!p){
     if(empty) empty.hidden = false;
     if(view) view.hidden = true;
+    renderOpdSidePanel(null);
     return;
   }
   if(empty) empty.hidden = true;
@@ -13485,6 +13614,7 @@ function renderOpdMain(){
 
   document.getElementById('opd-add-visit-form').hidden = true; // avoid a stale form carrying over across patients
   renderOpdVisitList();
+  renderOpdSidePanel(p);
 }
 
 function selectOpdPatient(id){
@@ -13510,6 +13640,12 @@ function setupOpdUI(){
   opdPopulateDeptSelect();
   renderOpdPatientList();
   renderOpdMain();
+
+  const scrollUpBtn = document.getElementById('opd-side-scroll-up');
+  const scrollDownBtn = document.getElementById('opd-side-scroll-down');
+  const visitListEl = document.getElementById('opd-visit-list');
+  if(scrollUpBtn && visitListEl) scrollUpBtn.addEventListener('click', () => visitListEl.scrollBy({ top: -160, behavior: 'smooth' }));
+  if(scrollDownBtn && visitListEl) scrollDownBtn.addEventListener('click', () => visitListEl.scrollBy({ top: 160, behavior: 'smooth' }));
 
   const searchInput = document.getElementById('opd-search-input');
   if(searchInput) searchInput.addEventListener('input', () => { opdSearch = searchInput.value; renderOpdPatientList(); });
