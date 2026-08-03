@@ -1584,7 +1584,7 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-add-patient-btn:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
 .vitals-add-form{margin-top:12px;padding:14px;border:1px solid var(--line);border-radius:var(--r-md);background:var(--surface);box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:10px;}
 .vitals-add-form .vitals-field label span{font-weight:400;color:var(--ink-faint);}
-.vitals-add-actions{display:flex;gap:8px;}
+.vitals-add-actions{display:flex;gap:8px;flex-wrap:wrap;}
 
 .vitals-empty{padding:var(--space-9) var(--space-4);text-align:center;color:var(--ink-faint);font-family:var(--ff-sans);font-size:14.5px;line-height:1.6;}
 .vitals-empty-icon{width:40px;height:40px;color:var(--line);margin-bottom:14px;}
@@ -1623,16 +1623,16 @@ footer.home-footer a{color:var(--ink-soft);font-weight:600;}
 .vitals-baselines-actions{display:flex;gap:8px;}
 
 .vitals-btn-primary{border:none;background:var(--cta-bg);color:var(--cta-ink);border-radius:var(--r-pill);padding:12px 22px;
-  font-family:var(--ff-sans);font-size:13.5px;font-weight:700;letter-spacing:0.01em;cursor:pointer;
+  font-family:var(--ff-sans);font-size:13.5px;font-weight:700;letter-spacing:0.01em;cursor:pointer;white-space:nowrap;
   transition:background var(--dur-fast) var(--ease-out),transform var(--dur-fast) var(--ease-out);}
 .vitals-btn-primary:hover{background:var(--cta-bg-hover);transform:translateY(-1px);}
 .vitals-btn-primary:active{transform:scale(0.98);}
 .vitals-btn-outline{border:1px solid var(--line);background:var(--surface);color:var(--ink-soft);border-radius:var(--r-pill);
-  padding:9px 16px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;cursor:pointer;
+  padding:9px 16px;font-family:var(--ff-sans);font-size:12.5px;font-weight:600;cursor:pointer;white-space:nowrap;
   transition:border-color var(--dur-fast) var(--ease-out),color var(--dur-fast) var(--ease-out),background var(--dur-fast) var(--ease-out);}
 .vitals-btn-outline:hover{border-color:var(--evidence);color:var(--evidence-dark);background:var(--evidence-bg);}
 .vitals-btn-outline.vitals-btn-danger:hover{border-color:var(--caution);color:var(--caution);background:var(--caution-bg);}
-.vitals-btn-ghost{border:none;background:none;color:var(--ink-faint);font-family:var(--ff-sans);font-size:13px;font-weight:600;padding:12px 14px;cursor:pointer;}
+.vitals-btn-ghost{border:none;background:none;color:var(--ink-faint);font-family:var(--ff-sans);font-size:13px;font-weight:600;padding:12px 14px;cursor:pointer;white-space:nowrap;}
 .vitals-btn-ghost:hover{color:var(--ink);}
 
 /* Neutral "FYI" style -- scope/legal disclaimers and feature
