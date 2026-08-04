@@ -4027,6 +4027,14 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <p class="vitals-dept-empty" style="margin-bottom:10px;">Lightweight personal charting aid only — not a substitute for your institution's official eMAR/drug chart. Always administer and countersign there.</p>
         <div id="vitals-mar-rows"></div>
         <p class="vitals-dept-empty" id="vitals-mar-empty" hidden>No medications added yet.</p>
+        <div class="opd-dup-warning" id="vitals-mar-allergy-warning" hidden>
+          <p class="opd-dup-warning-title" id="vitals-mar-allergy-warning-text"></p>
+          <p class="opd-dup-warning-note">This is a plain text match against the recorded allergy field — not a cross-reactivity or drug-class check. Verify independently before administering.</p>
+          <div class="vitals-add-actions">
+            <button type="button" class="vitals-btn-ghost" id="vitals-mar-allergy-add-anyway-btn">Add anyway</button>
+            <button type="button" class="vitals-btn-ghost" id="vitals-mar-allergy-cancel-btn">Cancel</button>
+          </div>
+        </div>
         <div class="vitals-mar-add-row">
           <input type="text" id="vitals-mar-name" maxlength="60" placeholder="Drug name">
           <input type="text" id="vitals-mar-dose" maxlength="30" placeholder="Dose e.g. 500mg">
@@ -12354,11 +12362,41 @@ function renderMarSection(p){
   }).join('');
 }
 
+/* ---- allergy cross-check on medication add -- p.allergies is a plain
+   free-text field (never a structured list), so this is deliberately a
+   literal substring match against comma/semicolon-separated tokens, NOT
+   a cross-reactivity or drug-class check (that would need a real drug
+   database this app doesn't have, and a hardcoded partial one would be
+   worse than nothing -- false confidence). It catches the genuinely
+   common case: "Penicillin" recorded as an allergy, "Penicillin"
+   (or "Penicillin V") typed as the drug name. Tokens under 3 chars are
+   skipped to avoid noisy single-letter/abbreviation false positives. */
+function wardsAllergyMatchFor(p, medName){
+  const allergyText = (p && p.allergies || '').trim();
+  const med = (medName || '').trim().toLowerCase();
+  if(!allergyText || !med) return null;
+  const tokens = allergyText.split(/[,;]/).map(t => t.trim()).filter(t => t.length >= 3);
+  return tokens.find(t => med.includes(t.toLowerCase()) || t.toLowerCase().includes(med)) || null;
+}
+
 function setupMarSection(){
   const addBtn = document.getElementById('vitals-mar-add-btn');
   const wrap = document.getElementById('vitals-mar-rows');
+  const allergyWarning = document.getElementById('vitals-mar-allergy-warning');
+  const allergyWarningText = document.getElementById('vitals-mar-allergy-warning-text');
+  const allergyAddAnywayBtn = document.getElementById('vitals-mar-allergy-add-anyway-btn');
+  const allergyCancelBtn = document.getElementById('vitals-mar-allergy-cancel-btn');
   if(!addBtn || addBtn.dataset.wired) return;
   addBtn.dataset.wired = '1';
+
+  function commitMedication(p, name, dose, route, freq){
+    ensureMedications(p).push({ id: genVitalsId('med'), name, dose, route, freq, doses: [] });
+    saveVitalsData();
+    ['vitals-mar-name','vitals-mar-dose','vitals-mar-route'].forEach(id => { document.getElementById(id).value = ''; });
+    if(allergyWarning) allergyWarning.hidden = true;
+    renderMarSection(p);
+    haptic('Light');
+  }
 
   addBtn.addEventListener('click', () => {
     const p = activePatient();
@@ -12368,11 +12406,23 @@ function setupMarSection(){
     const dose = document.getElementById('vitals-mar-dose').value.trim();
     const route = document.getElementById('vitals-mar-route').value.trim();
     const freq = document.getElementById('vitals-mar-freq').value;
-    ensureMedications(p).push({ id: genVitalsId('med'), name, dose, route, freq, doses: [] });
-    saveVitalsData();
-    ['vitals-mar-name','vitals-mar-dose','vitals-mar-route'].forEach(id => { document.getElementById(id).value = ''; });
-    renderMarSection(p);
-    haptic('Light');
+    const match = wardsAllergyMatchFor(p, name);
+    if(match && allergyWarning && allergyWarningText){
+      allergyWarningText.textContent = `Possible allergy match — "${match}" is recorded for this patient and appears in "${name}."`;
+      allergyWarning.hidden = false;
+      allergyWarning.dataset.pending = JSON.stringify({ name, dose, route, freq });
+      return;
+    }
+    commitMedication(p, name, dose, route, freq);
+  });
+  if(allergyAddAnywayBtn) allergyAddAnywayBtn.addEventListener('click', () => {
+    const p = activePatient();
+    if(!p || !allergyWarning || !allergyWarning.dataset.pending) return;
+    const pending = JSON.parse(allergyWarning.dataset.pending);
+    commitMedication(p, pending.name, pending.dose, pending.route, pending.freq);
+  });
+  if(allergyCancelBtn) allergyCancelBtn.addEventListener('click', () => {
+    if(allergyWarning) allergyWarning.hidden = true;
   });
 
   if(wrap && !wrap.dataset.wired){
