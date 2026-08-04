@@ -6380,11 +6380,18 @@ const WARDS_SELECTED_HOSPITAL_KEY = 'wards_selected_hospital_id';
 const WARDS_MY_DEPARTMENTS_KEY = 'wards_my_departments_v1';
 const WARDS_SELECTED_DEPARTMENT_KEY = 'wards_selected_department_id';
 
-function wardsLoadScript(src){
+function wardsLoadScript(src, timeoutMs){
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if(settled) return;
+      settled = true;
+      reject(new Error('Timed out reaching the sign-in service — check your connection and try again.'));
+    }, timeoutMs || 12000);
     const s = document.createElement('script');
     s.src = src; s.async = false;
-    s.onload = resolve; s.onerror = () => reject(new Error('Failed to load ' + src));
+    s.onload = () => { if(settled) return; settled = true; clearTimeout(timer); resolve(); };
+    s.onerror = () => { if(settled) return; settled = true; clearTimeout(timer); reject(new Error('Failed to load ' + src)); };
     document.head.appendChild(s);
   });
 }
@@ -6408,6 +6415,11 @@ async function initWardsFirebase(){
     }catch(e){
       console.warn('Wards cloud sync unavailable (offline/blocked network, or Firebase failed to load):', e);
       return false;
+    }finally{
+      // Clear on failure so the *next* attempt (e.g. after reconnecting) actually
+      // retries instead of replaying this cached failure forever. On success
+      // wardsFirebaseReady is already true, so this has no effect either way.
+      wardsFirebaseLoading = null;
     }
   })();
   return wardsFirebaseLoading;
