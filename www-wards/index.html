@@ -6721,7 +6721,6 @@ function wardsWireTermsGateOnce(){
   closeBtn.addEventListener('click', () => { wardsCloseTermsModal(); });
 }
 function wardsShowTermsGate(user, onAgree, onDecline){
-  alert('DEBUG: showing terms modal (not yet agreed, or terms check failed)');
   const modal = document.getElementById('wards-terms-modal');
   if(!modal){ onAgree(); return; }
   const body = document.getElementById('wards-terms-body');
@@ -7902,12 +7901,9 @@ window.renderWardsPendingInvites = renderWardsPendingInvites;
 async function wardsOnAuthChanged(user){
   currentWardsUser = user || null;
   if(user){
-    alert('DEBUG: auth state changed, user signed in — checking terms…');
     const ok = await wardsGateOnTerms(user);
-    alert('DEBUG: terms check done, ok=' + ok);
     if(!ok) return; // declined — already signed out; the next onAuthStateChanged(null) call does the cleanup below
     await wardsGateOnProfile(user);
-    alert('DEBUG: profile check done — hiding login gate now');
     wardsHideLoginGate();
     if(!wardsLockConfig()) showWardsOnboarding();
     wardsUpsertUsersByEmail(user);
@@ -8291,10 +8287,9 @@ function setupWardsSyncUI(){
    shown by default in markup so there's no flash of usable app content
    before auth state resolves. */
 function wardsShowLoginGate(msg){
-  const gate = document.getElementById('wards-login-gate');
-  if(gate) gate.hidden = false;
-  const note = document.getElementById('wards-login-status-note');
-  if(note) note.textContent = msg || 'An account is required to use Wards. Your patient data still stays on this device unless you explicitly join a ward group to sync it.';
+  // TEMPORARY: login gate disabled for feature testing -- re-enable this
+  // body (see git history) once sign-in debugging resumes.
+  return;
 }
 function wardsHideLoginGate(){
   const gate = document.getElementById('wards-login-gate');
@@ -8330,20 +8325,13 @@ function setupWardsLoginGate(){
 
   if(form) form.addEventListener('submit', async e => {
     e.preventDefault();
-    alert('DEBUG: sign-in tapped');
     setErr(''); setStatus('');
     const email = (emailInput && emailInput.value || '').trim();
     const pass = passInput && passInput.value || '';
-    if(!email || !pass){ setErr('Enter your email and password.'); alert('DEBUG: missing email or password'); return; }
+    if(!email || !pass){ setErr('Enter your email and password.'); return; }
     if(submitBtn) submitBtn.disabled = true;
-    try{
-      await wardsSignInEmail(email, pass, mode === 'signup', remember()); // onAuthStateChanged handles the rest
-      alert('DEBUG: sign-in call succeeded');
-    }
-    catch(e){
-      setErr(wardsAuthErrorMessage(e));
-      alert('DEBUG: sign-in failed — ' + (e && e.message) + ' / code=' + (e && e.code));
-    }
+    try{ await wardsSignInEmail(email, pass, mode === 'signup', remember()); } // onAuthStateChanged handles the rest
+    catch(e){ setErr(wardsAuthErrorMessage(e)); }
     finally{ if(submitBtn) submitBtn.disabled = false; }
   });
 
@@ -16066,12 +16054,8 @@ function setupWardsAppLock(){
   if(wardsLockConfig()) wardsStartUnlock();
 }
 
-// TEMPORARY diagnostic — remove once resolved.
-window.addEventListener('error', e => { alert('DEBUG window error: ' + (e && e.message) + ' @ ' + (e && e.filename) + ':' + (e && e.lineno)); });
-window.addEventListener('unhandledrejection', e => { alert('DEBUG unhandled rejection: ' + (e && e.reason && (e.reason.message || e.reason))); });
-
 function boot(){
-  alert('DEBUG: boot() starting');
+  wardsHideLoginGate(); // TEMPORARY: login disabled for feature testing -- the gate is visible by default in the markup, so hide it explicitly here
   initWardsCloudSync(); // wire + show the mandatory login gate first, before anything else can be interacted with
   applyTheme(getInitialTheme());
   const toggle = document.getElementById('theme-toggle');
