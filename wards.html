@@ -6380,6 +6380,15 @@ const WARDS_SELECTED_HOSPITAL_KEY = 'wards_selected_hospital_id';
 const WARDS_MY_DEPARTMENTS_KEY = 'wards_my_departments_v1';
 const WARDS_SELECTED_DEPARTMENT_KEY = 'wards_selected_department_id';
 
+/* Races any promise against a timeout so a stalled network/write can't hang
+   a UI control (disabled button, spinner, etc.) forever with no feedback --
+   see wardsLoadScript below for the original instance of this bug. */
+function wardsWithTimeout(promise, timeoutMs, message){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error(message || 'Timed out — check your connection and try again.')), timeoutMs || 12000))
+  ]);
+}
 function wardsLoadScript(src, timeoutMs){
   return new Promise((resolve, reject) => {
     let settled = false;
@@ -6396,7 +6405,7 @@ function wardsLoadScript(src, timeoutMs){
   });
 }
 
-let wfbAuth = null, wfdb = null, wfFunctions = null, wardsFirebaseReady = false, wardsFirebaseLoading = null;
+let wfbAuth = null, wfdb = null, wfFunctions = null, wardsFirebaseReady = false, wardsFirebaseLoading = null, wardsAuthListenerWired = false;
 async function initWardsFirebase(){
   if(wardsFirebaseReady) return true;
   if(wardsFirebaseLoading) return wardsFirebaseLoading;
@@ -6411,6 +6420,12 @@ async function initWardsFirebase(){
       try{ await wfdb.enablePersistence({ synchronizeTabs: true }); }
       catch(e){ /* multi-tab or unsupported browser — sync still works, just without offline cache */ }
       wardsFirebaseReady = true;
+      // Wired here (once, centrally) rather than only after the boot-time call in
+      // initWardsCloudSync — if boot fails offline and the user later signs in
+      // successfully from the login form, that later call is what actually
+      // succeeds first, and it still needs the listener registered or the login
+      // gate never hides after a real, successful sign-in.
+      if(!wardsAuthListenerWired){ wardsAuthListenerWired = true; wfbAuth.onAuthStateChanged(wardsOnAuthChanged); }
       return true;
     }catch(e){
       console.warn('Wards cloud sync unavailable (offline/blocked network, or Firebase failed to load):', e);
@@ -6683,7 +6698,12 @@ function wardsWireTermsGateOnce(){
     agreeBtn.disabled = true;
     const user = agreeBtn._pendingUser;
     const onAgree = agreeBtn._pendingOnAgree;
-    try{ await wardsRecordTermsAgreement(user); }catch(e){ console.warn('Could not record terms agreement:', e); }
+    try{ await wardsWithTimeout(wardsRecordTermsAgreement(user), 12000, 'Could not save — check your connection and try again.'); }
+    catch(e){ console.warn('Could not record terms agreement:', e); }
+    finally{ agreeBtn.disabled = false; }
+    // Proceed either way: recording the agreement is best-effort bookkeeping,
+    // not a condition of being allowed in -- the user did agree by clicking
+    // this button, so don't strand them behind the modal over a sync hiccup.
     wardsCloseTermsModal();
     if(typeof onAgree === 'function') onAgree();
   });
@@ -7750,7 +7770,12 @@ function wardsInitModalA11y(){
     modal.addEventListener('click', e => {
       if(e.target !== modal) return;
       const closeBtn = modal.querySelector('[id$="-close"]');
-      if(closeBtn) closeBtn.click();
+      // A close button that's present but hidden (e.g. the mandatory terms
+      // gate) means this modal isn't dismissable right now -- querySelector
+      // finds it regardless of the hidden attribute, and .click() still fires
+      // its handler even while hidden, so without this check a backdrop tap
+      // could silently bypass a required agree/decline flow.
+      if(closeBtn && !closeBtn.hidden) closeBtn.click();
     });
     new MutationObserver(muts => {
       muts.forEach(m => {
@@ -7766,7 +7791,7 @@ function wardsInitModalA11y(){
     if(!modal) return;
     if(e.key === 'Escape'){
       const closeBtn = modal.querySelector('[id$="-close"]');
-      if(closeBtn) closeBtn.click();
+      if(closeBtn && !closeBtn.hidden) closeBtn.click();
       return;
     }
     if(e.key !== 'Tab') return;
@@ -8011,13 +8036,15 @@ function setupWardsSyncUI(){
     if(newHospitalErr) newHospitalErr.textContent = '';
     const name = (newHospitalName && newHospitalName.value || '').trim();
     if(!name){ if(newHospitalErr) newHospitalErr.textContent = 'Give the hospital a name.'; return; }
+    newHospitalCreateBtn.disabled = true;
     try{
-      const hospitalId = await wardsCreateHospital(name);
+      const hospitalId = await wardsWithTimeout(wardsCreateHospital(name), 15000, 'Could not reach the server — check your connection and try again.');
       newHospitalModal.hidden = true; newHospitalModal.classList.remove('show');
       newHospitalName.value = '';
       selectWardsHospital(hospitalId);
       showToast('Hospital created — you are its admin.', 'ok');
     }catch(e){ if(newHospitalErr) newHospitalErr.textContent = (e && e.message) || 'Could not create the hospital.'; }
+    finally{ newHospitalCreateBtn.disabled = false; }
   });
 
   const deptSelect = document.getElementById('wards-sync-department-select');
@@ -8073,13 +8100,15 @@ function setupWardsSyncUI(){
     if(newDeptErr) newDeptErr.textContent = '';
     const name = (newDeptName && newDeptName.value || '').trim();
     if(!name){ if(newDeptErr) newDeptErr.textContent = 'Give the department a name.'; return; }
+    newDeptCreateBtn.disabled = true;
     try{
-      const deptId = await wardsCreateDepartment(name);
+      const deptId = await wardsWithTimeout(wardsCreateDepartment(name), 15000, 'Could not reach the server — check your connection and try again.');
       newDeptModal.hidden = true; newDeptModal.classList.remove('show');
       newDeptName.value = '';
       selectWardsDepartment(deptId);
       showToast('Department created — you are its admin.', 'ok');
     }catch(e){ if(newDeptErr) newDeptErr.textContent = (e && e.message) || 'Could not create the department.'; }
+    finally{ newDeptCreateBtn.disabled = false; }
   });
 
   const newGroupBtn = document.getElementById('wards-sync-newgroup-btn');
@@ -8096,13 +8125,15 @@ function setupWardsSyncUI(){
     if(newGroupErr) newGroupErr.textContent = '';
     const name = (newGroupName && newGroupName.value || '').trim();
     if(!name){ if(newGroupErr) newGroupErr.textContent = 'Give the group a name.'; return; }
+    newGroupCreateBtn.disabled = true;
     try{
-      const groupId = await wardsCreateGroup(name);
+      const groupId = await wardsWithTimeout(wardsCreateGroup(name), 15000, 'Could not reach the server — check your connection and try again.');
       newGroupModal.hidden = true; newGroupModal.classList.remove('show');
       newGroupName.value = '';
       selectWardsSyncGroup(groupId);
       showToast('Ward group created.', 'ok');
     }catch(e){ if(newGroupErr) newGroupErr.textContent = (e && e.message) || 'Could not create the group.'; }
+    finally{ newGroupCreateBtn.disabled = false; }
   });
 
   const historyBtn = document.getElementById('vitals-history-btn');
@@ -8331,8 +8362,10 @@ async function initWardsCloudSync(){
     wardsSyncSetError(null);
     wardsShowLoginGate('Could not reach the sign-in service — check your connection, then reload.');
     return; // no network / blocked — login is required, so the gate stays up until it can be reached
+    // (the auth listener itself is wired inside initWardsFirebase() the first
+    // time it succeeds, whether that's this boot-time call or a later retry
+    // from the login form — see wardsAuthListenerWired)
   }
-  wfbAuth.onAuthStateChanged(wardsOnAuthChanged);
 }
 
 /* ============================================================
@@ -9825,6 +9858,15 @@ function setupVitalsImport(){
         }
         fileInput.value = '';
       };
+      // Without this, a failed read (permission revoked, file moved on
+      // Android's content-provider picker, etc.) fires nothing at all --
+      // no toast, no preview -- and since fileInput.value only got cleared
+      // in onload above, re-picking the SAME file afterwards fires no
+      // 'change' event either, so the retry silently does nothing too.
+      reader.onerror = () => {
+        showToast('Could not read that file — try picking it again.');
+        fileInput.value = '';
+      };
       reader.readAsText(file);
     });
   }
@@ -10363,13 +10405,16 @@ function finalizeVitalsEntrySave(p, entry){
   renderVitalsMain();
   if(photoFile){
     compressCtgFile(photoFile).then(dataUrl => {
-      if(!dataUrl) return;
+      // Throw (not just return) on a failed decode -- returning undefined here
+      // does NOT skip the next .then, so without this the reading would end up
+      // flagged hasPhoto:true with nothing actually stored for it.
+      if(!dataUrl) throw new Error('unreadable image');
       return notePhotoSet(entry.id, dataUrl);
     }).then(() => {
       entry.hasPhoto = true;
       saveVitalsData();
       renderVitalsTable();
-    }).catch(() => showToast('Could not save the attached photo (storage error).'));
+    }).catch(() => showToast('Could not save the attached photo — the image may be an unsupported format (storage error).'));
   }
 }
 
@@ -13920,20 +13965,29 @@ function renderMaternitySection(p){
 /* ---------- CTG image store (IndexedDB) — same DB/store name as the
    original standalone Maternity tab so already-migrated CTG images
    (referenced by id from migrateMaternityV1()) keep resolving. ---------- */
-const CTG_DB_NAME = 'mat_ctg_images_v1';
-const CTG_STORE = 'ctgImages';
-let ctgDbPromise = null;
-function ctgDb(){
-  if(ctgDbPromise) return ctgDbPromise;
-  ctgDbPromise = new Promise((resolve, reject) => {
+/* Shared IndexedDB opener: caches the open DB connection, but — unlike a
+   naive "cache the promise forever" pattern — clears the cache on any
+   failure so the *next* call actually retries the open instead of replaying
+   a stale rejection forever (same bug class as wardsFirebaseLoading above).
+   Also handles indexedDB.open()'s `onblocked` case (another tab holding an
+   older version of the DB open), which fires neither onsuccess nor onerror
+   and would otherwise hang the returned promise forever with no timeout. */
+function wardsOpenIndexedDb(dbName, storeName, promiseCacheRef){
+  if(promiseCacheRef.value) return promiseCacheRef.value;
+  promiseCacheRef.value = wardsWithTimeout(new Promise((resolve, reject) => {
     if(!window.indexedDB){ reject(new Error('IndexedDB unavailable')); return; }
-    const req = indexedDB.open(CTG_DB_NAME, 1);
-    req.onupgradeneeded = () => { req.result.createObjectStore(CTG_STORE); };
+    const req = indexedDB.open(dbName, 1);
+    req.onupgradeneeded = () => { req.result.createObjectStore(storeName); };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
-  });
-  return ctgDbPromise;
+    req.onblocked = () => reject(new Error(dbName + ' is open in another tab — close it and try again.'));
+  }), 10000, 'Could not open local storage — try again.').catch(e => { promiseCacheRef.value = null; throw e; });
+  return promiseCacheRef.value;
 }
+const CTG_DB_NAME = 'mat_ctg_images_v1';
+const CTG_STORE = 'ctgImages';
+const ctgDbPromiseRef = { value: null };
+function ctgDb(){ return wardsOpenIndexedDb(CTG_DB_NAME, CTG_STORE, ctgDbPromiseRef); }
 function ctgImageSet(id, dataUrl){
   return ctgDb().then(db => new Promise((resolve, reject) => {
     const tx = db.transaction(CTG_STORE, 'readwrite');
@@ -13965,18 +14019,8 @@ function ctgImageDelete(id){
    with CTG traces. ---------- */
 const NOTE_PHOTO_DB_NAME = 'wards_note_photos_v1';
 const NOTE_PHOTO_STORE = 'notePhotos';
-let notePhotoDbPromise = null;
-function notePhotoDb(){
-  if(notePhotoDbPromise) return notePhotoDbPromise;
-  notePhotoDbPromise = new Promise((resolve, reject) => {
-    if(!window.indexedDB){ reject(new Error('IndexedDB unavailable')); return; }
-    const req = indexedDB.open(NOTE_PHOTO_DB_NAME, 1);
-    req.onupgradeneeded = () => { req.result.createObjectStore(NOTE_PHOTO_STORE); };
-    req.onsuccess = () => resolve(req.result);
-    req.onerror = () => reject(req.error);
-  });
-  return notePhotoDbPromise;
-}
+const notePhotoDbPromiseRef = { value: null };
+function notePhotoDb(){ return wardsOpenIndexedDb(NOTE_PHOTO_DB_NAME, NOTE_PHOTO_STORE, notePhotoDbPromiseRef); }
 function notePhotoSet(id, dataUrl){
   return notePhotoDb().then(db => new Promise((resolve, reject) => {
     const tx = db.transaction(NOTE_PHOTO_STORE, 'readwrite');
@@ -14259,13 +14303,13 @@ function setupMaternitySection(){
       haptic('Light');
       if(photoFile){
         compressCtgFile(photoFile).then(dataUrl => {
-          if(!dataUrl) return;
+          if(!dataUrl) throw new Error('unreadable image');
           return notePhotoSet(noteEntry.id, dataUrl);
         }).then(() => {
           noteEntry.hasPhoto = true;
           saveVitalsData();
           renderMaternityNotesLog(m);
-        }).catch(() => showToast('Could not save the attached photo (storage error).'));
+        }).catch(() => showToast('Could not save the attached photo — the image may be an unsupported format (storage error).'));
       }
     });
   }
