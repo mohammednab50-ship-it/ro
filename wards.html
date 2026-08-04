@@ -1974,6 +1974,12 @@ html.wards-cbsafe .vitals-latest-tile.n2-3 .vlt-k::before{content:"\25b2\25b2 ";
 .vitals-import-invalid-tag{color:var(--ink-faint);font-weight:700;font-size:11px;}
 
 /* ---- problem list ---- */
+.wards-handoff-card{max-width:400px;max-height:85vh;overflow-y:auto;}
+.wards-handoff-list{display:flex;flex-direction:column;gap:2px;max-height:40vh;overflow-y:auto;border:1px solid var(--line);border-radius:var(--r-sm);padding:6px;}
+.wards-handoff-row{display:flex;align-items:center;gap:10px;padding:7px 8px;border-radius:var(--r-sm);font-family:var(--ff-sans);font-size:13.5px;color:var(--ink);cursor:pointer;}
+.wards-handoff-row:hover{background:var(--line-soft);}
+.wards-handoff-row input{flex-shrink:0;}
+.wards-handoff-row .who-bed{font-family:var(--ff-mono);font-size:12px;color:var(--ink-faint);min-width:28px;}
 .wards-calc-card{max-width:440px;max-height:85vh;overflow-y:auto;}
 .vitals-calc-section{border-top:1px solid var(--line);padding-top:14px;margin-top:14px;}
 .vitals-calc-section:first-of-type{border-top:none;margin-top:6px;padding-top:0;}
@@ -3484,6 +3490,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
         <button type="button" class="vitals-more-menu-btn" id="vitals-endshift-btn" title="Your shift recap plus an aggregate of what's due across your active patients"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2" stroke-linecap="round" stroke-linejoin="round"/></svg> End-of-shift summary</button>
         <button type="button" class="vitals-more-menu-btn" id="vitals-import-btn"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M12 15V3M7 8l5-5 5 5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 17v3a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-3" stroke-linecap="round" stroke-linejoin="round"/></svg> Import patients (CSV/JSON)</button>
         <button type="button" class="vitals-more-menu-btn" id="vitals-calculators-btn"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><rect x="5" y="3" width="14" height="18" rx="2"/><path d="M8 7h8M8 11h2M12 11h2M16 11h0M8 15h2M12 15h2M16 15h0M8 19h2M12 19h2M16 19h0" stroke-linecap="round"/></svg> Calculators</button>
+        <button type="button" class="vitals-more-menu-btn" id="vitals-handoff-btn" title="Assign or release &quot;my patients this shift&quot; for several patients at once, instead of one at a time"><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M8 7a3 3 0 1 0 0-6 3 3 0 0 0 0 6ZM3 20c0-3.5 2.5-6 5-6s5 2.5 5 5" stroke-linecap="round" stroke-linejoin="round"/><path d="M16 4a3 3 0 1 0 0 6 3 3 0 0 0 0-6ZM14 19c0-2.9 2-5 4.5-5S21 16.7 21 19" stroke-linecap="round" stroke-linejoin="round"/></svg> Shift handoff&hellip;</button>
         <label class="vitals-more-menu-select-row" id="vitals-roster-sort-wrap" title="How the patient list above is ordered">
           <span>Sort by</span>
           <select id="vitals-roster-sort">
@@ -4668,6 +4675,29 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
      aid, verify independently" framing as the rest of the app's
      clinical-adjacent features (NEWS2, SBAR) -- nothing here is a
      substitute for an institutional dosing reference or pharmacy check. -->
+<!-- Bulk shift handoff -- "mine" was previously toggled one patient at a
+     time, which is fine day-to-day but slow at the actual moment it
+     matters: taking over (or handing off) a whole list at shift change.
+     This is still the same purely local, per-device, personal-reminder
+     "mine" flag -- not a real handover record, that's what SBAR is for
+     -- just a faster way to set it for several patients in one go. -->
+<div class="wards-qr-modal" id="wards-handoff-modal" hidden>
+  <div class="wards-qr-card wards-qr-card--left wards-handoff-card" role="dialog" aria-modal="true" aria-labelledby="wards-handoff-title">
+    <button type="button" class="mat-lb-close" id="wards-handoff-close" aria-label="Close">&times;</button>
+    <h3 id="wards-handoff-title">Shift handoff — assign "mine"</h3>
+    <p class="wards-qr-disclaimer">Check the patients you're taking on this shift. This only sets the local "mine" flag used to filter your roster and shift summary — it doesn't move or share any patient data.</p>
+    <div class="vitals-baselines-actions" style="margin-bottom:8px;">
+      <button type="button" class="vitals-btn-ghost" id="wards-handoff-select-all">Select all</button>
+      <button type="button" class="vitals-btn-ghost" id="wards-handoff-clear-all">Clear all</button>
+    </div>
+    <div id="wards-handoff-list" class="wards-handoff-list"></div>
+    <div class="vitals-baselines-actions" style="margin-top:10px;">
+      <button type="button" class="vitals-btn-primary" id="wards-handoff-apply">Apply</button>
+      <button type="button" class="vitals-btn-ghost" id="wards-handoff-cancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
 <div class="wards-qr-modal" id="wards-calculators-modal" hidden>
   <div class="wards-qr-card wards-qr-card--left wards-calc-card" role="dialog" aria-modal="true" aria-labelledby="wards-calc-title">
     <button type="button" class="mat-lb-close" id="wards-calculators-close" aria-label="Close">&times;</button>
@@ -8558,6 +8588,7 @@ function initVitals(){
   setupMarSection();
   setupSbarButtons();
   setupWardsCalculators();
+  setupWardsHandoff();
   setupVoiceInputForNotesFields();
   setupNotePhotoInput('v-notes-photo', 'v-notes-photo-label', 'v-notes-photo-name');
   setupNotePhotoInput('mat-f-notes-photo', 'mat-f-notes-photo-label', 'mat-f-notes-photo-name');
@@ -11914,6 +11945,74 @@ function recalcBsaCalc(){
   }
   const bsa = Math.sqrt((height * weight) / 3600);
   wardsCalcSetResult('calc-bsa-result', `BSA: ${bsa.toFixed(2)} m².`, true);
+}
+
+/* ---- bulk shift handoff -- see the modal's own comment for scope: this
+   only sets the existing local "mine" boolean for several patients at
+   once, not a new data model. ---- */
+function renderWardsHandoffList(){
+  const wrap = document.getElementById('wards-handoff-list');
+  if(!wrap) return;
+  const patients = sortRosterPatients(vitalsState.patients.filter(isPatientActive));
+  if(!patients.length){
+    wrap.innerHTML = '<p class="vitals-dept-empty">No active patients.</p>';
+    return;
+  }
+  wrap.innerHTML = patients.map(p =>
+    `<label class="wards-handoff-row"><input type="checkbox" data-handoff-id="${p.id}" ${p.mine ? 'checked' : ''}><span class="who-bed">${escapeHtml(p.bed || '—')}</span><span>${escapeHtml(p.name || 'Unnamed')}</span></label>`
+  ).join('');
+}
+function setupWardsHandoff(){
+  const openBtn = document.getElementById('vitals-handoff-btn');
+  const modal = document.getElementById('wards-handoff-modal');
+  const closeBtn = document.getElementById('wards-handoff-close');
+  const cancelBtn = document.getElementById('wards-handoff-cancel');
+  const applyBtn = document.getElementById('wards-handoff-apply');
+  const selectAllBtn = document.getElementById('wards-handoff-select-all');
+  const clearAllBtn = document.getElementById('wards-handoff-clear-all');
+  const list = document.getElementById('wards-handoff-list');
+  if(!openBtn || !modal) return;
+  const closeModal = () => { modal.hidden = true; modal.classList.remove('show'); };
+  if(!openBtn.dataset.wired){
+    openBtn.dataset.wired = '1';
+    openBtn.addEventListener('click', () => {
+      renderWardsHandoffList();
+      modal.hidden = false; modal.classList.add('show');
+    });
+  }
+  if(closeBtn && !closeBtn.dataset.wired){ closeBtn.dataset.wired = '1'; closeBtn.addEventListener('click', closeModal); }
+  if(cancelBtn && !cancelBtn.dataset.wired){ cancelBtn.dataset.wired = '1'; cancelBtn.addEventListener('click', closeModal); }
+  if(!modal.dataset.wired){
+    modal.dataset.wired = '1';
+    modal.addEventListener('click', e => { if(e.target === modal) closeModal(); });
+  }
+  if(selectAllBtn && !selectAllBtn.dataset.wired){
+    selectAllBtn.dataset.wired = '1';
+    selectAllBtn.addEventListener('click', () => { if(list) list.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = true); });
+  }
+  if(clearAllBtn && !clearAllBtn.dataset.wired){
+    clearAllBtn.dataset.wired = '1';
+    clearAllBtn.addEventListener('click', () => { if(list) list.querySelectorAll('input[type=checkbox]').forEach(c => c.checked = false); });
+  }
+  if(applyBtn && !applyBtn.dataset.wired){
+    applyBtn.dataset.wired = '1';
+    applyBtn.addEventListener('click', () => {
+      if(!list) return;
+      const checkedIds = new Set([...list.querySelectorAll('input[type=checkbox]:checked')].map(c => c.dataset.handoffId));
+      let changed = 0;
+      vitalsState.patients.filter(isPatientActive).forEach(p => {
+        const shouldBeMine = checkedIds.has(p.id);
+        if(!!p.mine !== shouldBeMine){ p.mine = shouldBeMine; changed++; }
+      });
+      if(changed){
+        saveVitalsData();
+        renderPatientList();
+      }
+      closeModal();
+      haptic('Medium');
+      showToast(changed ? `Updated "mine" for ${changed} patient(s).` : 'No changes.', 'ok');
+    });
+  }
 }
 
 function setupWardsCalculators(){
