@@ -8314,13 +8314,20 @@ function setupWardsLoginGate(){
 
   if(form) form.addEventListener('submit', async e => {
     e.preventDefault();
+    alert('DEBUG: sign-in tapped, starting…'); // TEMPORARY — remove once the silent-failure report is diagnosed; a native alert() bypasses any CSS/keyboard/layout issue so this is guaranteed visible if the handler runs at all
     setErr(''); setStatus('');
     const email = (emailInput && emailInput.value || '').trim();
     const pass = passInput && passInput.value || '';
-    if(!email || !pass){ setErr('Enter your email and password.'); return; }
+    if(!email || !pass){ setErr('Enter your email and password.'); alert('DEBUG: missing email or password'); return; }
     if(submitBtn) submitBtn.disabled = true;
-    try{ await wardsSignInEmail(email, pass, mode === 'signup', remember()); } // onAuthStateChanged handles the rest
-    catch(e){ setErr(wardsAuthErrorMessage(e)); }
+    try{
+      await wardsSignInEmail(email, pass, mode === 'signup', remember()); // onAuthStateChanged handles the rest
+      alert('DEBUG: sign-in call succeeded — waiting on auth state change now.');
+    }
+    catch(e){
+      setErr(wardsAuthErrorMessage(e));
+      alert('DEBUG: sign-in failed — ' + (e && e.message) + ' / code=' + (e && e.code));
+    }
     finally{ if(submitBtn) submitBtn.disabled = false; }
   });
 
@@ -16043,7 +16050,15 @@ function setupWardsAppLock(){
   if(wardsLockConfig()) wardsStartUnlock();
 }
 
+// TEMPORARY diagnostic — remove once the silent sign-in failure is found.
+// A native alert() bypasses any CSS/keyboard/layout issue, so this is
+// guaranteed visible even if the failure is happening somewhere we
+// haven't instrumented directly.
+window.addEventListener('error', e => { alert('DEBUG window error: ' + (e && e.message) + ' @ ' + (e && e.filename) + ':' + (e && e.lineno)); });
+window.addEventListener('unhandledrejection', e => { alert('DEBUG unhandled rejection: ' + (e && e.reason && (e.reason.message || e.reason))); });
+
 function boot(){
+  alert('DEBUG: boot() starting');
   initWardsCloudSync(); // wire + show the mandatory login gate first, before anything else can be interacted with
   applyTheme(getInitialTheme());
   const toggle = document.getElementById('theme-toggle');
