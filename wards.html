@@ -3456,6 +3456,8 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
     <p class="chapters-eyebrow">PATIENTS</p>
     <button type="button" class="vitals-overdue-banner" id="vitals-overdue-banner" hidden></button>
 
+    <input type="text" id="vitals-roster-search" class="opd-search-input" placeholder="Search patients — name, bed, MRN…">
+
     <div class="vitals-filter-chips">
       <label class="vitals-filter-chip">
         <input type="checkbox" id="vitals-mine-filter-toggle">
@@ -3467,7 +3469,7 @@ html.mobile-shell .vitals-grid{grid-template-columns:repeat(auto-fill,minmax(110
       </label>
     </div>
 
-    <ol class="chapter-list" id="patient-list" title="Keyboard: j/k to move between patients, / to search this patient's log, n to jump into a new reading"></ol>
+    <ol class="chapter-list" id="patient-list" title="Keyboard: j/k to move between patients, / to search patients, n to jump into a new reading"></ol>
 
     <button type="button" class="vitals-btn-primary vitals-add-patient-cta" id="vitals-add-patient-btn">+ Add patient</button>
     <button type="button" class="vitals-add-patient-btn vitals-btn-outline" id="vitals-scan-patient-btn" hidden><svg class="wi" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M4 8.5A1.5 1.5 0 0 1 5.5 7h2l1-1.6A1.5 1.5 0 0 1 9.8 4.6h4.4a1.5 1.5 0 0 1 1.3.8L16.5 7h2A1.5 1.5 0 0 1 20 8.5v9A1.5 1.5 0 0 1 18.5 19h-13A1.5 1.5 0 0 1 4 17.5Z" stroke-linejoin="round"/><circle cx="12" cy="13" r="3.4"/></svg> Scan patient ID</button>
@@ -8509,6 +8511,7 @@ function initVitals(){
   setupVitalsLogSearch();
   setupVitalsMineFilterToggle();
   setupVitalsOverdueFilterToggle();
+  setupVitalsRosterSearch();
   setupRosterSortControl();
   setupVitalsNews2Preview();
   setupAllergiesForm();
@@ -8658,6 +8661,7 @@ function setDefaultVitalsView(v){
 // sidebar to just those.
 let vitalsMineFilterActive = false;
 let vitalsOverdueFilterActive = false;
+let vitalsRosterSearch = '';
 
 /* ---- configurable roster sort order — a per-device preference, applied
    consistently every time the list renders. "Acuity" reuses computeNews2()
@@ -8764,6 +8768,14 @@ function renderPatientList(){
   if(vitalsMineFilterActive) patients = patients.filter(p => p.mine);
   const overdueCount = vitalsState.patients.filter(p => isPatientActive(p) && isVitalsPatientOverdue(p, now)).length;
   if(vitalsOverdueFilterActive) patients = patients.filter(p => isVitalsPatientOverdue(p, now));
+  const searchNeedle = vitalsRosterSearch.trim().toLowerCase();
+  if(searchNeedle){
+    patients = patients.filter(p =>
+      (p.name || '').toLowerCase().includes(searchNeedle) ||
+      (p.bed || '').toLowerCase().includes(searchNeedle) ||
+      (p.mrn || '').toLowerCase().includes(searchNeedle)
+    );
+  }
   patients = sortRosterPatients(patients);
 
   const overdueBanner = document.getElementById('vitals-overdue-banner');
@@ -8830,7 +8842,12 @@ function renderPatientList(){
     li.appendChild(briefBtn);
     list.appendChild(li);
   });
-  if(vitalsMineFilterActive && !patients.length){
+  if(searchNeedle && !patients.length){
+    const li = document.createElement('li');
+    li.className = 'chapter-li-empty';
+    li.textContent = 'No patients match that search.';
+    list.appendChild(li);
+  }else if(vitalsMineFilterActive && !patients.length){
     const li = document.createElement('li');
     li.className = 'chapter-li-empty';
     li.textContent = 'No patients marked as yours this shift yet.';
@@ -8861,6 +8878,13 @@ function setupVitalsOverdueFilterToggle(){
     vitalsOverdueFilterActive = toggle.checked;
     renderPatientList();
   });
+}
+
+function setupVitalsRosterSearch(){
+  const input = document.getElementById('vitals-roster-search');
+  if(!input || input.dataset.wired) return;
+  input.dataset.wired = '1';
+  input.addEventListener('input', () => { vitalsRosterSearch = input.value; renderPatientList(); });
 }
 
 function setupPatientList(){
@@ -10636,8 +10660,15 @@ function setupVitalsKeyboardShortcuts(){
     if(isTyping) return;
 
     if(e.key === '/'){
-      const searchInput = document.getElementById('vitals-log-search');
-      if(searchInput && searchInput.offsetParent !== null){ e.preventDefault(); searchInput.focus(); }
+      // Roster search (finding a different patient) is the more common
+      // mid-round need than filtering the currently-open patient's own
+      // log, so it takes priority; the log search is the fallback if the
+      // roster search isn't on screen for some reason.
+      const rosterSearch = document.getElementById('vitals-roster-search');
+      const logSearch = document.getElementById('vitals-log-search');
+      const target = (rosterSearch && rosterSearch.offsetParent !== null) ? rosterSearch
+        : (logSearch && logSearch.offsetParent !== null) ? logSearch : null;
+      if(target){ e.preventDefault(); target.focus(); }
       return;
     }
     if(e.key === 'j'){ e.preventDefault(); moveVitalsRosterSelection(1); return; }
