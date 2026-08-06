@@ -130,6 +130,75 @@ fresh one.
 
 ---
 
+## 9. Wards sign-in: the actual bug, and everything ruled out on the way
+
+You reported email/password sign-in in the packaged Wards app doing
+nothing at all. That took several rounds to actually pin down — worth
+recording what each round found, since some of it is now permanent
+robustness fixes and some of it was a dead end.
+
+**Ruled out / fixed along the way (real improvements, not the root cause):**
+- `wardsLoadScript()` (dynamically injecting the Firebase SDK) had no
+  timeout — a stalled network request hung the whole sign-in chain
+  forever with zero feedback. Now times out at 12s with a clear error.
+- `initWardsFirebase()` cached a failed load attempt permanently — after
+  one failure, every later retry instantly replayed the same cached
+  failure instead of actually retrying. Fixed to clear on failure.
+- Android manifest had no `windowSoftInputMode`, so the on-screen
+  keyboard could overlay the login card instead of resizing around it.
+  Added `adjustResize`.
+- A static bug-hunt pass (prompted by "can't test the app, check for
+  bugs") found and fixed 6 more bugs of the same silent-failure shape
+  across the app: the mandatory terms modal could be dismissed via
+  backdrop-tap/Escape without ever resolving the promise gating login;
+  the "I agree" button had no timeout; IndexedDB photo storage had the
+  same cache-failure-forever bug as the original Firebase issue;
+  photo attachments could be silently marked "attached" when the image
+  actually failed to decode; the CSV/JSON import file reader had no
+  `onerror`; and the create-hospital/department/ward-group buttons had
+  no disable-guard around their writes.
+
+**The actual root cause:** none of the above. A debug build with native
+`alert()` diagnostics (bypassing any CSS/keyboard rendering issue)
+showed sign-in itself succeeding — "sign-in call succeeded, waiting on
+auth state change now" — and then nothing further happening. That
+pinned it to `wardsOnAuthChanged()`'s first step,
+`wardsHasAgreedToCurrentTerms()`, which did a plain Firestore `.get()`
+with no timeout. Firestore's own connection (WebChannel/long-polling)
+is far more sensitive to flaky networks/proxies than the plain REST
+call Auth had just used successfully — so sign-in could genuinely
+succeed and then hang forever on the very next step, leaving the user
+stuck behind an invisible, never-resolving login gate. Fixed both
+Firestore reads in that chain (terms check, profile check) with the
+same 12s-timeout-and-fall-back-safely pattern.
+
+**Rounds had the identical bug**, found on a follow-up review: no
+timeout on its own `loadScript()`, and its auth-state listener was
+also only wired on the first boot-time attempt (so a later successful
+retry-after-offline sign-in would silently never enter the app). Fixed
+the same way. Rounds' terms gate reads from `localStorage`, not
+Firestore, so it didn't have the second half of the Wards bug.
+
+**⚠️ Current temporary state — needs reverting before real use:**
+Because the login debugging took several rounds, two things are
+presently live in `wards.html` purely for you to test the rest of the
+app without being blocked on sign-in:
+- `wardsShowLoginGate()` is a no-op, and `boot()` force-hides the gate.
+  The app opens straight into local-only mode; cloud sync / ward groups
+  are still unreachable without an account, but nothing else is gated.
+- This is clearly marked `TEMPORARY` in the code and is a single,
+  easily-revertible commit — say the word when you want the login
+  requirement back on.
+
+## 10. New app icons
+
+Generated full Android launcher icon sets (legacy square, round
+variant, adaptive foreground/background, mdpi–xxxhdpi) from the
+supplied artwork for both apps, replacing the Capacitor placeholder
+icons. Committed and verified both projects build cleanly with them.
+
+---
+
 ## What's still blocking, in priority order
 
 1. **Deploy `firestore.rules` and the Cloud Functions.** Nothing in
@@ -151,3 +220,6 @@ fresh one.
 5. **OAuth consent screen branding** for `wards-a4e41` — cosmetic
    (Google shows the raw `firebaseapp.com` domain right now) but easy;
    link and steps were given earlier in this session.
+6. **Re-enable the Wards login gate** (see section 9) — currently
+   bypassed for feature testing; a single-commit revert once you're
+   ready to require sign-in again.
