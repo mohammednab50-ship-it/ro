@@ -373,14 +373,23 @@ nav.chapters::-webkit-scrollbar-thumb:hover{background:var(--ink-faint);}
 .scroll-top-btn:active{transform:scale(0.94);}
 
 /* ---- toast ---- */
-.app-toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(16px);z-index:1400;
+.app-toast{position:fixed;left:50%;bottom:88px;transform:translateX(-50%) translateY(16px) scale(0.96);z-index:1400;
   background:var(--shell-raised,#16181A);color:var(--shell-ink,#F4F1EA);border:1px solid var(--shell-line,rgba(244,241,234,0.12));
-  font-family:var(--ff-sans);font-size:13.5px;font-weight:500;padding:12px 20px;border-radius:var(--r-pill);
+  font-family:var(--ff-sans);font-size:13.5px;font-weight:500;padding:11px 20px 11px 16px;border-radius:var(--r-pill);
   box-shadow:0 12px 34px rgba(0,0,0,0.4);opacity:0;pointer-events:none;max-width:88vw;text-align:center;
-  display:inline-flex;align-items:center;gap:8px;transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
-.app-toast.show{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
-.app-toast::before{content:'';width:8px;height:8px;border-radius:50%;background:var(--evidence-bright,#5B9CFF);flex-shrink:0;}
-.app-toast.toast-err::before{background:var(--caution,#E0794F);}
+  display:inline-flex;align-items:center;gap:9px;transition:opacity var(--dur-base) var(--ease-out),transform var(--dur-base) var(--ease-out);}
+.app-toast.show{opacity:1;transform:translateX(-50%) translateY(0) scale(1);pointer-events:auto;}
+.app-toast::before{
+  content:''; width:18px; height:18px; flex:0 0 auto; border-radius:50%;
+  background:var(--evidence-bright,#5B9CFF); position:relative;
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E") center/12px no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 13l4 4L19 7'/%3E%3C/svg%3E") center/12px no-repeat;
+}
+.app-toast.toast-err::before{
+  background:var(--caution,#E0794F);
+  -webkit-mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z'/%3E%3C/svg%3E") center/13px no-repeat;
+  mask:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23fff' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12 9v4M12 17h.01M10.3 3.9 2.4 18a2 2 0 0 0 1.7 3h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0Z'/%3E%3C/svg%3E") center/13px no-repeat;
+}
 .app-toast-undo{flex-shrink:0;border:1px solid var(--shell-line,rgba(244,241,234,0.28));background:transparent;color:inherit;font:inherit;font-weight:700;cursor:pointer;padding:3px 10px;border-radius:var(--r-pill);margin-left:2px;}
 .app-toast-undo:hover{background:rgba(244,241,234,0.14);}
 
@@ -1336,7 +1345,7 @@ body.locked{overflow:hidden;}
 .header-actions{display:flex;align-items:center;gap:10px;}
 .welcome-greeting{font-family:var(--ff-sans);font-size:13px;font-weight:500;color:var(--ink-soft);white-space:nowrap;max-width:240px;overflow:hidden;text-overflow:ellipsis;display:inline-flex;align-items:center;gap:6px;padding:4px 6px;}
 .welcome-greeting[hidden]{display:none;}
-.welcome-greeting strong{color:var(--ink);font-weight:600;text-transform:uppercase;letter-spacing:0.03em;}
+.welcome-greeting strong{color:var(--evidence);font-weight:700;text-transform:uppercase;letter-spacing:0.03em;}
 .welcome-greeting .greet-suffix{color:var(--ink-faint);font-weight:400;}
 @media (max-width:680px){
   .welcome-greeting{max-width:150px;padding:4px;}
@@ -12897,21 +12906,35 @@ async function signInWithGoogleUniversal(){
   }
 }
 
-function loadScript(src){
+function loadScript(src, timeoutMs){
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if(settled) return;
+      settled = true;
+      reject(new Error('Timed out reaching the sign-in service — check your connection and try again.'));
+    }, timeoutMs || 12000);
     const s = document.createElement('script');
     s.src = src; s.async = false;
-    s.onload = resolve; s.onerror = () => reject(new Error('Failed to load ' + src));
+    s.onload = () => { if(settled) return; settled = true; clearTimeout(timer); resolve(); };
+    s.onerror = () => { if(settled) return; settled = true; clearTimeout(timer); reject(new Error('Failed to load ' + src)); };
     document.head.appendChild(s);
   });
 }
 
-let fbAuth = null;
+let fbAuth = null, authListenerWired = false;
 async function initFirebase(){
   if(fbAuth) return fbAuth;
   for(const src of FIREBASE_SDK){ await loadScript(src); }
   firebase.initializeApp(FIREBASE_CONFIG);
   fbAuth = firebase.auth();
+  // Wired here (once, centrally) rather than only after the boot-time call --
+  // if boot fails offline and the user later signs in successfully from the
+  // login form, that later call is what actually succeeds first, and it
+  // still needs the listener registered or the app never enters after a
+  // genuinely successful sign-in. (Same bug class fixed in Wards' sign-in
+  // flow -- see wardsAuthListenerWired.)
+  if(!authListenerWired){ authListenerWired = true; fbAuth.onAuthStateChanged(user => { if(user) enterApp(user); }); }
   return fbAuth;
 }
 
@@ -16199,7 +16222,9 @@ function setupLogin(){
           }
         }
       }
-      fbAuth.onAuthStateChanged(user => { if(user) enterApp(user); });
+      // (the auth listener itself is wired inside initFirebase() the first
+      // time it succeeds, whether that's this boot-time call or a later
+      // retry from the login form -- see authListenerWired)
     }catch(err){
       setErr('Could not reach the sign-in service. Check your connection.');
     }

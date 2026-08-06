@@ -12906,21 +12906,35 @@ async function signInWithGoogleUniversal(){
   }
 }
 
-function loadScript(src){
+function loadScript(src, timeoutMs){
   return new Promise((resolve, reject) => {
+    let settled = false;
+    const timer = setTimeout(() => {
+      if(settled) return;
+      settled = true;
+      reject(new Error('Timed out reaching the sign-in service — check your connection and try again.'));
+    }, timeoutMs || 12000);
     const s = document.createElement('script');
     s.src = src; s.async = false;
-    s.onload = resolve; s.onerror = () => reject(new Error('Failed to load ' + src));
+    s.onload = () => { if(settled) return; settled = true; clearTimeout(timer); resolve(); };
+    s.onerror = () => { if(settled) return; settled = true; clearTimeout(timer); reject(new Error('Failed to load ' + src)); };
     document.head.appendChild(s);
   });
 }
 
-let fbAuth = null;
+let fbAuth = null, authListenerWired = false;
 async function initFirebase(){
   if(fbAuth) return fbAuth;
   for(const src of FIREBASE_SDK){ await loadScript(src); }
   firebase.initializeApp(FIREBASE_CONFIG);
   fbAuth = firebase.auth();
+  // Wired here (once, centrally) rather than only after the boot-time call --
+  // if boot fails offline and the user later signs in successfully from the
+  // login form, that later call is what actually succeeds first, and it
+  // still needs the listener registered or the app never enters after a
+  // genuinely successful sign-in. (Same bug class fixed in Wards' sign-in
+  // flow -- see wardsAuthListenerWired.)
+  if(!authListenerWired){ authListenerWired = true; fbAuth.onAuthStateChanged(user => { if(user) enterApp(user); }); }
   return fbAuth;
 }
 
@@ -16208,7 +16222,9 @@ function setupLogin(){
           }
         }
       }
-      fbAuth.onAuthStateChanged(user => { if(user) enterApp(user); });
+      // (the auth listener itself is wired inside initFirebase() the first
+      // time it succeeds, whether that's this boot-time call or a later
+      // retry from the login form -- see authListenerWired)
     }catch(err){
       setErr('Could not reach the sign-in service. Check your connection.');
     }
